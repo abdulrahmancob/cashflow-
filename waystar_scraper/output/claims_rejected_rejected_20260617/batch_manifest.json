@@ -1,0 +1,18 @@
+{
+  "run_id": "rejected_20260617",
+  "batches": [
+    {
+      "export_number": 1,
+      "export_type": "batch",
+      "start_page": 1,
+      "end_page": 7,
+      "claims_count": 183,
+      "exported_at": "2026-06-22T17:49:45.928534+00:00",
+      "batch_number": 1,
+      "csv": "batch_001.csv",
+      "json": "batch_001.json"
+    }
+  ],
+  "checkpoints": [],
+  "total_claims": 183
+}

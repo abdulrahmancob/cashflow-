@@ -1,0 +1,1589 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en" class="dj_khtml dj_safari dj_contentbox  ext-strict" style="--eswButtonBottom: 2%; --eswButtonRight: 96%;"><head>
+    <title>WebPT - Patient External Documents</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="expires" content="0">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta http-equiv="content-security-policy" content="connect-src 'self' *.webpt.com *.therabill.com *.weboutcomes.com *.google-analytics.com *.newrelic.com *.nr-assets.net *.nr-ext.net *.amazonaws.com *.cloudfront.net secure.gravatar.com fonts.googleapis.com fonts.gstatic.com www.google.com www.gstatic.com *.nr-data.net *.pendo.io *.force.com *.salesforceliveagent.com *.salesforce.com webpt.my.salesforce-sites.com *.salesforce-scrt.com http://127.0.0.1:18622 http://127.0.0.1:18625 ws://127.0.0.1:18622 ws://127.0.0.1:18625 https://127.0.0.1:18623 https://127.0.0.1:18626 wss://127.0.0.1:18623 wss://127.0.0.1:18626; "><script async="" src="//www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://ssl.google-analytics.com/ga.js"></script><script async="" src="https://cdn.pendo.io/agent/static/f44d9565-8dc4-48d1-48c8-cf609a3af4a8/pendo.js"></script><script type="text/javascript" src="/ruxitagentjs_ICA15789NPRTUVXfhqrux_10339260603164134.js" data-dtconfig="rid=RID_881362459|rpid=-620253999|domain=webpt.com|reportUrl=/rb_bf45882tgy|app=28c85ace602aeba2|owasp=1|featureHash=ICA15789NPRTUVXfhqrux|rdnt=1|uxrgce=1|cuc=ajw1klyu|mdl=mdcc6=20|mel=100000|expw=1|md=mdcc2=bintUserID,mdcc4=bintFacilityID,mdcc5=bintCompanyID,mdcc6=a#emr-deployment-tag|lastModification=1781306438768|mdp=mdcc4,mdcc5|tp=500,50,0|srbbv=2|agentUri=/ruxitagentjs_ICA15789NPRTUVXfhqrux_10339260603164134.js" data-config="{&quot;revision&quot;:1781306438768,&quot;beaconUri&quot;:&quot;/rb_bf45882tgy&quot;,&quot;agentUri&quot;:&quot;/ruxitagentjs_ICA15789NPRTUVXfhqrux_10339260603164134.js&quot;,&quot;environmentId&quot;:&quot;ajw1klyu&quot;,&quot;modules&quot;:&quot;ICA15789NPRTUVXfhqrux&quot;}" data-envconfig="{&quot;tracestateKeyPrefix&quot;:&quot;1f993272-2681e896&quot;}" data-appconfig="{&quot;app&quot;:&quot;28c85ace602aeba2&quot;,&quot;enableMetadataCapturing&quot;:false}"></script><script type="text/javascript" src="https://webpt-emr-prod-assets.s3.us-west-2.amazonaws.com/keet-sso-project/index_bundle.js"></script>
+    <script type="text/javascript" src="js/jQuery/jquery-1.7.2.min.js?cb=1&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="js/chosen/chosen.jquery.js?cb=1&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Facility/ClinicFilter.js?cb=1&amp;mtime=1780005745"></script>
+    <link type="text/css" rel="stylesheet" href="shared/css/vendor/font-awesome/css/font-awesome.min.css?mtime=1780005879">
+    <link type="text/css" rel="stylesheet" href="css/Centralized/centralized-scheduling.css?mtime=1780005745">
+    <script type="text/javascript" src="js/Modules/Centralized/centralized-tabs-listener.js?cb=2&amp;mtime=1780005745"></script>
+    <link type="text/css" rel="stylesheet" href="style.css?mtime=1780005747">
+    <link type="text/css" rel="stylesheet" href="lib/zapatec/zpcal/themes/tiny.css?mtime=1780005747">
+    <link type="text/css" rel="stylesheet" href="js/ExtJs/resources/css/ext-all-no-resets.css?mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="css/base.css?mtime=1780005749">
+    <link type="text/css" rel="stylesheet" href="css/upsell.css?cb=1&amp;mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="css/localUpsell.css?cb=1&amp;mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="css/Outcomes/intake-version.css?cb=1&amp;mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="css/Menu/menu.css?cb=2&amp;mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="js/Extensible/resources/css/extensible-all.css?mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="css/Scheduler/calendar/pastel.css?mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="css/Session/sessionTimeout.css?mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="js/chosen/chosen.css?cb=1&amp;mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="/css/tasking/tasks-icon.css?cb=1">	<style data-styled="active" data-styled-version="5.3.1"></style><link id="embeddedMessagingBootstrapStyles" href="https://webpt.my.site.com/ESWWebPTEMRMessaging1751285158982/assets/styles/bootstrap.min.css" type="text/css" rel="stylesheet"><style type="text/css">
+    
+    
+    
+    .closeRow {
+        display:none;
+    }
+    
+    .leftHeader {
+      background:url(https://app.webpt.com/lib/zapatec/zpcal/themes/webpt/topleft.png) no-repeat 0% 0%;
+      width:11px;
+      height:10px;
+    }
+    
+    .centerHeader { 
+        background:#069; 
+    }
+    
+    .rightHeader {
+      background:url(https://app.webpt.com/lib/zapatec/zpcal/themes/webpt/topright.png) no-repeat 100% 0%;
+      width:11px;
+      height:10px;
+    }
+    
+    .leftBorderDateCell {
+     border-left:1px solid #069; 
+    }
+    
+    .rightBorderDateCell {
+     border-right:1px solid #069;
+    }
+    
+    .leftBorderNavigation {
+     background:#069 none repeat scroll 0 0;
+     border-left:1px solid #069; 
+    }
+    
+    .rightBorderNavigation {
+     background:#069 none repeat scroll 0 0;	
+     border-right:1px solid #069;
+    }
+    
+    .leftBorderWeekDay {
+     background:#7bc4e3 none repeat scroll 0 0;	
+     border-left:1px solid #069;
+    }
+    
+    .rightBorderWeekDay {
+     background:#7bc4e3 none repeat scroll 0 0;	
+     border-right:1px solid #069;
+    }
+    
+    .leftFooter {
+     border-left:1px solid #069;
+     border-bottom:1px solid #069;
+    }
+    
+    .centerFooter {
+     border-bottom:1px solid #069;
+    }
+    
+    .rightFooter {
+     border-bottom:1px solid #069;
+     border-right:1px solid #069;
+    }
+    
+    div.zpCalendarWebpt {
+      position: relative;
+    }
+    
+    .zpCalendarWebpt table {
+      font-size: 9px;
+      color: #000;
+      cursor: default;
+      background:#fff;
+      border:0px solid #FFFFFF;
+    }
+    #newCal{
+        width:150px;
+        padding:0px;
+        margin:0px;
+    }
+    .zpCalendarWebpt {
+      width:150px;
+      font-size: 11px;
+      color: #000;
+      cursor: default;
+    }
+    
+    
+    
+    .zpCalendarWebpt .button {
+      text-align: center;    
+      padding: 2px 0px;          
+      color: #fff;
+      font-weight:bold;
+      cursor:pointer;
+      background:#069;
+    }
+    
+    .zpCalendarWebpt .nav {
+        font-size:11px;
+        font-weight:bold;
+    }
+    
+    .zpCalendarWebpt .nav div {
+    }
+    
+    .zpCalendarWebpt thead tr {
+      color: #000;
+    }
+    
+    .zpCalendarWebpt thead .title { 
+      font-weight: bold;      
+      text-align: center;
+      padding: 2px;
+      color: #0088cc;
+    }
+    
+    .zpCalendarWebpt thead .headrow { 
+    }
+    
+    .zpCalendarWebpt thead .name { 
+      padding: 1px;
+      text-align: center;
+      color: #000;
+      
+    }
+    
+    .zpCalendarWebpt thead .weekend { 
+      
+      color:#000;
+      
+      font-size:9px;
+    }
+    
+    .zpCalendarWebpt  thead .hilite { 
+      padding: 2px;
+    }
+    
+    .zpCalendarWebpt  thead .active { 
+      padding: 3px 1px 0px 0px;
+    }
+    
+    .zpCalendarWebpt  thead .daynames { 
+      background: #7bc4e3;
+    }
+    
+    .zpCalendarWebpt  thead .daynames .hilite {padding:5px;}
+    
+    .zpCalendarWebpt td.leftHeader, .zpCalendarWebpt td.centerHeader, .zpCalendarWebpt td.rightHeader {padding:0;}
+    
+    
+    
+    
+    .zpCalendarWebpt  tbody .day { 
+      color: #000;
+      font-weight:bold;
+      text-align: center;
+      padding:2px;
+    }
+    
+    .zpCalendarWebpt  tbody .day.othermonth {
+      color: #888;
+      font-weight:normal;
+    }
+    
+    .zpCalendarWebpt  tbody .day.othermonth.oweekend {
+      color: #888;
+      font-weight:normal;
+    }
+    
+    .zpCalendarWebpt  table .wn {
+      padding: 2px 3px 2px 2px;
+    }
+    
+    .zpCalendarWebpt  tbody .rowhilite td,
+    .zpCalendarWebpt  tbody .rowhilite td.wn {
+    }
+    
+    .zpCalendarWebpt tbody td.today {
+      font-weight: bold;
+    }
+    
+    .zpCalendarWebpt  tbody td.hilite { 
+      background:#f4f4f4;
+    }
+    
+    .zpCalendarWebpt  tbody td.active { 
+      padding: 2px 2px 0px 2px;
+    }
+    
+    .zpCalendarWebpt tbody td.weekend { 
+        color: #cc0033;
+        font-weight:bold;
+    }
+    
+    .zpCalendarWebpt  tbody td.selected { 
+      font-weight: bold;
+      padding: 1px 3px 1px 0px;
+      background: #f4f4f4;
+      color: #0088cc;
+    }
+    
+    .zpCalendarWebpt tbody .disabled {
+      color: #999;
+    }
+    
+    .zpCalendarWebpt tbody .emptycell { 
+      visibility: hidden;
+    }
+    
+    .zpCalendarWebpt tbody .emptyrow { 
+      display: none;
+    }
+    
+    
+    
+    .zpCalendarWebpt tfoot .footrow { 
+      text-align: center;
+    }
+    
+    .zpCalendarWebpt tfoot .ttip { 
+      text-align: center;
+      padding: 2px;
+      background: #f4f4f4;
+      color:#777;
+      font-size:11px;
+      border-right:1px solid #069;
+      border-left:1px solid #069;
+    }
+    
+    
+    .zpCalendarWebpt .combo {
+      position: absolute;
+      display: none;
+      top: 0px;
+      left: 0px;
+      width: 4em;
+      cursor: default;
+      font-size:10px;
+      background:#fff;
+      
+      color: #777;
+    }
+    
+    .zpCalendarWebpt .combo .label,
+    .zpCalendarWebpt .combo .label-IEfix {
+      text-align: center;
+      padding: 1px;
+    }
+    
+    .zpCalendarWebpt .combo .label-IEfix {
+      width: 4em;
+    }
+    
+    .zpCalendarWebpt .combo .hilite {
+      background: #f4f4f4;
+      color: #000;
+    }
+    
+    .zpCalendarWebpt .combo .active {
+      text-align: center;
+      padding: 1px;
+      font-weight: bold;
+      background: #f4f4f4;
+      color: #000;
+    }
+    
+    .zpCalendarWebpt .combo .disabled {
+      color: #888;
+    }
+    
+    .zpCalendarWebpt .history {
+      width: 18em;
+    }
+    
+    .zpCalendarWebpt .history .label {
+      text-align: center;
+    }
+    
+    .zpCalendarWebpt .history .label-IEfix {
+      width: 18em;
+    }
+    
+    .zpCalendarWebpt td.time {
+      padding: 1px 0px;
+      text-align: center;
+    }
+    
+    .zpCalendarWebpt td.time .hour,
+    .zpCalendarWebpt td.time .minute,
+    .zpCalendarWebpt td.time .ampm {
+      padding: 0px 5px 0px 6px;
+      font-weight: bold;
+      color: #000;
+    }
+    
+    .zpCalendarWebpt td.time .hour,
+    .zpCalendarWebpt td.time .minute {
+    }
+    
+    .zpCalendarWebpt td.time .ampm {
+      text-align: center;
+    }
+    
+    .zpCalendarWebpt td.time .colon {
+      padding: 0px 2px 0px 3px;
+      font-weight: bold;
+    }
+    
+    .zpCalendarWebpt .calendar-time-scroller .up {
+      width: 11px;
+      
+      height: 0.5em;
+    }
+    
+    .zpCalendarWebpt .calendar-time-scroller .down {
+      width: 11px;
+      
+      height: 0.5em;
+    }</style></head><body class="   ext-webkit ext-chrome ext-not-ios" style="top:0px;margin-top:0px;margin-left:0px;margin-right:0px" id="ext-gen12"><notag name="templateMenuScripts">
+        <style type="text/css">
+    @import "lib/dojo/dojo-release-1.2.3/dijit/themes/tundra/tundra.css";
+    @import "includes/dojo.css";
+    </style>
+    <script type="text/javascript" src="lib/dojo/dojo-release-1.2.3/dojo/dojo.js?mtime=1780005747" djconfig="parseOnLoad:true, isDebug:false"></script>
+    <script type="text/javascript">
+    dojo.require("dijit.dijit");
+    dojo.require("dojo.parser");
+    dojo.require("dijit.form.Button");
+    dojo.require("dijit.Toolbar");
+    dojo.require("dijit.Menu");
+    function menuEventLoadURL(url) {
+        newwin = document.location = url;
+    }
+    </script>
+    
+    <script type="text/javascript">var isMitigateUseSessionTokenEnabled = true;</script><script type="text/javascript" src="includes/scripts/MooTools-Core-1.6.0.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/WebPT.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="lib/zapatec/utils/zapatec.js?mtime=1780005747"></script>
+    <script type="text/javascript" src="lib/zapatec/zpcal/src/calendar-src.js?mtime=1780005747"></script><script type="text/javascript" src="lib/zapatec/zpcal/src/../lang/calendar-en.js"></script><script type="text/javascript" src="lib/zapatec/zpcal/src/calendar-core.js" id="Zapatec.Calendar"></script><script type="text/javascript" src="lib/zapatec/utils/../utils/zpdate.js" id="Zapatec.Date"></script><script type="text/javascript" src="lib/zapatec/zpcal/src/calendar-setup.js"></script>
+    <script type="text/javascript" src="lib/zp/zapatec/zpwin/src/window.js?mtime=1780005747"></script>
+    <script type="text/javascript" src="lib/zapatec/zpwin/src/confirm.js?mtime=1780005747"></script>
+    <script type="text/javascript" src="lib/zapatec/zpwin/src/alert.js?mtime=1780005747"></script>
+    <script type="text/javascript" src="lib/zapatec/zptooltip/src/zptooltip.js?mtime=1780005747"></script>
+    <script type="text/javascript" src="includes/scripts/util.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/display.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/DynamicSearch.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/ExtJs/adapter/ext/ext-base.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/ExtJs/ext-all.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Extensible/extensible-all-debug.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/jquery.latest.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/base.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Scheduler/calendar/datepicker.js?cb=1&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/miniCal.js?cb=1&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="js/upsell.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/upsellUpdated.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Weboutcomes/outcomesUpsell.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Hep/hepUpsell.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Reach/reachUpsell.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/FeeSchedule/mcrAlerts.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="https://common.webpt.com/app/auth-client/1.4.4/bundle.js"></script>
+    <script type="text/javascript" src="js/lib/common.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/wpt.lightbox.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/User/changeClinic.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Patient/quickAddPage.js?mtime=1780005745"></script>
+    
+    
+    <script type="text/javascript">
+    jQuery.noConflict();
+    /**
+     * Container to mark if the page blocker has exited or not
+     */
+    var pageBlockerExited = false;
+    setTimeout('checkUnresponsiveConnection()', 30*1000);
+    
+    function initializeGoogleAnalytics() {
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-27684429-1', 'auto');
+        ga('set', {"dimension3":"24151","dimension1":13829,"dimension2":620718});
+    }
+    
+    (function(p, e, n, d, o) {
+        var v, w, x, y, z;
+        o = p[d] = p[d] || {};
+        o._q = [];
+        v = ['initialize', 'identify', 'updateOptions', 'pageLoad'];
+        for (w = 0, x = v.length; w < x; ++w)(function(m) {
+            o[m] = o[m] || function() {
+                o._q[m === v[0] ? 'unshift' : 'push']([m].concat([].slice.call(arguments, 0)));
+            };
+        })(v[w]);
+        y = e.createElement(n);
+        y.async = !0;
+        y.src = 'https://cdn.pendo.io/agent/static/f44d9565-8dc4-48d1-48c8-cf609a3af4a8/pendo.js';
+        z = e.getElementsByTagName(n)[0];
+        z.parentNode.insertBefore(y, z);
+    })(window, document, 'script', 'pendo');
+    pendo.initialize({"apiKey":"f44d9565-8dc4-48d1-48c8-cf609a3af4a8","usePendoAgentAPI":false,"account":{"id":"24151","PQRSReportingType":null,"PQRSSetupComplete":false},"visitor":{"id":620718,"Ghosted":false,"UserId":620718}});
+    
+    function fcb(cal){
+    }
+    WebPT.prototype.startAlarmGet = function() {
+        this.icTimeoutAlarmGet = setTimeout('myWebPT.serverAlarmGet()', myWebPT.iIntervalms);
+    
+    };
+    function clinicChange()
+    {
+        var userId = '620718';
+    
+        // $ is mooTools on some pages, jQuery on others. Use jQuery explicitly here.
+        var clinicSelector = jQuery('#ClinicChange');
+        var facilityId = clinicSelector.val();
+    
+        if (userId < 1 || facilityId < 1)
+        {
+            throw new Error('userId [' + userId + '] clinicId [' + facilityId + '] is invalid.');
+        }
+    
+        changeClinic.change(userId, facilityId);
+    
+        //Disables clinics change dropdown temporarily to allow the clinic change process to complete before changing to other clinic
+        document.getElementById('ClinicChange').setAttribute('disabled','disabled');
+    }
+    function addToolTips(doneCb){
+        var toolTips = new Array();
+        var elms = getElementsByAttribute("div","widget","toolTip");
+        if ( !elms.length ) {
+            if ( doneCb ) {
+                doneCb(null, []);
+            }
+            return false;
+        }
+        addToolTips_timedChunk(elms, function(element) {
+            if ( typeof element.id === undefined ) {
+                return true; // continue
+            }
+            var id = element.id;
+            var tooltipId = 'toolTip' + id;
+            if ( !id || !document.getElementById(tooltipId) ) {
+                return true; // continue
+            }
+            toolTips.push(new Zapatec.Tooltip({
+                target: id,
+                tooltip: tooltipId,
+                movable: false
+            }));
+    
+        }, window, function() {
+            if ( doneCb ) {
+                doneCb(null, toolTips);
+            }
+        });
+    }
+    function addToolTips_timedChunk(items, process, context, callback){
+        var todo = items.concat();   //create a clone of the original
+        setTimeout(function(){
+            var start = +new Date();
+            do {
+                 process.call(context, todo.shift());
+            } while (todo.length > 0 && (+new Date() - start < 50));
+    
+            if (todo.length > 0){
+                setTimeout(arguments.callee, 25);
+            } else {
+                callback(items);
+            }
+        }, 25);
+    }
+    
+    /**
+     * After timeout, checks to see if page blocker has exited or not. Shows prompt if not.
+     * @return void
+     */
+    function checkUnresponsiveConnection(){
+        /*
+         * Evaluate if the page blocker has exited
+         */
+        if (false === pageBlockerExited){
+            /*
+             * Readin the page blocker & unresponsive dom node, if it exists
+             */
+            var domPageBlocker = document.getElementById('pageLoadingBlocker');
+            var domPageLoadingUnresponsive = document.getElementById('pageLoadingUnresponsive');
+            if (null !== domPageBlocker && null !== domPageLoadingUnresponsive) {
+                domPageLoadingUnresponsive.style.display = 'block';
+            }
+        }
+    }
+    
+    window.addEvent('load', function() {
+        /*
+         * Set the page block exit status to true
+         */
+        pageBlockerExited = true;
+        /*
+         * Readin the page blocker dom node, if it exists
+         */
+        var domPageBlocker = document.getElementById('pageLoadingBlocker');
+        if (null !== domPageBlocker) {
+            /*
+             * Page blocker exists, show it
+             */
+            domPageBlocker.style.display = 'none';
+        }
+    });
+    </script>
+    <script type="text/javascript">
+                var strBaseUrl = '';
+    var intUserGhosted = 0;
+    var strUserName = 'abdelrahman.hamdy';
+    var strFacilityName = 'Corona';
+    var intFacilityID = 24151;
+    var intCompanyID = 13829;
+    var intUserID = '620718';
+    var intEnableClinicActions = 1;
+    var hasBillingService = true;
+    var strZendeskURL = 'https://discover.webpt.com/';
+    var urlLogin = 'https://auth.webpt.com';
+    var urlLogout = 'https://app.webpt.com/user/logout';
+    var urlMarketplace = 'https://marketplace.webpt.com/';
+    var pingSeconds = 300;
+    var includeMarketplace = true;
+    var urlCommunity = 'https://login.webpt.com/samlp/2S251Bu3LzkjfmAtbZ6x6f8XLNppnPaL';
+    var urlAnalytics = "https:\/\/analytics.webpt.com\/EMRAnalytics\/logisso?facility_id=24151";
+    var urlHep = "https:\/\/hep.webpt.com\/sso\/webpt";
+    var urlReach = "https:\/\/reach.webpt.com\/sso\/webpt";
+    var hasHepCompanyModuleEnabled = true;
+    var hasReachCompanyModuleEnabled = true;
+    var hasTherabillBilling = false;
+    var urlTherabill = "https:\/\/auth.webpt.com\/verify?r=aHR0cHM6Ly9hcHAudGhlcmFiaWxsLmNvbS9zc28vbG9naW4ucGhw";
+    var displayLocalMenuButton = true;
+    var urlWebptLocal = "";
+    var upsellPageUrl = "https://get.webpt.com/add-local/?utm_medium=web&utm_source=app&utm_content=in-app-icon&utm_campaign=web";
+    
+    var centralizedModeOn = false; var centralizedSchedulingContext = "eyJmYWNpbGl0eUlkIjogMjQxNTEsICJjb21wYW55SWQiOiAxMzgyOX0=";            var centralizedReducedInterface = true;
+     var limberModuleIsEnabled = false;
+     var keetModuleIsEnabled = false;
+    var enableTemplateProfilesActions = 
+                1;
+    var hasBmsRevflowBilling     = true;
+    var urlBmsRevflow            = "https:\/\/auth.webpt.com\/sso\/applications\/revflow";urlMarketplace = 'https://www.performancehealth.com/webpt';
+                var isEnabledInterval = Boolean(true);
+                var tasksIconServiceUrl = 'https://vega-tasks-icon-service.webpt.com/graphql';
+    var isMitigateUseSessionTokenEnabled = true;
+    var ssoToken = "8251e88bedd1bee3d0783b0a9770f3629f5445178ca7e0be8ef142006a1135d50b23e46cb884c48809a7e23c0f5aa7115ed97b49a0fd055fc01cc245fc632d3c";
+    var isMitigateUseSessionTokenAnalyticsEnabled = true;
+    var excludes1PreventionEnabled = true;
+    var isReduceUserProfilePicsLoading = true;
+    var isUpdateCommunityLinkEnabled = true;
+            </script><script type="text/javascript">var tasksGatewayUrl = "https://gateway.webpt.com/graphql", tasksClientUrl = "https://tasks.webpt.com/tasks", tasksSsoAuthUrl = "https://auth.webpt.com";</script><script type="text/javascript" src="/js/embedded/tasking/index.js?cb=1"></script><script type="text/javascript" src="https://common.webpt.com/app/tasks/widgets/tasks-icon/2.7.1/tasks-icon.min.js?cb=1"></script><script type="text/javascript" src="/js/embedded/tasking/patient.js?cb=3"></script><script type="text/javascript" src="/js/embedded/tasking/menu.js?cb=3"></script><script type="text/javascript" src="js/Modules/Menu/menu.js?cb=11&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Wpt.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Menu/MenuMutator.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/ExtJs/resources/plugins/Ext.ux.menu.StoreMenu.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/User/npi.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Patient/patientInCollections.js?mtime=1780005745"></script>
+    
+        <script type="text/javascript">
+        window.addEvent('load', function(){
+            wptBind();
+            var miniCal = new Zapatec.Calendar({
+                flat				:"newCal",
+                weekNumbers			:false,
+                showOthers			:true,
+                timeFormat			:"12",
+                step				:1,
+                disableFdowChange	:true,
+                disableYearNav		:true,
+                flatCallback		:fcb,
+                noCloseButton		:true,
+                noHelp				:true,
+                theme				:"webpt",
+                noStatus			:true,
+                firstDay			:0,
+                singleClick			:false
+            });
+            myWebPT = new WebPT();
+            myWebPT.startAlarmGet();
+            addToolTips();
+        });
+        </script><script type="text/javascript">wpt=wpt||{};wpt.quickScanDynamsoftUpdateEnabled=true;</script>
+    <link type="text/css" rel="stylesheet" href="includes/tabledivs.css?mtime=1780005745" media="screen">
+    <link type="text/css" rel="stylesheet" href="css/Patient/externalDocumentForm.css?mtime=1780005745" media="screen">
+    <script type="text/javascript" src="js/jQuery/jquery-1.6.2.min.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/util.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/nsQuickScan/Dialog.js?cb=2&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="includes/scripts/eDocsAuditLogImprovements.js?mtime=1780005745"></script>
+    
+        <script type="text/javascript">
+    
+        var defaultPhysicianId = '10404460';
+    
+        /* US6136 : Enabling/Disabling date inputs hidden to be posted */
+    
+        function enableInputs(container){
+            var inputs = $(container).find("input:hidden");
+            jQuery.each(inputs, function(index, element){
+                $(element).attr("name",$(element).attr("id"));
+            });
+        }
+    
+        function disableInputs(container){
+            var inputs = $(container).find("input:hidden");
+            jQuery.each(inputs, function(index, element){
+                $(element).removeAttr("name");
+            });
+        }
+        </script>
+    
+        <script type="text/javascript">window.addEvent('load', function(){addCalendarWidgets();});</script>
+    
+        <script type="text/javascript">
+    
+            function togglePhys(checkbox)
+            {
+                $('#signed').attr('checked') ? enableInputs('#physRow1') : disableInputs('#physRow1');
+                var checkboxDom = jQuery(checkbox);
+                var isChecked = checkboxDom.is(':checked');
+                var context = '';
+    
+                if (typeof centralizedModeOn !== 'undefined' && centralizedModeOn) {
+                    context = typeof centralizedSchedulingContext !== 'undefined' ? '?context=' + centralizedSchedulingContext : '';
+                }
+    
+                if (typeof isExtDocBlankPageEnabled === 'undefined') {
+                    isExtDocBlankPageEnabled = false;
+                }
+    
+                if (typeof isDefaultPhysicianForEdocsEnabled === 'undefined') {
+                    isDefaultPhysicianForEdocsEnabled = false;
+                }
+    
+                if (isExtDocBlankPageEnabled) {
+                    if (isChecked) {
+                        var mod = "";
+                        if( mod == '') {
+                            var numberOptions = $('#select2 option').size();
+                            if(numberOptions == 0 && Mod == '')
+                            {
+                                $('#notesNotice').show();
+                            } else {
+                                $('#notesNotice').hide();
+                            }
+                        }
+                    }
+                    if (isDefaultPhysicianForEdocsEnabled === true) {
+                        wpt.nsExtDocPatientChart.togglePhysician.toggle()
+                    } else {
+                        wpt.nsExtDoc.togglePhysician.toggle();
+                     }
+                } else {
+                    if (isChecked)
+                    {
+                        jQuery.ajax({
+                            'type': 'GET',
+                            'url': strBaseUrl + '/physician/display/patient-external-documents' + context,
+                            'dataType': 'json',
+                            'error': function()
+                            {
+                                alert('Could not load Physicians.');
+                            },
+                            'success': function(response)
+                            {
+                                if ( ! response || ! response.content || ! response.content.response
+                                    || ! response.content.response.physicians)
+                                {
+                                    alert('Could not load Physicians.');
+                                }
+    
+                                var physicianSelectDom = jQuery('#PhysicianID');
+                                var physicians = response.content.response.physicians;
+                                physicianSelectDom.empty();
+                                for (var i in physicians)
+                                {
+                                    if ( ! physicians.hasOwnProperty(i))
+                                    {
+                                        continue;
+                                    }
+                                    var physician = physicians[i]
+                                        , physicianId = physician.id
+                                        , label = physician.label
+                                        , selected = physicianId == defaultPhysicianId ? 'selected="selected"' : ''
+                                        , optionDom = jQuery('<option value="' + physicianId + '" ' + selected + ' >' + label + '</option>');
+                                    physicianSelectDom.append(optionDom);
+                                }
+                                $('#physRow1, #physRow2').show();
+    
+                                var mod = "";
+    
+                                if( mod == '')
+                                {
+                                    var numberOptions = $('#select2 option').size();
+                                    if(numberOptions == 0 && Mod == '')
+                                    {
+                                        $('#notesNotice').show();
+                                    }
+                                    else
+                                    {
+                                        $('#notesNotice').hide();
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    else
+                    {
+                        $('#physRow1, #physRow2').hide();
+                    }
+                }
+            }
+        </script>
+        <script> var isExtDocBlankPageEnabled = true; </script><script> var isDefaultPhysicianForEdocsEnabled = true; </script><script type="text/javascript" src="js/Modules/ExtDoc/physicianSearchHandler.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/ExtDoc/togglePhysicianWithDefaultValue.js?mtime=1780005745"></script>
+    <script> let physicianName = "Holubyeva, Anastasiya MD (1912432402) "; </script><script> let physicianId = "10404460"; </script><script type="text/javascript" src="js/Modules/Local/localUpsell.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="js/Modules/Patient/transaction/server-collect-payment.js?mtime=1780005745"></script>
+    <script type="text/javascript">
+                    
+    var upsellLandingDialogConfig = {"HEP":"https:\/\/get.webpt.com\/add-hep\/","Base":"https:\/\/get.webpt.com\/provider-upgrade\/","Outcomes":"https:\/\/get.webpt.com\/add-outcomes\/"};
+    
+                </script><script type="text/javascript" src="js/UpsellLandingDialog.js?mtime=1780005745"></script>
+    <link type="text/css" rel="stylesheet" href="css/UpsellLandingPopup/upsell-landing-popup.css?mtime=1780005745">
+    
+    
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tbody><tr>
+            <td style="padding:0 4px;">
+                <div>
+                    <div id="topMenuActionBar"><div id="ext-comp-1008" class=" x-panel"><div class="x-panel-header top-menu-header x-unselectable" id="ext-gen31"><span class="x-panel-header-text" id="ext-gen35"><a href="/dashboard.php"><img src="/images/webPTLogo.jpg" width="178" height="40"></a></span></div><div class="x-panel-bwrap" id="ext-gen32"><div class="x-panel-tbar" id="ext-gen33"><div id="ext-comp-1009" class=" top-menu-toolbar top-menu-div"><div id="ext-comp-1010" class=" x-panel tasks menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen37"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen38" style="width: 88px;"><div class="menu-panel-no-arrow" id="ext-comp-1011"><div class="tasks-icon"><div id="emr-task-icon"><div style=" -webkit-box-align: center; -moz-box-align: center; -ms-flex-align: center; -webkit-align-items: center; align-items: center; display: -webkit-box; display: -ms-flexbox; display: -webkit-flex; display: flex; height: 24px; width: 24px;"><a target="_blank" style="text-decoration:none;" href="https://auth.webpt.com/verify/?r=aHR0cHM6Ly90YXNrcy53ZWJwdC5jb20vdGFza3M=">    <div id="emr-task-icon-wrap">        <div id="emr-tasks-icon-badge">            <div id="emr-tasks-icon-badge-text"><svg style="position: absolute;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg></div>        </div>        <span>Tasks</span>    </div></a></div></div></div></div></div></div></div><div id="ext-comp-1012" class=" x-panel messages menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen40"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen41" style="width: 133px;"><div class="menu-panel-arrow" id="ext-comp-1015"><div class="internal-message-icon">Messages</div></div><div id="ext-comp-1013" class="x-menu top-menu-dropdown x-menu-nosep x-hide-offsets" style="width: 418px; border-right-width: medium; border-right-style: none; border-right-color: currentcolor; right: 287px;"><a class="x-menu-focus" href="#" onclick="return false;" tabindex="-1" id="ext-gen70"></a><ul class="x-menu-list" id="ext-gen71"><li id="x-menu-el-ext-comp-1044" class="x-menu-list-item  x-menu-sep-li"><span class="x-menu-sep" id="ext-gen99">&nbsp;</span></li><li id="x-menu-el-ext-comp-1045" class="x-menu-list-item "><a id="ext-comp-1045" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen100"><span class="x-menu-item-text" id="ext-gen101">Compose New Message</span></a></li><li id="x-menu-el-ext-comp-1046" class="x-menu-list-item "><a id="ext-comp-1046" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen102"><span class="x-menu-item-text" id="ext-gen103">Go to My Inbox</span></a></li></ul></div></div></div></div><div id="ext-comp-1016" class="x-panel marketplace menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen43"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen44" style="width: 102px;"><div class="menu-panel-no-arrow" id="ext-comp-1017"><div class="marketplace-icon">Marketplace</div></div></div></div></div><div id="ext-comp-1018" class="x-panel analytics menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen46"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen47" style="width: 84px;"><div class="menu-panel-no-arrow" id="ext-comp-1019"><div class="analytics-icon">Analytics</div></div></div></div></div><div id="ext-comp-1020" class=" x-panel hep menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen49"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen50" style="width: 58px;"><div class="menu-panel-no-arrow" id="ext-comp-1021"><div class="hep-icon">HEP</div></div></div></div></div><div id="ext-comp-1022" class=" x-panel reach menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen52"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen53" style="width: 73px;"><div class="menu-panel-no-arrow" id="ext-comp-1023"><div class="reach-icon">Reach</div></div></div></div></div><div id="ext-comp-1024" class="x-panel local menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen55"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen56" style="width: 73px;"><div class="menu-panel-no-arrow" id="ext-comp-1025"><div class="local-icon">Local</div></div></div></div></div><div id="ext-comp-1026" class="x-panel community menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen58"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen59" style="width: 108px;"><div class="menu-panel-no-arrow" id="ext-comp-1027"><div class="community-icon">Support Hub</div></div></div></div></div><div id="ext-comp-1028" class="x-panel billing menu-panel x-panel-noborder x-unselectable" style="width: auto; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen61"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen62"><div class="menu-panel-no-arrow" id="ext-comp-1029"><div class="billing-menu-icon">Billing</div></div></div></div></div><div id="ext-comp-1030" class=" x-panel user-dropdown menu-panel x-panel-noborder x-unselectable" style="width: auto; background-color: transparent; float: left;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen64"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen65"><div class="menu-panel-arrow" id="ext-comp-1039"><div class="">abdelrahman.hamdy</div></div><div id="ext-comp-1031" class="x-menu top-menu-dropdown x-menu-nosep x-hide-offsets" style="width: auto; border-width: medium; border-style: none; border-color: currentcolor; border-image: initial;"><a class="x-menu-focus" href="#" onclick="return false;" tabindex="-1" id="ext-gen73"></a><ul class="x-menu-list" id="ext-gen74"><li id="x-menu-el-ext-comp-1032" class="x-menu-list-item "><a id="ext-comp-1032" class="x-menu-item user-profile" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen81"><span class="x-menu-item-text" id="ext-gen82">My Profile</span></a></li><li id="x-menu-el-ext-comp-1033" class="x-menu-list-item "><a id="ext-comp-1033" class="x-menu-item user-contacts" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen83"><span class="x-menu-item-text" id="ext-gen84">My Contacts</span></a></li><li id="x-menu-el-ext-comp-1034" class="x-menu-list-item "><a id="ext-comp-1034" class="x-menu-item user-smartText" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen85"><span class="x-menu-item-text" id="ext-gen86">My Smart Text</span></a></li><li id="x-menu-el-ext-comp-1035" class="x-menu-list-item "><a id="ext-comp-1035" class="x-menu-item user-examProfiles" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen87"><span class="x-menu-item-text" id="ext-gen88">IE Profiles</span></a></li><li id="x-menu-el-ext-comp-1036" class="x-menu-list-item "><a id="ext-comp-1036" class="x-menu-item user-flowsheetProfiles" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen89"><span class="x-menu-item-text" id="ext-gen90">Flowsheet Profiles</span></a></li><li id="x-menu-el-ext-comp-1037" class="x-menu-list-item "><a id="ext-comp-1037" class="x-menu-item user-help" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen91"><span class="x-menu-item-text" id="ext-gen92">Help</span></a></li><li id="x-menu-el-ext-comp-1038" class="x-menu-list-item "><a id="ext-comp-1038" class="x-menu-item user-logout" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen93"><span class="x-menu-item-text" id="ext-gen94">Log Out</span></a></li></ul></div></div></div></div><div id="ext-comp-1040" class="x-panel clinic-dropdown ta--clinic-dropdown menu-panel x-panel-noborder x-unselectable" style="float: left; width: auto;"><div class="x-panel-bwrap menu-panel-bwrap" id="ext-gen67"><div class="x-panel-body menu-panel-bwrap x-panel-body-noheader x-panel-body-noborder" id="ext-gen68"><div class="menu-panel-arrow" id="ext-comp-1043"><div class="">Corona</div></div><div id="ext-comp-1041" class="x-menu top-menu-dropdown x-menu-nosep x-hide-offsets" style="width: 148px; border-right-width: medium; border-right-style: none; border-right-color: currentcolor; right: 88px;"><a class="x-menu-focus" href="#" onclick="return false;" tabindex="-1" id="ext-gen76"></a><ul class="x-menu-list" id="ext-gen77"><li id="x-menu-el-ext-comp-1047" class="x-menu-list-item "><a id="ext-comp-1047" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen104"><span class="x-menu-item-text" id="ext-gen105">User Manager</span></a></li><li id="x-menu-el-ext-comp-1048" class="x-menu-list-item "><a id="ext-comp-1048" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen106"><span class="x-menu-item-text" id="ext-gen107">Clinic Fee Schedule</span></a></li><li id="x-menu-el-ext-comp-1049" class="x-menu-list-item "><a id="ext-comp-1049" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen108"><span class="x-menu-item-text" id="ext-gen109">Company Fee Schedule</span></a></li><li id="x-menu-el-ext-comp-1050" class="x-menu-list-item "><a id="ext-comp-1050" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen110"><span class="x-menu-item-text" id="ext-gen111">Medicare Fee Schedule</span></a></li><li id="x-menu-el-ext-comp-1051" class="x-menu-list-item "><a id="ext-comp-1051" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen112"><span class="x-menu-item-text" id="ext-gen113">Patient Intake Admin</span></a></li><li id="x-menu-el-ext-comp-1052" class="x-menu-list-item "><a id="ext-comp-1052" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen114"><span class="x-menu-item-text" id="ext-gen115">Clinic Settings</span></a></li><li id="x-menu-el-ext-comp-1053" class="x-menu-list-item "><a id="ext-comp-1053" class="x-menu-item" hidefocus="true" unselectable="on" href="#"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" class="x-menu-item-icon " id="ext-gen116"><span class="x-menu-item-text" id="ext-gen117">Company Settings</span></a></li></ul></div></div></div></div></div></div><div class="x-panel-body top-menu-body" id="ext-gen34"></div></div></div></div>
+                    
+    <script type="text/javascript" src="/js/lib/common.js"></script>
+    <script type="text/javascript" src="/js/Modules/Centralized/navigation-bar.js?cb=5"></script>
+    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="padding-bottom: 5px;">
+            <tbody><tr valign="bottom">
+            <td colspan="5" align="right" class="searchText"><a href="patient/display/">Advanced Search</a></td>
+        </tr>
+            <tr valign="middle">
+            <td class="navSearchLeft"></td>
+            <td class="navSearchCenter">
+                <div class="topMenuNavCentralizedSchedulingCheckbox">
+                    <div>
+                        <input type="checkbox" name="centralizedSchedulingCheck[]" value="0" id="centralizedLegacyCheckbox"> Multi-Clinic Mode<br>                </div>
+                </div>
+                <div class="topMenuNavClinicsSelect">
+                    Clinic:&nbsp;
+                    <select id="ClinicChange" name="ClinicChange" onchange="clinicChange();" class="inputBox" style="display: none;"><optgroup label="Physical Therapy of New York"><option value="18875,32389">Physical Therapy of New York</option></optgroup><optgroup label="Physical Therapy of The City P.C."><option value="13829,30874">Allerton</option><option value="13829,32417">Astoria</option><option value="13829,21534">Bay Ridge</option><option value="13829,26553">Bedstuy</option><option value="13829,34312">Belmont</option><option value="13829,26445">BensonHurst - Adults</option><option value="13829,28029">Brownsville</option><option value="13829,27690">Bushwick</option><option value="13829,30210">Castle Hill</option><option value="13829,30926">Central Harlem</option><option value="13829,33643">Chelsea</option><option value="13829,31674">Church Ave</option><option value="13829,30951">Clinton Hill</option><option value="13829,32380">Cobble Hill</option><option value="13829,24151" selected="selected">Corona</option><option value="13829,27480">Flatbush</option><option value="13829,31195">Fordham</option><option value="13829,34088">Grand Concourse</option><option value="13829,32416">Greenpoint</option><option value="13829,33221">Hell's Kitchen</option><option value="13829,30952">Home Care</option><option value="13829,29806">Huntspoint</option><option value="13829,21535">Inwood</option><option value="13829,24980">Jamaica</option><option value="13829,33220">Lenox hill</option><option value="13829,31320">Midtown</option><option value="13829,31370">Midwood</option><option value="13829,34812">PTOC - Telehealth</option><option value="13829,30701">Riverdale</option><option value="13829,31640">Sensory Freeway</option><option value="13829,21533">Sheepshead Bay</option><option value="13829,28719">Sugar Hill</option><option value="13829,32418">Sunset - Adults</option><option value="13829,32415">Tribeca</option><option value="13829,31584">Upper East Side</option></optgroup></select><div class="chosen-container chosen-container-single" title="" id="ClinicChange_chosen" style="width: 205px;"><a class="chosen-single">
+      <span>Corona</span>
+      <div><b></b></div>
+    </a>
+    <div class="chosen-drop">
+      <div class="chosen-search">
+        <input class="chosen-search-input" type="text" autocomplete="off">
+      </div>
+      <ul class="chosen-results"></ul>
+    </div></div>            </div>
+            </td>
+                    <td align="right" class="navSearch">Search my patients:</td>
+            <td valign="top" align="right" class="navSearch" width="215">
+                <form action="patient/display/" method="post" style="white-space: nowrap">
+                    <input type="text" size="20" name="SearchData" class="inputBox2" style="width:140px;">
+                    <input type="submit" value="Search" class="input2">
+                    <input type="hidden" name="hd_QuickSearch" value="1">
+                                </form>
+            </td>
+                    <td class="navSearchRight"></td>
+        </tr>
+        <tr>
+            <td height="5"></td>
+        </tr>
+    </tbody></table>
+                    <div id="WebPTSysMessageContainer" style="visibility: visible; display:none; opacity: 1; left: 30%; right:30%; top: 20px;" class="roar">
+                        <div style="visibility: visible; opacity: 0.7;" class="roar-bg"></div>
+                        <h3>System Message</h3>
+                        <p id="SysMessageSpan"></p>
+                    </div>
+                </div>
+                <div style="overflow:hidden;">
+                    <table width="100%" cellpadding="0" border="0" align="left" style="border-collapse:collapse;">
+                        <tbody><tr valign="top">
+                            <td width="150" class="wpt-left-sidebar"><div style="width:150px;">
+                  <table cellpadding="0" cellspacing="0" border="0">
+                      <tbody><tr>
+                        <td><div id="sideMenuCalendar" style="width: 149px;"><div id="app-west" class=" x-panel"><div class="x-panel-bwrap" id="ext-gen13"><div class="x-panel-body x-panel-body-noheader" id="ext-gen14"><div class="x-date-picker x-unselectable ext-cal-nav-picker" id="ext-gen16" style="width: 147px; height: 190px;"><table cellspacing="0" id="ext-gen17" style="width: 145px;"><tbody><tr><td class="topleft"></td><td class="topcenter"></td><td class="topright"></td></tr><tr><td class="x-date-left"><a href="#" title="Previous Month (Control+Left)" id="ext-gen18" class=" x-unselectable">&lt;</a></td><td class="x-date-middle" align="center" id="ext-gen21"><table id="ext-comp-1006" cellspacing="0" class="x-btn x-btn-noicon" style="width: auto;"><tbody class="x-btn-small x-btn-icon-small-left"><tr><td class="x-btn-tl"><i>&nbsp;</i></td><td class="x-btn-tc"></td><td class="x-btn-tr"><i>&nbsp;</i></td></tr><tr><td class="x-btn-ml"><i>&nbsp;</i></td><td class="x-btn-mc"><em class="" unselectable="on"><button type="button" id="ext-gen22" class=" x-btn-text">Jun 2026</button></em></td><td class="x-btn-mr"><i>&nbsp;</i></td></tr><tr><td class="x-btn-bl"><i>&nbsp;</i></td><td class="x-btn-bc"></td><td class="x-btn-br"><i>&nbsp;</i></td></tr></tbody></table></td><td class="x-date-right"><a href="#" title="Next Month (Control+Right)" id="ext-gen19" class=" x-unselectable">&gt;</a></td></tr><tr><td colspan="3"><table class="x-date-inner" cellspacing="0"><thead><tr><th><span>Su</span></th><th><span>Mo</span></th><th><span>Tu</span></th><th><span>We</span></th><th><span>Th</span></th><th><span>Fr</span></th><th><span>Sa</span></th></tr></thead><tbody><tr><td class="x-date-prevday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>31</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>1</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>2</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>3</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>4</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>5</span></em></a></td><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>6</span></em></a></td></tr><tr><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>7</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>8</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>9</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>10</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>11</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>12</span></em></a></td><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>13</span></em></a></td></tr><tr><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>14</span></em></a></td><td class="x-date-active x-date-today x-date-selected" title="Today"><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>15</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>16</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>17</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>18</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>19</span></em></a></td><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>20</span></em></a></td></tr><tr><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>21</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>22</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>23</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>24</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>25</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>26</span></em></a></td><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>27</span></em></a></td></tr><tr><td class="x-date-active red-day" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>28</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>29</span></em></a></td><td class="x-date-active" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>30</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>1</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>2</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>3</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>4</span></em></a></td></tr><tr><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>5</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>6</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>7</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>8</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>9</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>10</span></em></a></td><td class="x-date-nextday" title=""><a href="#" hidefocus="on" class="x-date-date" tabindex="1"><em><span>11</span></em></a></td></tr></tbody></table></td></tr></tbody></table><div class="x-date-mp" id="ext-gen20"></div></div></div></div></div></div></td>
+                      </tr>
+                  </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Scheduler</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="scheduler/index">View Schedule</a><br>
+              </td>
+            </tr>
+            </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Patient Manager</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="/patient/edit/">Add Patient</a><br><a href="javascript:void(0);" onclick="wpt.patient.quickAddPage.openPage();">Quick Add Patient</a><br><a href="/patient/index/quickintake">Send Intake Invitation</a><br><a href="/patient/display/">Display Patients</a><br>
+              </td>
+            </tr>
+            </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Physician Manager</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="editPhysician.php">Add Physician</a><br><a href="physician/display/">Display Physicians</a><br>
+              </td>
+            </tr>
+            </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Insurance Manager</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="/insurance.php">Add Insurance</a><br><a href="/payer/display/">Display Insurance</a><br><a href="/endingAuth.php">Ending Authorizations</a><br>
+              </td>
+            </tr>
+            </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Contact Manager</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="contact.php">Add Contact</a><br><a href="contact/display/">Display Contacts</a><br>
+              </td>
+            </tr>
+            </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Tools</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="extDoc.php">External Documents</a><br><a href="faxoutbound/index">Communication Log</a><br><a href="faxLog.php">Fax Log(Retired)</a><br><a href="documentportallog.php">Document Portal Log</a><br><a href="reminder/report/facility">Reminder Log</a><br><a href="reminder/report/quota">Reminder Usage</a><br><a href="reminder/settings">Reminder Setup</a><br><a href="/weboutcomes/omt/forms">OMT Forms</a><br><a href="/electronicbenefitverification/report/usage">INS Verifications Usage</a><br><a href="/scheduler/history">Scheduler History</a><br>
+              </td>
+            </tr>
+            </tbody></table>
+    <br>
+    
+            <table cellpadding="0" cellspacing="0" border="0">
+            <tbody><tr>
+              <td class="navTop">Reports</td>
+            </tr>
+            <tr>
+              <td class="navBottom"><a href="patient/report/prescription">Prescription Report</a><br><a href="referralReport.php">Referral Report</a><br><a href="lostPatientLog.php">Lost Patient Log</a><br><a href="/billingReport.php">Billing Report</a><br><a href="/patient/paymentlog">Payment Log</a><br><a href="/patient/display?mode=1">Patient Statement</a><br><a href="/medicarebilling/report">MPA Report</a><br><a href="planOfCareReport.php">Plan of Care Report</a><br><a href="feeschedule/report">Medicare Threshold Report</a><br><a href="reportProductivity.php">Productivity Report</a><br><a href="missedNote.php">Missed Notes Report</a><br><a href="/soap/flreport/index">FL Report</a><br><a href="snapshotLogReport.php">Claims Feed Report</a><br><a href="/weboutcomes/omt/reports">Outcomes Reports</a><br>
+              </td>
+            </tr>
+            </tbody></table></div></td>						<td width="100%" style="padding-left:10px;">
+                    <div class="rowdiv">
+                    <div class="patientName">
+                        <div class="patientNameInfo">
+                            Patient:
+                            <script type="text/javascript">
+                                document.write(wpt.patient.inCollections.formatLabel('Acosta, Amy (EMR ID: 55577913)'));
+                            </script>Acosta, Amy (EMR ID: 55577913)
+                            
+                                    <div style="margin-left: 15px" id="task-icon-by-patient"><div style=" -webkit-box-align: center; -moz-box-align: center; -ms-flex-align: center; -webkit-align-items: center; align-items: center; display: -webkit-box; display: -ms-flexbox; display: -webkit-flex; display: flex; height: 24px; width: 24px;">
+        <span onclick="window.open(
+            'https://auth.webpt.com/verify/?r=aHR0cHM6Ly90YXNrcy53ZWJwdC5jb20vdGFza3M/cGF0aWVudElkPTU1NTc3OTEzJnBlcnNwZWN0aXZlPXBhdGllbnRz',
+            'patient-tasks-55577913',
+            'toolbar=1,location=1,menubar=1,height=668,width=863,left=216,top=167,'
+          )" style=" display: inline-block; position: relative; height: 24px; width: 24px;">
+          <div id="task-icon-container-task-icon-by-patient">
+      <div id="task-icon-wrap-task-icon-by-patient" style="display: none !important;">
+        <span id="tasks-icon-count-task-icon-by-patient">0</span>
+      </div>
+      </div>
+          
+      <svg viewBox="0 0 80 80" class="sc-gqjmRU jQXFWP">
+        <g id="icon-tasking-gray-dark" stroke-width="0">
+          <rect id="Rectangle" x="0" y="0" width="80" height="80" fill="none"></rect>
+          <path d="M36,48.0000012 C34.9388148,48.0008345 33.9207884,47.5799543 33.17,46.83 L25.17,38.83 C23.6070342,37.2670342 23.6070342,34.7329659 25.17,33.17 C26.7329659,31.6070342 29.2670342,31.6070342 30.83,33.17 L36,38.34 L49.17,25.17 C50.7329658,23.6070342 53.2670342,23.6070342 54.83,25.17 C56.3929658,26.7329658 56.3929658,29.2670342 54.83,30.83 L38.83,46.83 C38.0792116,47.5799543 37.0611852,48.0008345 36,48.0000012 Z" id="Path" fill="#354052" fill-rule="nonzero"></path>
+          <path d="M72,8 C72,5.790861 70.209139,4 68,4 L12,4 C9.790861,4 8,5.790861 8,8 L8,72 C8,74.209139 9.790861,76 12,76 L48,76 C48.2619487,75.9981304 48.5231255,75.971343 48.78,75.92 C48.89,75.92 48.99,75.86 49.1,75.83 L49.52,75.7 C49.65,75.7 49.76,75.57 49.88,75.51 C49.9931714,75.4560065 50.103333,75.3959184 50.21,75.33 C50.4318978,75.1831569 50.6394802,75.0157518 50.83,74.83 L70.83,54.83 C70.9965506,54.6608558 71.1471855,54.4767465 71.28,54.28 L71.39,54.1 C71.48,53.95 71.56,53.8 71.64,53.64 C71.72,53.48 71.64,53.52 71.72,53.45 C71.8030873,53.2353143 71.8699418,53.0146945 71.92,52.79 L71.92,52.79 C71.9685148,52.5598747 71.9919847,52.3251752 71.99,52.09 C71.99,52.09 71.99,52.09 71.99,52.01 L72,8 Z M16,12 L64,12 L64,48 L48,48 C45.790861,48 44,49.790861 44,52 L44,68 L16,68 L16,12 Z M52,62.34 L52,56 L58.34,56 L55.17,59.17 L52,62.34 Z" id="Shape" fill="#354052" fill-rule="nonzero"></path>
+        </g>
+      </svg>
+    
+        </span>
+      </div></div>
+                                    <script type="text/javascript">
+                                        if (window.addTasksIconInPatient) {
+                                            window.addTasksIconInPatient(55577913);
+                                        }
+                                    </script>
+                                    <link type="text/css" rel="stylesheet" href="/css/accountNotes.css?mtime=1780005745">
+                        <script>
+                            var patientId = "55577913";
+                            var placeOfService = "8749";
+                            var facilityId = "24151";
+                        </script>
+                        <script type="text/javascript" src="/js/accountNotesEndPoints.js"></script>
+                        <div style="margin-left: 15px" id="app-root"><svg viewBox="0 0 16 20" class="sc-jHVedQ sc-aemIz iiOWwf bxNRPr"><path d="M10-20H2A2,2,0,0,0,.01-18L0-2A2,2,0,0,0,1.99,0H14a2.006,2.006,0,0,0,2-2V-14ZM12-6H9v3H7V-6H4V-8H7v-3H9v3h3ZM9-13v-5.5L14.5-13Z" fill="#354052" transform="translate(0 20)"></path></svg></div>
+                        <script type="text/javascript" src="https://common.webpt.com/app/patient/widgets/ui-bridge/1.11.1/bundle.js"></script><link type="text/css" rel="stylesheet" href="/css/keet.css?mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="/css/limber.css?mtime=1780005745">
+    <script type="text/javascript" src="/js/Modules/Patient/limberBadge.js?mtime=1780005745"></script>
+                        </div>
+                    </div>
+                </div>
+                <div class="rowdiv">
+                    <div class="caseScrollTabs scroll_container">                <div class="scroll_view" style="width: 567px;"><div class="ActiveCase scroll_tab_active scroll_tab">
+                            <a href="/patientChart.php?ID=55577913&amp;CaseID=70443656">
+                                Default 
+                            </a>
+                    </div></div>
+    <div class="scroll_arrows">
+    <div class="scroll_arrow left_arrow_size" href="javascript:void(0);" style="display: none;"></div>
+    <div class="scroll_arrow right_arrow_size" href="javascript:void(0);" style="display: none;"></div>
+    </div></div>            </div>
+    
+                <div class="tablediv" style="padding-top:0px">
+                <table width="100%" border="0" cellspacing="0" cellpadding="0" class="patientChartActionHeader">
+                  <tbody><tr valign="top">
+                    <td width="30%" height="100%" class="wPTStylePatientChartHeaderColumn">
+                                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tbody><tr>
+                            <td class="patientChartActions">
+                              <a href="/patient/edit/index/PatientID/55577913">Patient Info</a>&nbsp;<a href="/patient/edit/index/PatientID/55577913"></a>
+                          </td>
+                          </tr>
+                          <tr>
+                            <td class="patientChartActions">
+                                <a href="/patientChart.php?ID=55577913&amp;ignoreRedirect=1">Records</a>&nbsp;<a href="/patient/edit/index/PatientID/55577913"></a>
+                            </td>
+                          </tr>
+                                                                    <tr>
+                                <td class="patientChartActions"><a href="#" onclick="wpt.nsOutcomes.nsIntake.redirectToUpsell(55577913, 70443656, 'OutcomesRecords', 1);"> Outcomes</a></td>
+                            </tr>
+                                              <!--
+                          <tr>
+                            <td class="patientChartActions"><a href="patient/edit/index/PatientID/55577913#insurance">Insurance</a>&nbsp;<a href="patient/edit/index/PatientID/55577913"></a></td>
+                          </tr>
+                          -->
+                          <tr>
+                            <td class="patientChartActions"><a href="javascript:void(null);" onclick="displayFullSizeWindow(70443656, 55577913, 'Acosta%2C+Amy+%28EMR+ID%3A+55577913%29');">Flowsheet</a></td>
+                          </tr>
+                        <tr>
+                                                <td class="patientChartActions"><a href="https://hep.webpt.com/sso/webpt?patient_id=55577913" target="_blank">Home Exercise Program</a></td>
+                                            </tr>
+                                              <tr>
+                                                  <td class="patientChartActionsSel"><a href="/patientExtDoc.php?ID=55577913&amp;CaseID=70443656">eDoc (4)</a></td>
+                                            </tr>
+                          <tr>
+                            <td class="patientChartActions">
+                                                  <a href="/patientChartNote.php?ID=55577913&amp;CaseID=70443656">Chart Notes (1)</a></td>
+                          </tr>
+                                                <tr>
+                            <td class="patientChartActions"><span style="cursor:pointer" onclick="var myWin=window.open('/upcomingAppointments.php?ID=55577913', '_blank','status = 1, height = 700, width = 670, menubar=1 resizable = 1,scrollbars=1' ); myWin.focus();">&nbsp;Upcoming Appointments</span></td>
+                          </tr>
+                          <tr>
+                            <td class="patientChartActions"><span style="cursor:pointer" onclick="var myWin=window.open('/previousAppointments.php?ID=55577913', '_blank','status = 1, height = 700, width = 670, menubar=1 resizable = 1,scrollbars=1' ); myWin.focus();">&nbsp;Previous Appointments</span></td>
+                          </tr>
+                                              <tr>
+                          <td class="patientChartActions"><a href="/patient/transaction/chart?ID=55577913&amp;CaseID=70443656">Patient Payments</a>&nbsp;</td>
+                          </tr>
+                                                <!-- Conditional, if user has permission to visualize this action -->
+                                                    <tr>
+                                  <td class="patientChartActions"><a href="/patient/statement/index?ID=55577913&amp;CaseID=70443656">Print
+                                          Patient Statement</a>&nbsp;
+                                  </td>
+                              </tr>
+                                                <tr>
+                            <td class="patientChartActionsBottom">&nbsp;</td>
+                          </tr>
+                                           </tbody></table>
+                                     </td>
+                    <td width="5%"></td>
+                    <td width="65%">
+                      <table width="100%" style="height: 100%" border="0" class="patient-text">
+                                          <tbody><tr>
+                          <td><strong>DOB:</strong></td><td> 01/19/1963</td>
+                        </tr>
+                        <tr>
+                          <td>
+                              <strong>Age:</strong>
+                          </td>
+                          <td>
+                              63					  </td>
+                        </tr>
+                                          <tr>
+                            <td class="patient-text">
+                                <strong>Assigned Therapist:</strong>
+                            </td>
+                            <td>
+                                JANVIBEN PARMAR                        </td>
+                        </tr>
+                        <tr>
+                                <td class="patient-text"><strong>Physician:</strong></td>
+                                <td>
+                                                                    <a href="physicianDetail.php?ID=10404460">
+                                        A. Holubyeva, MD (1912432402)</a>
+                                                                                                                                                                                                </td>
+                            </tr>
+                                                  <tr>
+                            <td class="patient-text"><strong>Return to Dr:</strong></td><td>         <span id="return-date-chart" class=""></span>
+            <a href="javascript:wpt.patient.returndate.showDialog(70443656);" title="Edit">
+                <img src="/images/base/default/tools/edit.png">
+            </a>        <div id="return-to-date-form" style="display:none">
+                <div class="base-default-lightbox-inner-tl">
+                    <div class="base-default-lightbox-inner-tr">
+                        <div class="base-default-lightbox-inner-tc">
+                        </div>
+                    </div>
+                </div>
+                <div class="x-panel-body">
+                    <div class="content-panel clearfix">
+                            <div class="return-date-control-field">Return to Dr. Date: </div><span class="return-date-control-field return-date-control"></span>
+                    </div>
+                </div>
+                <div class="base-default-lightbox-inner-bl x-panel-nofooter" id="ext-gen365">
+                    <div class="base-default-lightbox-inner-br">
+                        <div class="base-default-lightbox-inner-bc">
+                        </div>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="align-right cancel-btn wp-lightbox-btn">Cancel</button>
+                    <button class="align-right save-btn wp-lightbox-btn">Save</button>
+                </div>
+            </div>
+            <div class="dialogCancelButtonContainer" style="display: none">
+                    <!-- This table is used to create the cancel button similar than Ext Js -->
+                    <table cellspacing="0" class="template-returntodate-btn x-btn x-btn-text-icon" style="width: 75px;">
+                        <tbody class="x-btn-small x-btn-icon-small-left">
+                        <tr>
+                            <td class="x-btn-tl">
+                                <i>&nbsp;</i>
+                            </td>
+                            <td class="x-btn-tc"></td>
+                            <td class="x-btn-tr">
+                                <i>&nbsp;</i>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="x-btn-ml">
+                                <i>&nbsp;</i>
+                            </td>
+                            <td class="x-btn-mc">
+                                <em unselectable="on"></em>
+                            </td>
+                            <td class="x-btn-mr">
+                                <i>&nbsp;</i>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="x-btn-bl">
+                                <i>&nbsp;</i>
+                            </td>
+                            <td class="x-btn-bc"></td>
+                            <td class="x-btn-br">
+                                <i>&nbsp;</i>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+            </div></td>
+                          </tr>
+                              <tr>
+            <td class="patient-text"><strong>Insurance:</strong></td>
+            <td>Affinity            <div class="infoMark patient-insurance-nav" data-instype="primary"></div>
+                                    </td>
+        </tr>
+            <tr>
+            <td class="patient-text"><strong>Insurance:</strong></td>
+            <td>Medicaid            <div class="infoMark patient-insurance-nav" data-instype="secondary"></div>
+                                    </td>
+        </tr>
+                      <script type="text/javascript">
+                      wpt.namespace('wpt.patient');
+                      wpt.patient.insuranceInformation = {"primary":{"icd10Excludes1":0,"useRuleOf8s":0,"cptCodeComplexityDate":"01\/01\/2017","alternateID":null,"cCIEdits":1,"useFLNotes":0,"cPTCodeSetID":null,"companyID":13829,"iD":1774931,"name":"Affinity","providerNumber":null,"recordStatus":"C","scope":null,"status":"A","typeID":"HMO","addresses":[],"telephones":[],"dateLastSeenFlag":1,"requireDirectMinutes":0,"therapyModifier":1,"use8MinuteRule":0,"autoCalculateMinutes":0,"icd10date":"09\/29\/2015","samuraiId":null,"omtRequireAllPatients":0,"xepsuModifier":0,"assistantModifier":null,"hasUb04":false,"address1":"1776 Eastchester Road","address2":null,"state":"NY","postalCode":"10461","country":"United States","city":"Bronx","fax":"8448794509","telephone":"8778724716","extension":null,"customModifiers":{"type":"checkbox","data":{"checked":false,"hidden":true,"label":"Additional Modifiers - Not Enabled","side":"left"}},"0":{"type":"checkbox","data":{"checked":true,"label":"Allow therapist assistants to finalize notes","side":"left"}},"1":{"type":"checkbox","data":{"checked":false,"label":"Therapist Assistant Modifiers, effective: 01\/01\/2020","side":"right"}}},"secondary":{"icd10Excludes1":0,"useRuleOf8s":0,"cptCodeComplexityDate":"01\/01\/2017","alternateID":"129521","cCIEdits":1,"useFLNotes":0,"cPTCodeSetID":null,"companyID":13829,"iD":1481897,"name":"Medicaid","providerNumber":"A","recordStatus":"C","scope":null,"status":"A","typeID":"Medicaid","addresses":[],"telephones":[],"dateLastSeenFlag":1,"requireDirectMinutes":0,"therapyModifier":1,"use8MinuteRule":0,"autoCalculateMinutes":0,"icd10date":"09\/28\/2015","samuraiId":null,"omtRequireAllPatients":0,"xepsuModifier":0,"assistantModifier":null,"hasUb04":false,"address1":"P.O BOX 4601","address2":null,"state":"NY","postalCode":"12144-4601","country":"United States","city":"Rensselaer","telephone":"8005225518","extension":null,"customModifiers":{"type":"checkbox","data":{"checked":false,"hidden":true,"label":"Additional Modifiers - Not Enabled","side":"left"}},"0":{"type":"checkbox","data":{"checked":true,"label":"Allow therapist assistants to finalize notes","side":"left"}},"1":{"type":"checkbox","data":{"checked":false,"label":"Therapist Assistant Modifiers, effective: 01\/01\/2020","side":"right"}}}};
+                  </script>		              <tr>
+                            <td class="patient-text"><strong>Diagnosis:</strong></td><td>  ICD10: N39.3: Stress incontinence (female) (male), R35.0: Frequency of micturition, N39.41: Urge incontinence</td>
+                          </tr>				          <tr>
+                                <td class="patient-text"><strong>Address:</strong></td><td> 34-56 92ND STREET  JACKSON HEIGHTS, NY 11372</td>
+                              </tr>
+                                                        <tr>
+                                <td class="patient-text"><strong>Phone:</strong></td><td> (917)&nbsp;482‑6281 </td>
+                              </tr>
+                                                      <tr>
+                                <td class="patient-text"><strong>Visits in Case:</strong></td>
+                                <td><span title="Visits per case.">4</span></td>
+                            </tr>
+                                                                        <tr>
+                                <td class="patient-text"><strong>Auth/Ins Visits:</strong></td>
+                                <td><span title="Visits for the current auth period for this case.">4 of 12 Authorized  (Expires 12/31/2026)</span></td>
+                            </tr>
+                            
+    
+                                            
+                          
+                        <tr>
+                            <td class="patient-text" style="min-width:20em;"><strong>Cancel/No Show:</strong></td><td> <a href="missedApt.php?ID=55577913">11</a></td>
+                        </tr>
+    
+                        <tr>
+                            <td class="patient-text" style="min-width:20em;"><strong>Additional Info:</strong></td><td class="wPTStylePatientAdditionalInfo">2026 benefits  
+    Deductible : No
+    Copay : No
+    Limit/Year : No
+    Referral required : Yes
+    ---------------------
+          Insurance Updates
+     Old Insurance Termination Date  :  
+     New Insurance  Effective Date : Nov 1, 2021</td>
+                        </tr>
+                                            <tr>
+                           <td height="5" class="spacer"></td>
+                        </tr>
+                      </tbody></table>
+                    </td>
+                  </tr>
+                </tbody></table>
+                </div>
+                <script type="text/javascript" src="/includes/scripts/flowsheet.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/includes/scripts/hep.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/returndate.js?cb=1&amp;mtime=1780005745"></script>
+    <script type="text/javascript" src="/shared/js/nsUi/nsScrollTabView/ScrollTabView.js?mtime=1780005879"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/CaseTabsSooner.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/InsurancePopupEnum.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/InsuranceSettingAssembler.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/InsuranceSettingsFilter.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/PatientTemplate.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/Insurance.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/SettingCollectionEnum.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/InsuranceBuilder.js?mtime=1780005745"></script>
+    <script type="text/javascript" src="/js/Modules/Patient/Nav/BenefitsCheckMark.js?cb=2&amp;mtime=1780005745"></script>
+    
+                <link type="text/css" rel="stylesheet" href="/shared/js/nsUi/nsScrollTabView/css/scrollTabView.css?mtime=1780005879">
+    <link type="text/css" rel="stylesheet" href="/css/Patient/lightbox.css?mtime=1780005745">
+    <link type="text/css" rel="stylesheet" href="/css/Patient/chart.css?mtime=1780005745">
+    <br><h1 class="wPTStyleHeader">Add External Documents <span class="patientIcons3" style="float: right; font-size: 10px;font-weight:normal;"><a href="patientChart.php?ID=55577913">Back to Patient Records</a></span></h1><form id="documentAdd" name="documentAdd" onsubmit="webpt.auditlogs.loadDataAuditLogImprovements()" action="patientExtDoc.php" method="POST" enctype="multipart/form-data"><table width="100%" class="wPTStyleTable" cellpadding="0" cellspacing="0">	<tbody><tr>		<td colspan="4" class="wPTStyleTableLabel">Add Document</td>	</tr><tr class="externalDocumentFormWrap">
+        <td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Document:</td>
+        <td class="wPTStyleTableFormFieldValueNoBorder documentContainer">
+            <span style="" class="quick-scan-link-container">
+                <span style="display:inline" widget="QuickScan" id="eDocScan">
+                    <a class="link QuickScan quick-scan-link customButton" href="#">Quick Scan</a>
+                    <span class="orLabel">or</span>
+                </span>
+            </span>
+            <span class="file-upload-container">
+                <input type="file" class="hidden" id="inputFileField" name="fileAtt" tabindex="6">
+                <label for="inputFileField" class="customButton" id="uploadTrigger">Browse</label>
+            </span>
+            <span style="display: none;" class="documentPreview"></span>
+            <span style="display: none;" class="documentError"></span>
+        </td>
+    </tr>	<tr>		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Document Type:</td>	 <td class="wPTStyleTableFormFieldValueNoBorder"><select id="ExtDocTypeID" name="ExtDocTypeID" class="inputBox"><option value="9">Blood Work Results/Labs</option><option value="10">Driver's License</option><option value="14">HEP</option><option value="11">Insurance Card</option><option value="8">Medication Listing</option><option value="6">MRI</option><option value="3" selected="selected">Other</option><option value="13">Past Medical History</option><option value="15">Patient Intake</option><option value="7">Physician's Notes</option><option value="12">Plan of Care</option><option value="4">Script</option><option value="5">XRay</option></select></td>	</tr>	<tr>		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Name of Document:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"><input id="inputUserDefName" name="UserDefName" type="text" class="inputBox" size="60" value="" maxlength="128"></td>	</tr>	<tr>		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">           <input id="DateRecieptMonth" name="DateRecieptMonth" type="hidden" maxlength="2" value="06">           <input id="DateRecieptDay" name="DateRecieptDay" type="hidden" maxlength="2" value="15">           <input id="DateRecieptYear" name="DateRecieptYear" type="hidden" maxlength="4" value="2026">           Date of Receipt:       </td>		<td id="receiptPickerContainer" class="wPTStyleTableFormFieldValueNoBorder"><div class="x-form-field-wrap x-form-field-trigger-wrap" id="ext-gen2" style="width: 100px;"><input type="text" size="10" autocomplete="off" id="ext-comp-1001" name="ext-comp-1001" class="x-form-text x-form-field base-default-datefield" style="width: 75px;"><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt="" class="x-form-trigger x-form-date-trigger" id="ext-gen3"></div></td>	</tr>	<tr>	</tr><tr class="expirationFieldRow" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">           <input id="DateExpirationMonth" type="hidden" maxlength="2" value="06">           <input id="DateExpirationDay" type="hidden" maxlength="2" value="15">           <input id="DateExpirationYear" type="hidden" maxlength="4" value="2026">          Expiration Date:        </td>		<td id="expDatePickerContainer" class="wPTStyleTableFormFieldValueNoBorder"><div class="x-form-field-wrap x-form-field-trigger-wrap" id="ext-gen4" style="width: 17px;"><input type="text" size="10" autocomplete="off" id="ext-comp-1002" name="ext-comp-1002" class="x-form-text x-form-field base-default-datefield" style="width: 75px;"><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt="" class="x-form-trigger x-form-date-trigger" id="ext-gen5"></div></td>	</tr>	<tr class="scriptFieldRow" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">           <input id="Prescription_StartDateMonth" type="hidden" maxlength="2" value="06">           <input id="Prescription_StartDateDay" type="hidden" maxlength="2" value="15">           <input id="Prescription_StartDateYear" type="hidden" maxlength="4" value="2026">          Prescription Start Date:        </td>		<td id="prescStartPickerContainer" class="wPTStyleTableFormFieldValueNoBorder"><div class="x-form-field-wrap x-form-field-trigger-wrap" id="ext-gen8" style="width: 17px;"><input type="text" size="10" autocomplete="off" id="ext-comp-1004" name="ext-comp-1004" class="x-form-text x-form-field base-default-datefield" style="width: 75px;"><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt="" class="x-form-trigger x-form-date-trigger" id="ext-gen9"></div></td>	</tr>	<tr class="scriptFieldRow" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">           <input id="Prescription_EndDateMonth" type="hidden" maxlength="2" value="06">           <input id="Prescription_EndDateDay" type="hidden" maxlength="2" value="15">           <input id="Prescription_EndDateYear" type="hidden" maxlength="4" value="2026">          Prescription End Date:        </td>		<td id="prescEndPickerContainer" class="wPTStyleTableFormFieldValueNoBorder"><div class="x-form-field-wrap x-form-field-trigger-wrap" id="ext-gen10" style="width: 17px;"><input type="text" size="10" autocomplete="off" id="ext-comp-1005" name="ext-comp-1005" class="x-form-text x-form-field base-default-datefield" style="width: 75px;"><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt="" class="x-form-trigger x-form-date-trigger" id="ext-gen11"></div></td>	</tr>	<tr class="scriptFieldRow1" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Number of Visits:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"><input class="inputBox" name="Prescription_Visits" value=""></td>	</tr>	<tr class="scriptFieldRow" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Frequency:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"><select id="Prescription_Frequency_Select" name="Prescription_Frequency_Select" class="inputBox"><option value="1 time visit only">1 time visit only</option><option value="1 time a week">1 time a week</option><option value="1-2 times a week">1-2 times a week</option><option value="2 times a week">2 times a week</option><option value="2-3 times a week">2-3 times a week</option><option value="3 times a week">3 times a week</option><option value="3-4 times a week">3-4 times a week</option><option value="4 times a week">4 times a week</option><option value="BID">BID</option><option value="QD">QD</option><option value="PRN">PRN</option><option value="Custom" selected="selected">Custom</option></select><input type="text" class="inputBox" id="Prescription_Frequency_Select_Custom" value=""><input type="hidden" id="Prescription_Frequency" value=""></td>	</tr>	<tr class="scriptFieldRow" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Duration:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"><select id="Prescription_Duration_Select" name="Prescription_Duration_Select" class="inputBox"><option value="N/A">N/A</option><option value="1 week">1 week</option><option value="2 weeks">2 weeks</option><option value="3 weeks">3 weeks</option><option value="4 weeks">4 weeks</option><option value="5 weeks">5 weeks</option><option value="6 weeks">6 weeks</option><option value="8 weeks">8 weeks</option><option value="10 weeks">10 weeks</option><option value="12 weeks">12 weeks</option><option value="Custom" selected="selected">Custom</option></select><input type="text" class="inputBox" id="Prescription_Duration_Select_Custom" value=""><input type="hidden" id="Prescription_Duration" value=""></td>	</tr>	<tr id="" name="">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Assigned Case:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"><select id="select1" name="AssignedCase"><option selected="" value="70443656">Default</option><option value="ALL">All Cases</option></select></td>	</tr>	<tr>		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Signed Document:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"> <label><input value="1" id="signed" name="signedDocument" class="inputBox" type="checkbox" onclick="togglePhys(this);">Yes</label></td>	</tr>	<tr id="physRow1" name="physRow0" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">           <input id="DateSignedMonth" type="hidden" maxlength="2" value="06">           <input id="DateSignedDay" type="hidden" maxlength="2" value="15">           <input id="DateSignedYear" type="hidden" maxlength="4" value="2026">          Date Signed:        </td>		<td id="dateSignedPickerContainer" class="wPTStyleTableFormFieldValueNoBorder"><div class="x-form-field-wrap x-form-field-trigger-wrap" id="ext-gen6" style="width: 17px;"><input type="text" size="10" autocomplete="off" id="ext-comp-1003" name="ext-comp-1003" class="x-form-text x-form-field base-default-datefield" style="width: 75px;"><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt="" class="x-form-trigger x-form-date-trigger" id="ext-gen7"></div></td>	</tr><input type="hidden" id="complementaryAuditLogInfoEDocCreate" name="complementaryAuditLogInfoEDocCreate"><input type="hidden" name="assignedNoteValueAuditLog" value=""><input type="hidden" name="dateSignedAuditLog" value="">	<tr id="physRow1" name="physRow1" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Assigned Note:</td>		<td class="wPTStyleTableFormFieldValueNoBorder"><select name="SignedNoteType" id="select2"><option value="0">NA</option><option data-expiration="2026-06-12" name="70443656" value="1010155440/POC">POC  2026-05-13 [Not Sent]</option><option data-expiration="2026-06-12" name="70443656" value="1010155440/POC">POC  2026-05-13 [Not Sent]</option><option data-expiration="2026-06-12" name="70443656" value="1010155440/POC">POC  2026-05-13 [Not Sent]</option><option data-expiration="2026-06-12" name="70443656" value="1009977620/IE">IE  2026-05-13 [Not Sent]</option><option data-expiration="2026-06-12" name="70443656" value="1009977620/IE">IE  2026-05-13 [Not Sent]</option><option data-expiration="2026-06-12" name="70443656" value="1009977620/IE">IE  2026-05-13 [Not Sent]</option></select>  <span id="notesNotice" style="margin:0 0 0 10px; color:#ff0000;">There are no available notes to associate with this upload</span></td>	</tr>	<tr id="physRow2" name="physRow2" style="display: none;">		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;">Physician:</td>            <td class="wPTStyleTableFormFieldValueNoBorder">
+                    <div id="physicianDropDownContent" name="physicianDropDownContent">
+                        <input type="hidden" id="PhysicianID" name="PhysicianID" value="10404460">
+                    <div class="x-form-field-wrap x-form-field-trigger-wrap" id="ext-gen97" style="width: 17px;"><input type="text" size="24" autocomplete="off" id="PhysicianIDSelect" name="PhysicianIDSelect" class="x-form-text x-form-field base-default-combobox" style="margin-left: 0px; width: 325px;"><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" alt="" class="x-form-trigger x-form-arrow-trigger" id="ext-gen98"></div></div>
+                </td>	</tr>	<tr>		<td class="wPTStyleTableFormFieldWhite" style="width: 200px;"></td>		<td class="wPTStyleTableFormFieldValueNoBorder externalDocumentFormWrap"><input class="inputBox saveButton customButton" type="submit" name="submitted" value="Save Document"></td>	</tr>	<tr>		<td colspan="4" class="wPTStyleTableFooter"><br></td>	</tr></tbody></table><input type="hidden" name="ID" value="55577913"><input type="hidden" name="caseBeingViewed" value="70443656"><input type="hidden" name="ExtDocID" value=""><input type="hidden" name="documentTypesAuditLog[9]" value="Blood Work Results/Labs"><input type="hidden" name="documentTypesAuditLog[10]" value="Driver's License"><input type="hidden" name="documentTypesAuditLog[14]" value="HEP"><input type="hidden" name="documentTypesAuditLog[11]" value="Insurance Card"><input type="hidden" name="documentTypesAuditLog[8]" value="Medication Listing"><input type="hidden" name="documentTypesAuditLog[6]" value="MRI"><input type="hidden" name="documentTypesAuditLog[3]" value="Other"><input type="hidden" name="documentTypesAuditLog[13]" value="Past Medical History"><input type="hidden" name="documentTypesAuditLog[15]" value="Patient Intake"><input type="hidden" name="documentTypesAuditLog[7]" value="Physician's Notes"><input type="hidden" name="documentTypesAuditLog[12]" value="Plan of Care"><input type="hidden" name="documentTypesAuditLog[4]" value="Script"><input type="hidden" name="documentTypesAuditLog[5]" value="XRay"></form><script type="text/javascript">var isAddressBookUIV2Enabled = true;</script>        <br>
+            <h1 class="wPTStyleHeader">External Patient Documents</h1>
+            <table width="100%" id="currentCase" class="wPTStyleTable" cellpadding="0" cellspacing="0">
+                <thead>
+                <tr>
+                    <td colspan="8" class="wPTStyleTableLabel">Documents Assigned to Case: Default                </td>
+                </tr>
+                <tr>
+                    <td width="10%" class="wPTStyleTableHead">
+                        <a href="#" data-field="CommonName" data-case="70443656">Document
+                            Type</a>
+                    </td>
+                    <td width="20%" class="wPTStyleTableHead">
+                        <a href="#" data-field="UserDefName" data-case="70443656">Name</a>
+                    </td>
+                    <td width="10%" class="wPTStyleTableHead">
+                        <a href="#" data-field="DateReciept" data-case="70443656">Date of
+                            Receipt</a>
+                    </td>
+                    <td width="15%" class="wPTStyleTableHead">
+                        <a href="#" data-field="DateFiled" data-case="70443656">Date
+                            Filed</a>
+                    </td>
+                    <td width="10%" class="wPTStyleTableHead">
+                        <a href="#" data-field="DateExpiration" data-case="70443656">Expiration Date</a>
+                    </td>
+                    <td width="5%" class="wPTStyleTableHead">
+                        <a href="#" data-field="SignedNoteType" data-case="70443656">Note
+                            Type</a>
+                    </td>
+                    <td width="15%" class="wPTStyleTableHead">
+                        <a href="#" data-field="LastName" data-case="70443656">Signee</a>
+                    </td>
+                    <td width="15%" class="wPTStyleTableHead">Options</td>
+                </tr>
+                </thead>
+                <tbody><tr><td>Other</td><td>MRI notes.pdf</td><td>05-14-2026</td><td>05-14-2026 11:01:15 AM EDT</td><td></td><td></td><td></td><td><select id="action419121909" name="action419121909" style="display: block; float: left;"><option value="viewExtDoc.php?EDID=419121909&amp;PID=55577913&amp;URI=98d441be039f31bbfcd90b8174c.pdf">View Document</option><option value="patientExtDoc.php?mod=419121909&amp;ID=55577913&amp;AssignedNote=0&amp;CaseID=70443656">Edit this Document</option><option value="addressBook.php?CommType=Fax&amp;ExtDoc=419121909&amp;CaseID=70443656">Send it</option><option value="addressBook.php?CommType=Email&amp;ExtDoc=419121909&amp;CaseID=70443656">Send to Doc Portal</option><option value="patientExtDoc.php?CaseID=70443656&amp;AptId=0&amp;ID=55577913&amp;delDocID=419121909">Remove Document</option></select><a href="javascript:submitLink(419121909);" onkeypress="javascript:wpt.nsExtDoc.navigationAlert.disable();" onclick="javascript:wpt.nsExtDoc.navigationAlert.disable();"><img src="images/arrow.gif" style="border: 0px; display: block; float: left; margin: 2px;"></a></td></tr><tr><td>Other</td><td>referral</td><td>05-14-2026</td><td>05-14-2026 10:59:13 AM EDT</td><td></td><td></td><td></td><td><select id="action419121448" name="action419121448" style="display: block; float: left;"><option value="viewExtDoc.php?EDID=419121448&amp;PID=55577913&amp;URI=9d1b054b7c5acfc54484aa029f3.pdf">View Document</option><option value="patientExtDoc.php?mod=419121448&amp;ID=55577913&amp;AssignedNote=0&amp;CaseID=70443656">Edit this Document</option><option value="addressBook.php?CommType=Fax&amp;ExtDoc=419121448&amp;CaseID=70443656">Send it</option><option value="addressBook.php?CommType=Email&amp;ExtDoc=419121448&amp;CaseID=70443656">Send to Doc Portal</option><option value="patientExtDoc.php?CaseID=70443656&amp;AptId=0&amp;ID=55577913&amp;delDocID=419121448">Remove Document</option></select><a href="javascript:submitLink(419121448);" onkeypress="javascript:wpt.nsExtDoc.navigationAlert.disable();" onclick="javascript:wpt.nsExtDoc.navigationAlert.disable();"><img src="images/arrow.gif" style="border: 0px; display: block; float: left; margin: 2px;"></a></td></tr><tr><td>Other</td><td>intake.pdf</td><td>05-14-2026</td><td>05-14-2026 10:58:30 AM EDT</td><td></td><td></td><td></td><td><select id="action419121281" name="action419121281" style="display: block; float: left;"><option value="viewExtDoc.php?EDID=419121281&amp;PID=55577913&amp;URI=13f3b968037ca82ac37ed927d3c.pdf">View Document</option><option value="patientExtDoc.php?mod=419121281&amp;ID=55577913&amp;AssignedNote=0&amp;CaseID=70443656">Edit this Document</option><option value="addressBook.php?CommType=Fax&amp;ExtDoc=419121281&amp;CaseID=70443656">Send it</option><option value="addressBook.php?CommType=Email&amp;ExtDoc=419121281&amp;CaseID=70443656">Send to Doc Portal</option><option value="patientExtDoc.php?CaseID=70443656&amp;AptId=0&amp;ID=55577913&amp;delDocID=419121281">Remove Document</option></select><a href="javascript:submitLink(419121281);" onkeypress="javascript:wpt.nsExtDoc.navigationAlert.disable();" onclick="javascript:wpt.nsExtDoc.navigationAlert.disable();"><img src="images/arrow.gif" style="border: 0px; display: block; float: left; margin: 2px;"></a></td></tr><tr><td>Other</td><td>id and ins.pdf</td><td>05-14-2026</td><td>05-14-2026 10:57:28 AM EDT</td><td></td><td></td><td></td><td><select id="action419121066" name="action419121066" style="display: block; float: left;"><option value="viewExtDoc.php?EDID=419121066&amp;PID=55577913&amp;URI=a55e4aec4b0423029abc8e29291.pdf">View Document</option><option value="patientExtDoc.php?mod=419121066&amp;ID=55577913&amp;AssignedNote=0&amp;CaseID=70443656">Edit this Document</option><option value="addressBook.php?CommType=Fax&amp;ExtDoc=419121066&amp;CaseID=70443656">Send it</option><option value="addressBook.php?CommType=Email&amp;ExtDoc=419121066&amp;CaseID=70443656">Send to Doc Portal</option><option value="patientExtDoc.php?CaseID=70443656&amp;AptId=0&amp;ID=55577913&amp;delDocID=419121066">Remove Document</option></select><a href="javascript:submitLink(419121066);" onkeypress="javascript:wpt.nsExtDoc.navigationAlert.disable();" onclick="javascript:wpt.nsExtDoc.navigationAlert.disable();"><img src="images/arrow.gif" style="border: 0px; display: block; float: left; margin: 2px;"></a></td></tr></tbody>
+            </table>
+    
+            <table width="100%" id="allCases" class="wPTStyleTable" cellpadding="0" cellspacing="0">
+                <thead>
+                <tr>
+                    <td colspan="8" class="wPTStyleTableLabel">Documents Assigned to Patient (All Cases)</td>
+                </tr>
+                <tr>
+                    <td width="10%" class="wPTStyleTableHead">
+                        <a href="#" data-field="CommonName" data-case="all">Document Type</a>
+                    </td>
+                    <td width="20%" class="wPTStyleTableHead">
+                        <a href="#" data-field="UserDefName" data-case="all">Name</a>
+                    </td>
+                    <td width="10%" class="wPTStyleTableHead">
+                        <a href="#" data-field="DateReciept" data-case="all">Date of Receipt</a>
+                    </td>
+                    <td width="15%" class="wPTStyleTableHead">
+                        <a href="#" data-field="DateFiled" data-case="all">Date Filed</a>
+                    </td>
+                    <td width="10%" class="wPTStyleTableHead">
+                        <a href="#" data-field="DateExpiration" data-case="all">Expiration Date</a>
+                    </td>
+                    <td width="5%" class="wPTStyleTableHead">
+                        <a href="#" data-field="SignedNoteType" data-case="all">Note Type</a>
+                    </td>
+                    <td width="15%" class="wPTStyleTableHead">
+                        <a href="#" data-field="LastName" data-case="all">Signee</a>
+                    </td>
+                    <td width="15%" class="wPTStyleTableHead">Options</td>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+    
+                </td>
+            </tr>
+            </tbody></table>
+            </div>
+            <div style="overflow:hidden;">
+                <table width="100%" border="0">
+                    <tbody><tr>
+                        <td colspan="2">
+                            <hr style="border:0;background-color:#006699;color:#006699;height:2px">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="userInfo" align="left" width="50%">
+                            <div id="timeDiff">&nbsp;</div>
+                                                </td>
+                        <td width="50%" align="right" class="userInfo">
+                            <a href="https://discover.webpt.com/" target="_base">Help</a> |
+                            <a href="https://discover.webpt.com/" target="_blank">Resources</a> |
+                            <a href="https://www.webpt.com/privacy" target="_blank">Privacy Policy</a> |
+                            <a href="user/agreement/baa" target="_blank">Business Associate Agreement</a> |
+                            <a href="user/agreement/hipaa" target="_blank">HIPAA</a> |
+                            <a href="user/agreement/cpt" target="_blank">CPT</a>
+                             | <span id="emr-deployment-tag" class="deployment-tag">release-202605-10-b</span>                        <span class="copyrightInfo"> © 2026 WebPT, Inc.</span>                    </td>
+                    </tr>
+                </tbody></table>
+            </div>
+            </td>
+            </tr>
+            </tbody></table>
+                    <script type="text/javascript">
+                var _gaq = _gaq || [];
+                _gaq.push(['_setAccount', 'UA-27684429-1']);
+                _gaq.push(['_trackPageview']);
+                (function() {
+                    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+                    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+                    var s = document.getElementsByTagName( 'script')[0]; s.parentNode.insertBefore(ga, s);
+                })();
+            </script>
+                        <script>
+                    var user_firstname = "abdelrahman.hamdy";
+                    var user_lastname = "abdelrahman.hamdy";
+                    var user_email = "abdelrahman.hamdy@cobsolution.com";
+                    var org_id = "00D6g000000CxcZ";
+                    var deployment_name = "WebPT_EMR_Messaging";
+                    var embedded_service_url = "https://webpt.my.site.com/ESWWebPTEMRMessaging1751285158982";
+                    var scrt2_url = "https://webpt.my.salesforce-scrt.com/";
+                    var language = "en_US";
+                    var chat_button_position = "2%,96%";
+                </script>
+                <script type="text/javascript" src="/js/salesforceMessaging.js"></script>
+                <script type="text/javascript" src="https://webpt.my.site.com/ESWWebPTEMRMessaging1751285158982/assets/js/bootstrap.min.js" onload="initEmbeddedMessaging(window.embeddedservice_bootstrap)"></script>        
+                <script type="text/javascript" src="js/Modules/ExtDoc/navigationAlert.js"></script>
+        <script type="text/javascript" src="js/Modules/ExtDoc/legacy.js"></script>
+        <script type="text/javascript" src="js/Modules/ExtDoc/Form.js"></script>
+        <script type="text/javascript" src="js/Modules/ExtDoc/extdoc.js?mtime=1730915343"></script>
+            <script type="text/javascript">
+    
+        jQuery(document).ready(function() {
+    
+            if(typeof(wpt) === 'object' && typeof(wpt.scan) === 'object' && typeof(wpt.scan.controller) === 'object'){
+                wpt.scan.controller.initQuickScanLink();
+            }
+    
+                $('#documentAdd').submit(function() {
+                    $('#select1').removeAttr('disabled');
+                });
+    
+                $('select#ExtDocTypeID').bind('change', function(e, data) {
+    
+                    /**************************
+                     /* For DocTypes Driver's License, Insurance Card and Past Medical History
+                     /*      Assigned Case = All Cases (change option not allowed)
+                     /*      Add tooltip
+                     /* For the rest
+                     /*      Assigned Case = Default Case
+                     /* If DocType Script
+                     /*      Display extra fields
+                     /* If DocType Plan of Care
+                     /*      Include Expiration Date
+                     *****************************/
+                    $('#select1').val("70443656");
+                    $('#select1').removeAttr('disabled');
+                    $('#select1').removeAttr('title');
+    
+                    if ($(this).val() == '4') {
+    
+                    /**
+                     * D-01086 : Includes a new class to show
+                     * as .scriptFieldRow but we don't need to
+                     * enableInputs
+                     */
+                    $('.scriptFieldRow, .scriptFieldRow1').show();
+                    $('.expirationFieldRow').hide();
+    
+                    enableInputs('.scriptFieldRow');
+                    disableInputs('.expirationFieldRow');
+    
+                    } else if ($(this).val() == '10' ||
+                        $(this).val() == '11' ||
+                        $(this).val() == '13') {
+    
+    
+                    $('.scriptFieldRow').hide();
+                    $('.expirationFieldRow').hide();
+    
+                    disableInputs('.scriptFieldRow');
+                    disableInputs('.expirationFieldRow');
+    
+                    if('undefined' == typeof data || 'undefined' == typeof data.notSelectAllCases || false == data.notSelectAllCases) {
+                        $('#select1').val('ALL');
+                    }
+    
+                    if ($(this).val() != '4') {
+                        $('.expirationFieldRow').show();
+                        enableInputs('.expirationFieldRow');
+                    }
+                } else if ($(this).val() == '12') {
+    
+                    $('.expirationFieldRow').show();
+                    $('.scriptFieldRow').hide();
+    
+                    disableInputs('.scriptFieldRow');
+                    enableInputs('.expirationFieldRow');
+    
+                } else {
+                    $('.scriptFieldRow').hide();
+                    $('.expirationFieldRow').hide();
+    
+                    disableInputs('.scriptFieldRow');
+                    disableInputs('.expirationFieldRow');
+    
+                }
+            });
+    
+            $('input#Prescription_Frequency_Select_Custom, input#Prescription_Duration_Select_Custom').each(function() {
+                if ($(this).val() !== '') {
+                    $('#' + $(this).attr('id').replace(/_Custom/, '')).val($(this).val());
+                }
+            }).bind('change', function() {
+                var self = $(this);
+                var objHiddenField = $('#' + self.attr('id').replace(/_Select_Custom/, ''));
+                objHiddenField.val(self.val());
+            });
+    
+            $('select#Prescription_Frequency_Select, select#Prescription_Duration_Select').bind('change', function() {
+                var self = $(this);
+                var objCustomField = $('#' + self.attr('id') + '_Custom');
+                var objHiddenField = $('#' + self.attr('id').replace(/_Select/, ''));
+    
+                if (self.val() == 'Custom') {
+                    objCustomField.show().focus();
+                    objHiddenField.val('');
+                } else {
+                    objCustomField.hide().val('');
+                    objHiddenField.val(self.val());
+                }
+            });
+    
+            $('#select1').change(function() {
+    
+                if($(this).data('options') == undefined){
+    
+                    /*Taking an array of all options-2 and kind of embedding it on the select1*/
+                    $(this).data('options',$('#select2 option').clone());
+                }
+    
+                var id = $(this).val().split('.');
+                var options = $(this).data('options').filter('[name=' + id + ']');
+    
+    
+                $('#select2').html(options);
+                $('#select3').find('[name=phy' + id + ']').prop('selected', true);
+    
+                var numberOptions = $('#select2 option').size();
+    
+                if(numberOptions == 0){
+                    $('#notesNotice').show()
+                } else {
+                    $('#notesNotice').hide();
+    
+                }
+                $('#select2').prepend('<option value=\'0\'>NA</option>');
+            });
+    
+            $('#select3').find('[name=phy' + "70443656" + ']').prop('selected', true);
+    
+                     $('#DateSignedDay').change(function() {
+                // previous criteria filter documents based on sig.
+            });
+    
+            if($('#select1').data('options') == undefined){
+                /*Taking an array of all options-2 and kind of embedding it on the select1*/
+                $('#select1').data('options',$('#select2 option').clone());
+                $('#select2').prepend('<option value=\'0\'>NA</option>');
+            }
+    
+            var id = $('#select1').length > 0 ? $('#select1').val().split('.') : '';
+            var options = $('#select1').length > 0 ? $('#select1').data('options').filter('[name=' + id + ']') : '';
+    
+            $('#select2').html(options);
+            $('#select2').prepend('<option value=\'0\'>NA</option>');
+            $('#select3').find('[name=phy' + id + ']').prop('selected', true);
+    
+    
+            var mod = "";
+            if( mod == '') {
+                $('select#ExtDocTypeID').change();
+            } else {
+                $('select#ExtDocTypeID').change().trigger('change', [{notSelectAllCases:true}]);
+            }
+    
+            var caseDocuments = new extDocController();
+            caseDocuments.caseID    = 70443656;
+            caseDocuments.patientID = 55577913;
+            caseDocuments.timezone = "US/Eastern";
+            caseDocuments.getDocumentsPerCase();
+    
+            var allDocuments = new extDocController();
+            allDocuments.caseID     = 70443656;
+            allDocuments.patientID  = 55577913;
+            allDocuments.timezone = "US/Eastern";
+            allDocuments.getAllDocuments();
+    
+    
+            $("table#currentCase thead a").click(function(event){
+                event.preventDefault();
+                caseDocuments.sort(event.target);
+            });
+    
+            $("table#allCases thead a").click(function(event){
+                event.preventDefault();
+                allDocuments.sort(event.target);
+            });
+    
+            /* US6136: Replace current Date Pickers with EXT date picker */
+    
+            $('#signed').attr('checked') ? enableInputs('#physRow1') : disableInputs('#physRow1');
+    
+            var receiptDatePicker    = Ext.create(base.DefaultDatefield);
+            receiptDatePicker.render('receiptPickerContainer');
+            receiptDatePicker.addListener('change',function(){
+                var selectedDate = new Date(this.getValue());
+                Ext.getDom('DateRecieptMonth').value = selectedDate.format('m');
+                Ext.getDom('DateRecieptDay').value = selectedDate.format('d');
+                Ext.getDom('DateRecieptYear').value = selectedDate.format('Y');
+            });
+    
+            Ext.getDom('DateRecieptMonth').value = "06";
+            Ext.getDom('DateRecieptDay').value = "15";
+            Ext.getDom('DateRecieptYear').value = "2026";
+    
+            receiptDatePicker.setValue(new Date("06/15/2026"));
+    
+            var expirationDatePicker = Ext.create(base.DefaultDatefield);
+            expirationDatePicker.render('expDatePickerContainer');
+            expirationDatePicker.addListener('change',function(){
+                var selectedDate = new Date(this.getValue());
+                Ext.getDom('DateExpirationMonth').value = selectedDate.format('m');
+                Ext.getDom('DateExpirationDay').value = selectedDate.format('d');
+                Ext.getDom('DateExpirationYear').value = selectedDate.format('Y');
+            });
+    
+            Ext.getDom('DateExpirationMonth').value = "06";
+            Ext.getDom('DateExpirationDay').value = "15";
+            Ext.getDom('DateExpirationYear').value = "2026";
+    
+            expirationDatePicker.setValue(new Date("06/15/2026"));
+    
+            var dateSignedPicker     = Ext.create(base.DefaultDatefield);
+            dateSignedPicker.render('dateSignedPickerContainer');
+            dateSignedPicker.addListener('change',function(){
+                var selectedDate = new Date(this.getValue());
+                Ext.getDom('DateSignedMonth').value = selectedDate.format('m');
+                Ext.getDom('DateSignedDay').value = selectedDate.format('d');
+                Ext.getDom('DateSignedYear').value = selectedDate.format('Y');
+            });
+    
+            Ext.getDom('DateSignedMonth').value = "06";
+            Ext.getDom('DateSignedDay').value = "15";
+            Ext.getDom('DateSignedYear').value = "2026";
+    
+            dateSignedPicker.setValue(new Date("06/15/2026"));
+    
+            var prescStartDatePicker = Ext.create(base.DefaultDatefield);
+            prescStartDatePicker.render('prescStartPickerContainer');
+            prescStartDatePicker.addListener('change',function(){
+                var selectedDate = new Date(this.getValue());
+                Ext.getDom('Prescription_StartDateMonth').value = selectedDate.format('m');
+                Ext.getDom('Prescription_StartDateDay').value = selectedDate.format('d');
+                Ext.getDom('Prescription_StartDateYear').value = selectedDate.format('Y');
+            });
+    
+            Ext.getDom('Prescription_StartDateMonth').value = "06";
+            Ext.getDom('Prescription_StartDateDay').value = "15";
+            Ext.getDom('Prescription_StartDateYear').value = "2026";
+    
+            prescStartDatePicker.setValue(new Date("06/15/2026"));
+    
+            var prescEndDatePicker  = Ext.create(base.DefaultDatefield);
+            prescEndDatePicker.render('prescEndPickerContainer');
+            prescEndDatePicker.addListener('change',function(){
+                var selectedDate = new Date(this.getValue());
+                Ext.getDom('Prescription_EndDateMonth').value = selectedDate.format('m');
+                Ext.getDom('Prescription_EndDateDay').value = selectedDate.format('d');
+                Ext.getDom('Prescription_EndDateYear').value = selectedDate.format('Y');
+            });
+    
+            Ext.getDom('Prescription_EndDateMonth').value = "06";
+            Ext.getDom('Prescription_EndDateDay').value = "15";
+            Ext.getDom('Prescription_EndDateYear').value = "2026";
+    
+            prescEndDatePicker.setValue(new Date("06/15/2026"));
+    
+            if (
+              typeof isSoap2SignatureStatusFeatureFlipEnabled !== 'undefined' &&
+              isSoap2SignatureStatusFeatureFlipEnabled
+            ) {
+              var soap2ExtDocController = new ExtDocController(
+                    new ViewController(defaultPhysicianId, enableInputs, disableInputs)
+              );
+              soap2ExtDocController.init();
+            }
+        });
+    
+        </script>
+    </notag><div></div><div id="ext-comp-1007" class="x-tip" style="position: absolute; z-index: 20002; visibility: hidden; display: none;"><div class="x-tip-tl"><div class="x-tip-tr"><div class="x-tip-tc"><div class="x-tip-header x-unselectable" id="ext-gen23"><span class="x-tip-header-text"></span></div></div></div></div><div class="x-tip-bwrap" id="ext-gen24"><div class="x-tip-ml"><div class="x-tip-mr"><div class="x-tip-mc" id="ext-gen27"><div class="x-tip-body" id="ext-gen25" style="height: auto;"></div></div></div></div><div class="x-tip-bl x-panel-nofooter" id="ext-gen26"><div class="x-tip-br"><div class="x-tip-bc"></div></div></div></div><div class="x-tip-anchor x-tip-anchor-top" id="ext-gen28" style="z-index: 20003;"></div></div><iframe class="embeddedMessagingSiteContextFrame" id="embeddedMessagingSiteContextFrame" name="embeddedMessagingSiteContextFrame" src="https://webpt.my.site.com/ESWWebPTEMRMessaging1751285158982/assets/htdocs/sitecontext.min.html?parent_domain=https%3A%2F%2Fapp.webpt.com"></iframe><div id="embedded-messaging" class="embedded-messaging"><div class="embeddedMessagingConversationButtonWrapper"><button class="embeddedMessagingConversationButton" id="embeddedMessagingConversationButton" tabindex="0" role="button" aria-label="Hello, have a question? Let’s chat." title="Hello, have a question? Let’s chat." dir="ltr" style="--eswButtonColor: #3F8DA9; --eswButtonHoverColor: #297793;"><div id="embeddedMessagingIconContainer" class="embeddedMessagingIconContainer"><img src="https://app.webpt.com/images/app_livechat_icon_64.png" alt="" aria-hidden="true" id="embeddedMessagingIconChat" class="embeddedMessagingIconChat"></div></button></div><div id="embeddedMessagingLiveRegion" aria-live="polite" class="embeddedMessagingLiveRegion"></div></div><script id="inert-script" type="text/javascript" src="https://webpt.my.site.com/ESWWebPTEMRMessaging1751285158982/assets/js/inert.min.js"></script></body></html>

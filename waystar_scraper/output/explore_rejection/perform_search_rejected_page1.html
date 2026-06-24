@@ -1,0 +1,2023 @@
+<div id="claimListingTableContainer">
+
+
+    <div id="topResultLinksDiv">
+        <div id="resultCountDiv"><span title="134 Results">134 Results</span></div>
+        <div id="pageHeadingLinks">
+                                        <span><a href="#" id="enterNewClaimLink" class="topLinksRow ">Enter New Claim</a></span>
+                            <span><a href="../../Reports/RejectionDashboard.aspx?AppID=1&amp;Env=P" id="rejClaimDashboardLink" class="topLinksRow ">Rejected Claims Dashboard</a></span>
+                            <span><a href="/Reports/ClaimWarnings?AppId=1&amp;Env=P" id="claimWarningLink" class="topLinksRow  last">Claim Warnings</a></span>
+                                </div>
+    </div>
+        <div id="filterContainer" class="filterContainer" style="display:block;">
+            <div id="filterHeaderDiv">
+                <span id="currentSearchSpan">CURRENT SEARCH</span>
+                <a href="#" id="saveSearch" data-action="save">Save Search</a>
+                <a href="#" id="clearCurrentSearch">Clear All</a><br />
+            </div>
+            <span class="statusText" title="Status">Status - All Rejected</span>
+                            <div id="filterDiv">
+                                <span class="filterButtonLeft" data-searchparam="WorkflowStages_All" title="Workflow Stages"><b>Workflow Stages:</b> All</span>
+                                <span class="filterButtonRight">
+                                    <img class="filter-x" src="/Images/transparent.gif" height="1" width="1" alt="filter">
+                                </span>
+                            </div>
+                        <div id="filterDiv">
+                            <span class="filterButtonLeft" data-searchparam="TransDate" title="Transaction Date"><b>Transaction Date:</b> 01/01/2026 - 12/31/2026</span>
+                            <span class="filterButtonRight">
+                                <img class="filter-x" src="/Images/transparent.gif" height="1" width="1" alt="filter">
+                            </span>
+                        </div>
+        </div>
+        <div id="actionBar" class="actionBar">
+        <ul>
+            <li>
+                    <input type="button" id="archiveBtn" value="Archive" class="mediumDefaultButton actionBarMarginRight" />
+                    <input type="button" id="unarchiveBtn" value="Unarchive" class="mediumDefaultButton actionBarMarginRight" />
+                                    <input type="button" id="holdBtn" value="Hold" class="mediumDefaultButton actionBarMarginRight" />
+                <input type="button" id="viewBtn" value="View" class="mediumDefaultButton actionBarMarginRight" />
+                                    <input type="button" id="notesBtn" value="Notes" class="mediumDefaultButton actionBarMarginRight" />
+                                    <button class="mediumDefaultButton" id="downloadCsvBtn" type="button">Download CSV</button>
+                    <span id="excelFriendlyCBSpan"><input checked="checked" id="excelFriendlyCB" name="MakeExcelFriendly" type="checkbox" value="true" /><input name="MakeExcelFriendly" type="hidden" value="false" /> <label for="Excel-Friendly_CSV">Excel-Friendly CSV</label></span>
+                <span id="hideClaimSpan"><a id="hideClaimLink" data-showEvents="0">Show Claim Messages</a></span>
+                <a href="/Claims/Listing/PrintView" target="_blank" rel="opener"><span title="View For Printing"><img src="/Images/transparent.gif" id="listPrinterIcon" class="printerIcon" height="1" width="1" /></span></a>
+            </li>
+        </ul>
+    </div>
+    <table class="gridView" cellspacing="0" rules="all" border="1" id="claimsGrid" style="border-collapse: collapse;">
+            <tbody>
+
+                <tr class="gridViewHeader">
+                    <th class="headerCheckBox" scope="col">
+                        <div class="divHeaderCheckBox">
+                            <span class="gridHeaderCheckbox">
+                                <input id="gridHeaderSelect" type="checkbox" onclick="toggleAllRowSelectOnPage($(this), $(this).is(':checked'));">
+                            </span>
+                            <div id="actionMenu" class="actionButtonDropMenu">
+                                <img class="downArrow gridHeaderCheckImage" src="/Images/transparent.gif" height="1" width="1" alt="Show Check Options">
+                                <ul id="headerSelectMenu" class="mainDropMenu shadow">
+                                    <li>
+                                        <a onclick="SelectAll();return false;">Select All</a>
+                                    </li>
+                                    <li>
+                                        <a onclick="ClearSelected();return false;">Unselect All</a>
+                                    </li>
+                                    <li>
+                                        <a onclick="SelectPage(true); return false;">Select Page</a>
+                                    </li>
+                                    <li>
+                                        <a onclick="SelectPage(false); return false;">Unselect Page</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </th>
+                    <th class="standardHeader" scope="col">
+                        <span>Claim Number</span>
+                    </th>
+                        <th class="sortableHeader" data-orderby="Patient Name">
+                            <span>Patient Name</span>
+                            <img class="sprite-sort-arrows-default" src="/Images/transparent.gif" height="1" width="1" alt="Sort Column" />
+                        </th>
+                    <th class="standardHeader" id="servDateHeader" scope="col">
+                            <span>Service Date(s)</span>
+                    </th>
+                        <th class="sortableHeader activeHeader" id="transDateHeader" data-orderby="Transaction Date">
+                            <span>Trans Date</span>
+                            <img class="sprite-sort-arrow-desc" src="/Images/transparent.gif" height="1" width="1" alt="Sort Column" />
+                        </th>
+                                            <th class="sortableHeader" id="payerHeader" data-orderby="Payer">
+                            <span>Payer</span>
+                            <img class="sprite-sort-arrows-default" src="/Images/transparent.gif" height="1" width="1" alt="Sort Column" />
+                        </th>
+                                            <th class="sortableHeader" data-orderby="Amount">
+                            <span>Charges</span>
+                            <img class="sprite-sort-arrows-default" src="/Images/transparent.gif" height="1" width="1" alt="Sort Column" />
+                        </th>
+                    <th>
+                        <span>Seq</span>
+                    </th>
+                    <th class="statusColumn" style="width:10em">
+                        <span>Status</span>
+                    </th>
+                    <th id="renProviderHeader">
+                            <span>Rendering Provider</span>
+                    </th>
+                    <th>
+                        <span>WorkGroup</span>
+                    </th>
+                        <th>
+                            <span>Category Code</span>
+                        </th>
+                </tr>
+<input Value="False" data-val="true" data-val-required="The Hidden field is required." id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908500435"
+                        data-patientname="JARAMILLO, JOSHUA" data-instanceid="12260927422" data-noticecode="2" data-payername="NYCE (26992)" data-payerid="26992" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="3/10/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="535.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410357939
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            JARAMILLO, JOSHUA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            03/10/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="NYCE PPO (26992)">NYCE P...(26992)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $535.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Duplicate of a previously processed claim or service line . [X12 Info: Prof:2400-SV1 Inst:2400-SV2]A3 P4999UDCP1 SMARTEDIT (UDCP1) THIS CLAIM APPEARS TO BE A DUPLICATE OF PREVIOUSLY SUBMITTED CLAIM ID [FU98587139] RECEIVED FOR PROCESSING ON [06/11/2026]. THIS CLAIM HAS BEEN REJECTED AND WILL NOT BE PROCESSED. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>TAHA, AMMAR</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Queens Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/11/2026 2:41:07 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                                    <br /><span><b>Currently Open by: Abdelrahman Hamdy (<i>abdelrahman.hamdy@cobsolution.com</i>)</b></span>
+                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Duplicate of a previously processed claim or service line . [X12 Info: Prof:2400-SV1 Inst:2400-SV2]A3 P4999UDCP1 SMARTEDIT (UDCP1) THIS CLAIM APPEARS TO BE A DUPLICATE OF PREVIOUSLY SUBMITTED CLAIM ID [FU98587139] RECEIVED FOR PROCESSING ON [06/11/2026]. THIS CLAIM HAS BEEN REJECTED AND WILL NOT BE PROCESSED. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908500439"
+                        data-patientname="JARAMILLO, JOSHUA" data-instanceid="12260927386" data-noticecode="2" data-payername="NYCE (26992)" data-payerid="26992" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="3/16/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="385.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410357939
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            JARAMILLO, JOSHUA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            03/16/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="NYCE PPO (26992)">NYCE P...(26992)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $385.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Duplicate of a previously processed claim or service line . [X12 Info: Prof:2400-SV1 Inst:2400-SV2]A3 P4999UDCP1 SMARTEDIT (UDCP1) THIS CLAIM APPEARS TO BE A DUPLICATE OF PREVIOUSLY SUBMITTED CLAIM ID [FU98587125] RECEIVED FOR PROCESSING ON [06/11/2026]. THIS CLAIM HAS BEEN REJECTED AND WILL NOT BE PROCESSED. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>TAHA, AMMAR</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Queens Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/11/2026 2:41:07 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Duplicate of a previously processed claim or service line . [X12 Info: Prof:2400-SV1 Inst:2400-SV2]A3 P4999UDCP1 SMARTEDIT (UDCP1) THIS CLAIM APPEARS TO BE A DUPLICATE OF PREVIOUSLY SUBMITTED CLAIM ID [FU98587125] RECEIVED FOR PROCESSING ON [06/11/2026]. THIS CLAIM HAS BEEN REJECTED AND WILL NOT BE PROCESSED. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11410850324"
+                        data-patientname="FORDE, CLIFTON" data-instanceid="12260822857" data-noticecode="0" data-payername="HealthPlus Managed Long Term Care (Z3001)" data-payerid="Z3001" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/2/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="370.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410245087
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            FORDE, CLIFTON
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/02/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="Integra MLTC, Inc. (Z3001)">Integra MLTC, In...(Z3001)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $370.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Unit or Basis of Measurement (Unit Type) is missing (Line #4). [X12 Info: 2400-SV103]Service Line Quantity (Units) on line (Line #4) is missing. [X12 Info: 2400-SV104]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>EZENWUGO, CHIBUZO</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/11/2026 2:16:21 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Unit or Basis of Measurement (Unit Type) is missing (Line #4). [X12 Info: 2400-SV103]Service Line Quantity (Units) on line (Line #4) is missing. [X12 Info: 2400-SV104]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11658318760"
+                        data-patientname="MIZEL, VICKI" data-instanceid="12259216627" data-noticecode="2" data-payername="Medicare B New York Empire (SMNY0)" data-payerid="SMNY0" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/25/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="400.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410447669
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            MIZEL, VICKI
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/25/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MEDICARE NEW YORK NGS (SMNY0)">MEDICARE NEW YORK N...(SMNY0)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $400.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Duplicate of a previously processed claim or service line. [X12 Info: Prof:2400-SV1 Inst:2400-SV2]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>TAHA, AMMAR</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Queens Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/11/2026 9:17:57 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Duplicate of a previously processed claim or service line. [X12 Info: Prof:2400-SV1 Inst:2400-SV2]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11684440745"
+                        data-patientname="AHMAD, IFTIKHAR" data-instanceid="12258989431" data-noticecode="2" data-payername="Medicare B New York Empire (SMNY0)" data-payerid="SMNY0" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/28/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="250.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV49984575
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            AHMAD, IFTIKHAR
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/28/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MEDICARE NEW YORK NGS (SMNY0)">MEDICARE NEW YORK N...(SMNY0)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $250.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Duplicate of a previously processed claim or service line. [X12 Info: Prof:2400-SV1 Inst:2400-SV2]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>TAHA, AMMAR</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Queens Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/11/2026 8:45:10 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Duplicate of a previously processed claim or service line. [X12 Info: Prof:2400-SV1 Inst:2400-SV2]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908500542"
+                        data-patientname="GARAY, YASMINE" data-instanceid="12257783338" data-noticecode="2" data-payername="NYCE (26992)" data-payerid="26992" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="395.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410429236
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            GARAY, YASMINE
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="NYCE PPO (26992)">NYCE P...(26992)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $395.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999UMRRCPDN SMARTEDIT (UMRRCPDN) INFORMATIONAL - PROCEDURE 97014 IS NOT AN APPROPRIATE CODE FOR SERVICES RENDERED. REPORT THE STATUS A (ACTIVE) CODE THAT BEST DESCRIBES THE SERVICES PROVIDED. CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A7 P4999UMRAMRMR SMARTEDIT (UMRAMRMR) REJECT - PROCEDURE CODE 29520 MAY NEED TO BE SUBMITTED WITH AN ANATOMICAL MODIFIER. THE MOST SPECIFIC MODIFIER TO REPRESENT THE ANATOMICAL SITE SHOULD BE REPORTED. UPDATE CODE(S) AS APPLICABLE. SMARTEDIT REJINFO (REJINFO) [PATTERN 53845] INFORMATIONAL - THIS CLAIM HAS BEEN REJECTED AND WILL NOT BE PROCESSED. SEE UHCPROVIDER.COM/SMARTEDITS. REPAIRED CLAIMS SHOULD BE SENT WITH THE ORIGINAL FREQUENCY CODE, NOT A REPLACEMENT OR VOIDED INDICATOR [X12 INFO: 2300-CLM]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>BANDARI, SHAINEETHA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Manhattan Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999UMRRCPDN SMARTEDIT (UMRRCPDN) INFORMATIONAL - PROCEDURE 97014 IS NOT AN APPROPRIATE CODE FOR SERVICES RENDERED. REPORT THE STATUS A (ACTIVE) CODE THAT BEST DESCRIBES THE SERVICES PROVIDED. CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A7 P4999UMRAMRMR SMARTEDIT (UMRAMRMR) REJECT - PROCEDURE CODE 29520 MAY NEED TO BE SUBMITTED WITH AN ANATOMICAL MODIFIER. THE MOST SPECIFIC MODIFIER TO REPRESENT THE ANATOMICAL SITE SHOULD BE REPORTED. UPDATE CODE(S) AS APPLICABLE. SMARTEDIT REJINFO (REJINFO) [PATTERN 53845] INFORMATIONAL - THIS CLAIM HAS BEEN REJECTED AND WILL NOT BE PROCESSED. SEE UHCPROVIDER.COM/SMARTEDITS. REPAIRED CLAIMS SHOULD BE SENT WITH THE ORIGINAL FREQUENCY CODE, NOT A REPLACEMENT OR VOIDED INDICATOR [X12 INFO: 2300-CLM]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908499985"
+                        data-patientname="CLAY, CHARON" data-instanceid="12257783097" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="320.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410488667
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            CLAY, CHARON
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="UNITEDHEALTHCARE COMMUNITY PLAN (87726)">UNITEDHEALTHCARE COMMUNITY PL...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $320.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE G0283 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ALI, SAJJAD</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE G0283 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908500164"
+                        data-patientname="KINGSPERRY, KONILIA" data-instanceid="12257783034" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="270.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410481578
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            KINGSPERRY, KONILIA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="UNITEDHEALTHCARE COMMUNITY PLAN (87726)">UNITEDHEALTHCARE COMMUNITY PL...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $270.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ANTONETTE, MARIE</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Manhattan Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908497786"
+                        data-patientname="DRUMMOND, STEPHEN" data-instanceid="12257781925" data-noticecode="0" data-payername="Magnacare (11303)" data-payerid="11303" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/9/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="260.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410174179
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            DRUMMOND, STEPHEN
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MAGNACOMP (11303)">MAGNACO...(11303)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $260.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="This Payer Requires A Subscriber Entity Type of Individual (1). Cannot Be Organization. [X12 Info: 2010BA-NM102]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>MAHMOUD, MUHAMMAD ABDELFATTAH</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  This Payer Requires A Subscriber Entity Type of Individual (1). Cannot Be Organization. [X12 Info: 2010BA-NM102]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908496663"
+                        data-patientname="MAATI, MOHAMMED" data-instanceid="12257781409" data-noticecode="0" data-payername="Magnacare (11303)" data-payerid="11303" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/9/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="365.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410119838
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            MAATI, MOHAMMED
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MAGNACOMP (11303)">MAGNACO...(11303)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $365.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="This Payer Requires A Subscriber Entity Type of Individual (1). Cannot Be Organization. [X12 Info: 2010BA-NM102]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>JADAV, JHANVI</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Lower Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  This Payer Requires A Subscriber Entity Type of Individual (1). Cannot Be Organization. [X12 Info: 2010BA-NM102]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11908496316"
+                        data-patientname="MOORE, GERALDINE" data-instanceid="12257781332" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="340.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="1.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410508568
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            MOORE, GERALDINE
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/11/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="UNITEDHEALTHCARE COMMUNITY PLAN (87726)">UNITEDHEALTHCARE COMMUNITY PL...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $340.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>MAHMOUD, MUHAMMAD ABDELFATTAH</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11839294274"
+                        data-patientname="MARIN SINISTERRA, LEONARD A" data-instanceid="12253676241" data-noticecode="0" data-payername="New Jersey Manufacturing Attachments (WC Only) (12122W)" data-payerid="12122W" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="5/28/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="250.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV49975898
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            MARIN SINISTERRA, LEONARD A
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            05/28/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="NEW JERSEY MANUFACTURERS INSURANCE (12122W)">NEW JERSEY MANUFACTURERS INSURAN...(12122W)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $250.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Patient Name must be the same as Subscriber Name when Patient Relationship to Insured is &quot;Self.&quot; [X12 Info: 2010CA-NM1]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>THAKKAR, PARTH</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Manhattan Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/10/2026 4:38:12 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Patient Name must be the same as Subscriber Name when Patient Relationship to Insured is &quot;Self.&quot; [X12 Info: 2010CA-NM1]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11893039645"
+                        data-patientname="MAATI, MOHAMMED" data-instanceid="12253119206" data-noticecode="2" data-payername="Magnacare (11303)" data-payerid="11303" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/5/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="365.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410119838
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            MAATI, MOHAMMED
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/05/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MAGNACOMP (11303)">MAGNACO...(11303)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $365.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="PATIENT and/or PATIENT ID not found in payer&#39;s records. Verify that the patient information on the claim matches the ID card exactly and that the claim is being submitted to the correct electronic Payer ID. [X12 Info: 2010CA-NM1]A3 H H25378 THE PROPERTY AND CASUALTY CLAIM NUMBER IS NOT A HIPAA REQUIREMENT. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ELHADDAD, NOORHAN</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Lower Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/10/2026 2:48:01 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  PATIENT and/or PATIENT ID not found in payer&#39;s records. Verify that the patient information on the claim matches the ID card exactly and that the claim is being submitted to the correct electronic Payer ID. [X12 Info: 2010CA-NM1]A3 H H25378 THE PROPERTY AND CASUALTY CLAIM NUMBER IS NOT A HIPAA REQUIREMENT. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11058895039"
+                        data-patientname="DAVIDSON, RENALDO" data-instanceid="12252935680" data-noticecode="0" data-payername="1199 National Benefit Fund (13162)" data-payerid="13162" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="2/6/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="110.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410254009
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            DAVIDSON, RENALDO
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            02/06/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="1199 (13162)">1199 (13162)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $110.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Original Reference Number or Payer Claim Control Number required when Claim Frequency Code is 7 (replacement) or 8 (void). [X12 Info: 2300-REF02]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>CABUSAS, ABIGAIL BAGARA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Manhattan Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                    <span title="Abdelrahman M 6/11/2026 Check"><img src="/Images/transparent.gif" class="note noExpand" height="1" width="1" /></span>
+                                                                                                    <span class="resubmit" title="Resubmitted on 6/10/2026 2:08:21 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                    <br /><span id="noteSpan"><b><i>Last Note: </i></b>Abdelrahman M 6/11/2026 Check</span>
+                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Original Reference Number or Payer Claim Control Number required when Claim Frequency Code is 7 (replacement) or 8 (void). [X12 Info: 2300-REF02]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11833125020"
+                        data-patientname="HERRERA- HUAMAN, RICHARD LUIS" data-instanceid="12252476894" data-noticecode="1" data-payername="MetroPlus Health Plan (13265)" data-payerid="13265" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/22/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="310.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410349824
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            HERRERA- HUAMAN, RICHARD LUIS
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/22/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="METROPLUS (13265)">METROPL...(13265)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $310.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="FH PREF0298:INVALID ORIGINAL REF NUMBER 012026.060130713">Rejected by Intermediary</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>HASSANEN, MOAMEN</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/10/2026 12:49:09 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                    <a href="#" class="claimWarning">
+                                        <img class="sprite-claimwarning noExpand" src="/Images/transparent.gif"
+                                             height="1" width="1" alt="Claim Warning" title=" CLAIM HAS BEEN RECEIVED. ACCEPTED FOR PROCESSING. 
+" id="hasWarning" />
+                                    </a>
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  FH PREF0298:INVALID ORIGINAL REF NUMBER 012026.060130713
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11903086077"
+                        data-patientname="DIAS, DONNETTE" data-instanceid="12252305802" data-noticecode="0" data-payername="MetroPlus Health Plan (13265)" data-payerid="13265" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/28/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="280.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            DIAS, DONNETTE
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/28/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MetroPlus Health Plan (13265)">MetroPlus Health Pl...(13265)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $280.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Patient/Subscriber Address is missing. [X12 Info: 2010BA-N301]Patient or Subscriber Gender Code (Male/Female) is missing. [X12 Info: 2010CA-DMG03]Patient Address is invalid or missing. [X12 Info: 2010CA-N301]Patient Gender Code (Male/Female) is invalid or missing according to the payer&#39;s records. [X12 Info: 2010CA-DMG03]Place of Service is Missing. [X12 Info: 2300-CLM05:1]Provider Signature on File is Missing. [X12 Info: 2300-CLM06]PROVIDER ACCEPT ASSIGNMENT CODE is MISSING. [X12 Info: 2300-CLM07].Diagnosis Code (s) (13265) is Invalid. Must be a valid diagnosis code for the date on which the service was performed. [X12 Info: 2300-HI]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>HASSANEN, MOAMEN</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/10/2026 12:19:59 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Patient/Subscriber Address is missing. [X12 Info: 2010BA-N301]Patient or Subscriber Gender Code (Male/Female) is missing. [X12 Info: 2010CA-DMG03]Patient Address is invalid or missing. [X12 Info: 2010CA-N301]Patient Gender Code (Male/Female) is invalid or missing according to the payer&#39;s records. [X12 Info: 2010CA-DMG03]Place of Service is Missing. [X12 Info: 2300-CLM05:1]Provider Signature on File is Missing. [X12 Info: 2300-CLM06]PROVIDER ACCEPT ASSIGNMENT CODE is MISSING. [X12 Info: 2300-CLM07].Diagnosis Code (s) (13265) is Invalid. Must be a valid diagnosis code for the date on which the service was performed. [X12 Info: 2300-HI]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11797896998"
+                        data-patientname="WOLF, JONATHAN" data-instanceid="12251910362" data-noticecode="2" data-payername="HealthFirst of New York (80141)" data-payerid="80141" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="5/20/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="280.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410240641
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            WOLF, JONATHAN
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            05/20/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="HEALTHFIRST (80141)">HEALTHFIR...(80141)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $280.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM HAS BEEN ACCEPTED INTO ADJUDICATION. CLAIM WAS PROCESSED AS ADJUSTMENT TO PREVIOUS CLAIM. [X12 INFO: 2300-CLM]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>CHAVDA, RADHIKA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/10/2026 11:14:49 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM HAS BEEN ACCEPTED INTO ADJUDICATION. CLAIM WAS PROCESSED AS ADJUSTMENT TO PREVIOUS CLAIM. [X12 INFO: 2300-CLM]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11900885497"
+                        data-patientname="HUAYNAPE, DIANA" data-instanceid="12249969780" data-noticecode="2" data-payername="1199 National Benefit Fund (13162)" data-payerid="13162" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="290.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410501583
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            HUAYNAPE, DIANA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="1199 (13162)">1199 (13162)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $290.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="A3:21:41 CLAIM HAS BEEN REJECTED AS UNPROCESSABLE. MISSING OR INVALID INFORMATION. SUBMITTER PAYER SPECIFIC REJECTION - INVALID MEMBER ID 980079909701 - MUST BE LENGTH 9 OR 10 AND NUMERIC ONLY LINE 62592 LOOP 2010BA SUBSCRIBER PRIMARY IDENTIFIER">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ELKOUMY, RAMY</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                    <a href="#" class="claimWarning">
+                                        <img class="sprite-claimwarning noExpand" src="/Images/transparent.gif"
+                                             height="1" width="1" alt="Claim Warning" title=" CLAIM HAS BEEN RECEIVED. ENTITY ACKNOWLEDGES RECEIPT OF CLAIM/ENCOUNTER. ENTITY ACKNOWLEDGES RECEIPT OF CLAIM/ENCOUNTER.
+" id="hasWarning" />
+                                    </a>
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  A3:21:41 CLAIM HAS BEEN REJECTED AS UNPROCESSABLE. MISSING OR INVALID INFORMATION. SUBMITTER PAYER SPECIFIC REJECTION - INVALID MEMBER ID 980079909701 - MUST BE LENGTH 9 OR 10 AND NUMERIC ONLY LINE 62592 LOOP 2010BA SUBSCRIBER PRIMARY IDENTIFIER
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11900884909"
+                        data-patientname="BUTLER, SHANTELL" data-instanceid="12249969489" data-noticecode="0" data-payername="Sedgwick CMS (Attachments) (WC Only) (TP097W)" data-payerid="TP097W" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="450.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410506077
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            BUTLER, SHANTELL
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="SEDGWICK CLAIMS MANAGEMENT (TP097W)">SEDGWICK CLAIMS MANAGEME...(TP097W)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $450.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Patient Zip Code (00000) is invalid. A valid Zip Code, as defined by the US Postal Service, is an expected pattern of 5N, 5N&#39;-&#39;4N, or 9N. This information can be verified at www.USPS.com. [X12 Info: 2010CA-N403]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ABOUSHOKKA, MOSTAFA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Patient Zip Code (00000) is invalid. A valid Zip Code, as defined by the US Postal Service, is an expected pattern of 5N, 5N&#39;-&#39;4N, or 9N. This information can be verified at www.USPS.com. [X12 Info: 2010CA-N403]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11900883428"
+                        data-patientname="WONG, RAYMOND" data-instanceid="12249968965" data-noticecode="2" data-payername="Health Insurance Plan of Greater NY HIP (55247)" data-payerid="55247" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="300.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410530595
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            WONG, RAYMOND
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="EMBLEMHIP (55247)">EMBLEMH...(55247)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $300.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="REJECTED FOR INVALID INFORMATION - NO FURTHER INFORMATION PROVIDED BY THE PAYER [X12 INFO: 2300-CLM]CLAIM HAS BEEN REJECTED FOR MISSING OR INVALID INFORMATION. FURTHER INFORMATION MAY NOT HAVE BEEN PROVIDED BY THE PAYER. . [X12 Info: 2300-CLM]ACK REJECTED FOR INVALID INFORMATION. CLAIM ENCOUNTER HAS INVALID INFORMATION AS SPECIFIED IN STATUS DETAILS AND BEEN REJECTED. MISSING OR INVALID INFORMATION. [X12 INFO: 2300-CLM]EMBLEM UNABLE TO LOCATE ELIGIBILITY SPAN FOR THE PATIENT. [X12 INFO: 2010BA/CA-NM1] RECEIVER- ACKNOWLEDGEMENT/RETURNED AS UNPROCESSABLE CLAIM-THE CLAIM/ENCOUNTER HAS BEEN REJECTED AND HAS NOT BEEN ENTERED INTO THE ADJUDICATION SYSTEM - PATIENT ELIGIBILITY NOT FOUND WITH ENTITY ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ABDELSALAM, YASSER</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Lower Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                    <a href="#" class="claimWarning">
+                                        <img class="sprite-claimwarning noExpand" src="/Images/transparent.gif"
+                                             height="1" width="1" alt="Claim Warning" title=" CLAIM HAS BEEN RECEIVED. ACCEPTED FOR PROCESSING. 
+" id="hasWarning" />
+                                    </a>
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  REJECTED FOR INVALID INFORMATION - NO FURTHER INFORMATION PROVIDED BY THE PAYER [X12 INFO: 2300-CLM]CLAIM HAS BEEN REJECTED FOR MISSING OR INVALID INFORMATION. FURTHER INFORMATION MAY NOT HAVE BEEN PROVIDED BY THE PAYER. . [X12 Info: 2300-CLM]ACK REJECTED FOR INVALID INFORMATION. CLAIM ENCOUNTER HAS INVALID INFORMATION AS SPECIFIED IN STATUS DETAILS AND BEEN REJECTED. MISSING OR INVALID INFORMATION. [X12 INFO: 2300-CLM]EMBLEM UNABLE TO LOCATE ELIGIBILITY SPAN FOR THE PATIENT. [X12 INFO: 2010BA/CA-NM1] RECEIVER- ACKNOWLEDGEMENT/RETURNED AS UNPROCESSABLE CLAIM-THE CLAIM/ENCOUNTER HAS BEEN REJECTED AND HAS NOT BEEN ENTERED INTO THE ADJUDICATION SYSTEM - PATIENT ELIGIBILITY NOT FOUND WITH ENTITY 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11900882872"
+                        data-patientname="MOORE, GERALDINE" data-instanceid="12249968846" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/4/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="340.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410508568
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            MOORE, GERALDINE
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/04/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="UNITEDHEALTHCARE COMMUNITY PLAN (87726)">UNITEDHEALTHCARE COMMUNITY PL...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $340.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>BALDANIYA, JANAK</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11900882633"
+                        data-patientname="JONES, ANGIL" data-instanceid="12249968804" data-noticecode="0" data-payername="New York Network Management (11334)" data-payerid="11334" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="6/8/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="375.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="2.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410512809
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            JONES, ANGIL
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            06/08/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/10/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="FIDELISMEDICARE (11334)">FIDELISMEDICA...(11334)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $375.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="PATIENT/SUBSCRIBER ZIP CODE (12003) is invalid. Value must be a valid Zip Code as defined by the US Postal Service. This information can be verified at www.USPS.com. [X12 Info: 2010BA-N403]OTHER Subscriber ZIP CODE (12003) listed under the Payer not being billed is invalid. Must be a valid Zip Code as defined by the US Postal Service. This information can be verified at www.USPS.com. [X12 Info: 2330A-N403]">Rejected by Waystar</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>MAHMOUD, MUHAMMAD ABDELFATTAH</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  PATIENT/SUBSCRIBER ZIP CODE (12003) is invalid. Value must be a valid Zip Code as defined by the US Postal Service. This information can be verified at www.USPS.com. [X12 Info: 2010BA-N403]OTHER Subscriber ZIP CODE (12003) listed under the Payer not being billed is invalid. Must be a valid Zip Code as defined by the US Postal Service. This information can be verified at www.USPS.com. [X12 Info: 2330A-N403]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11294568769"
+                        data-patientname="BAMIDELE, OLUSOLE" data-instanceid="12244944146" data-noticecode="1" data-payername="Healthcare Partners IPA /Heritage New York Medical Group (11328)" data-payerid="11328" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="3/17/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="515.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410366499
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            BAMIDELE, OLUSOLE
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            03/17/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="HEALTHCARE PARTNERS IPA /HERITAGE N (11328)">HEALTHCARE PARTNERS IPA /HERITAGE...(11328)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $515.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM HAS BEEN REJECTED AS UNPROCESSABLE. MISSING OR INVALID INFORMATION. INVALID MEMBER ID. [X12 INFO: 2010BA-NM1]">Rejected by Intermediary</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ABOUSHOKKA, MOSTAFA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                    <span title="Abdelrahman M 6/11/2026 Check"><img src="/Images/transparent.gif" class="note noExpand" height="1" width="1" /></span>
+                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 1:52:52 PM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                                                    <br /><span id="noteSpan"><b><i>Last Note: </i></b>Abdelrahman M 6/11/2026 Check</span>
+                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM HAS BEEN REJECTED AS UNPROCESSABLE. MISSING OR INVALID INFORMATION. INVALID MEMBER ID. [X12 INFO: 2010BA-NM1]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11690693385"
+                        data-patientname="KELLY, ROBBIN" data-instanceid="12244022501" data-noticecode="2" data-payername="Medicare B New York Empire (SMNY0)" data-payerid="SMNY0" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="5/1/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="310.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410331135
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            KELLY, ROBBIN
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            05/01/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="MEDICARE B NEW YORK EMPIRE (SMNY0)">MEDICARE B NEW YORK EMPI...(SMNY0)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $310.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="The Billing Provider NPI Was Not Found In the Payer&#39;s File. Please contact the Payer to verify that the Billing Provider is setup correctly in the Payer&#39;s System. [X12 Info: 2010AA-NM109]Billing Provider Tax ID or Tax ID/NPI combination does not match payer crosswalk. [X12 Info: 2010AA-NM109]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>PATEL, HARSH</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 11:35:57 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  The Billing Provider NPI Was Not Found In the Payer&#39;s File. Please contact the Payer to verify that the Billing Provider is setup correctly in the Payer&#39;s System. [X12 Info: 2010AA-NM109]Billing Provider Tax ID or Tax ID/NPI combination does not match payer crosswalk. [X12 Info: 2010AA-NM109]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11492691646"
+                        data-patientname="LORENZO, PATRICIA" data-instanceid="12244018605" data-noticecode="2" data-payername="Health Insurance Plan of Greater NY HIP (55247)" data-payerid="55247" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/14/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="220.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410216072
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            LORENZO, PATRICIA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/14/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="EMBLEM MEDICAID (55247)">EMBLEM MEDICA...(55247)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $220.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Original Reference Number (Payer Claim Control Number) is invalid. Must be 12 digits for payer. Please use the ICN from the first submission of the claim. [X12 Info: 2300-REF02]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ANEES, FATIMA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 11:34:55 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                    <a href="#" class="claimWarning">
+                                        <img class="sprite-claimwarning noExpand" src="/Images/transparent.gif"
+                                             height="1" width="1" alt="Claim Warning" title=" CLAIM HAS BEEN RECEIVED. ACCEPTED FOR PROCESSING. 
+" id="hasWarning" />
+                                    </a>
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Original Reference Number (Payer Claim Control Number) is invalid. Must be 12 digits for payer. Please use the ICN from the first submission of the claim. [X12 Info: 2300-REF02]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11684440036"
+                        data-patientname="CABRERA, YAZMIN" data-instanceid="12244016703" data-noticecode="2" data-payername="Health Insurance Plan of Greater NY HIP (55247)" data-payerid="55247" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="4/29/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="300.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410412373
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            CABRERA, YAZMIN
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            04/29/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="EMBLEM MEDICAID (55247)">EMBLEM MEDICA...(55247)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $300.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Original Reference Number (Payer Claim Control Number) is invalid. Must be 12 digits for payer. Please use the ICN from the first submission of the claim. [X12 Info: 2300-REF02]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>MOUSSA, ELSAYED</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 11:34:24 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                    <a href="#" class="claimWarning">
+                                        <img class="sprite-claimwarning noExpand" src="/Images/transparent.gif"
+                                             height="1" width="1" alt="Claim Warning" title=" CLAIM HAS BEEN RECEIVED. ACCEPTED FOR PROCESSING. 
+" id="hasWarning" />
+                                    </a>
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Original Reference Number (Payer Claim Control Number) is invalid. Must be 12 digits for payer. Please use the ICN from the first submission of the claim. [X12 Info: 2300-REF02]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11711760057"
+                        data-patientname="CABRERA, YAZMIN" data-instanceid="12244014656" data-noticecode="2" data-payername="Health Insurance Plan of Greater NY HIP (55247)" data-payerid="55247" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="5/7/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="True" data-totalcharges="300.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410412373
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            CABRERA, YAZMIN
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            05/07/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="EMBLEM MEDICAID (55247)">EMBLEM MEDICA...(55247)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $300.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="Original Reference Number (Payer Claim Control Number) is invalid. Must be 12 digits for payer. Please use the ICN from the first submission of the claim. [X12 Info: 2300-REF02]">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>MOUSSA, ELSAYED</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Bronx Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 11:33:53 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                                                    <a href="#" class="remitIcon" data-remitsurl="https://remits.zirmed.com">
+                                        <span title="Has Remit"><img src='/Images/transparent.gif' class="sprite-eob" height='1' width='1' /></span>
+                                    </a>
+
+                                    <a href="#" class="claimWarning">
+                                        <img class="sprite-claimwarning noExpand" src="/Images/transparent.gif"
+                                             height="1" width="1" alt="Claim Warning" title=" CLAIM HAS BEEN RECEIVED. ACCEPTED FOR PROCESSING. 
+" id="hasWarning" />
+                                    </a>
+                                                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  Original Reference Number (Payer Claim Control Number) is invalid. Must be 12 digits for payer. Please use the ICN from the first submission of the claim. [X12 Info: 2300-REF02]
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11159389851"
+                        data-patientname="BOLLING, LATOYA" data-instanceid="12243009221" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="2/21/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="320.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410296530
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            BOLLING, LATOYA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            02/21/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="Empire Plan (87726)">Empire Pl...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $320.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. A3 P4999P04UALL SMARTEDIT (P04UALL) PROCEDURE 97110 WITH A COMBINED DAILY FREQUENCY OF 4 HAS BEEN EXCEEDED BY 1 FOR DATE OF SERVICE 20260221. UNDER APPROPRIATE CIRCUMSTANCES, A DESIGNATED MODIFIER MAY BE REQUIRED TO IDENTIFY DISTINCT SERVICES. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ABOUSHOKKA, MOSTAFA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                    <span title="Abdelrahman M 6/11/2026 Check"><img src="/Images/transparent.gif" class="note noExpand" height="1" width="1" /></span>
+                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 9:01:46 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                    <br /><span id="noteSpan"><b><i>Last Note: </i></b>Abdelrahman M 6/11/2026 Check</span>
+                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. A3 P4999P04UALL SMARTEDIT (P04UALL) PROCEDURE 97110 WITH A COMBINED DAILY FREQUENCY OF 4 HAS BEEN EXCEEDED BY 1 FOR DATE OF SERVICE 20260221. UNDER APPROPRIATE CIRCUMSTANCES, A DESIGNATED MODIFIER MAY BE REQUIRED TO IDENTIFY DISTINCT SERVICES. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11134443899"
+                        data-patientname="BOLLING, LATOYA" data-instanceid="12243005332" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="2/16/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="320.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410296530
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            BOLLING, LATOYA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            02/16/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="Empire Plan (87726)">Empire Pl...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $320.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999P04UALL SMARTEDIT (P04UALL) PROCEDURE 97110 WITH A COMBINED DAILY FREQUENCY OF 4 HAS BEEN EXCEEDED BY 1 FOR DATE OF SERVICE 20260216. UNDER APPROPRIATE CIRCUMSTANCES, A DESIGNATED MODIFIER MAY BE REQUIRED TO IDENTIFY DISTINCT SERVICES. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ABOUSHOKKA, MOSTAFA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                    <span title="Abdelrahman M 6/11/2026 Check"><img src="/Images/transparent.gif" class="note noExpand" height="1" width="1" /></span>
+                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 9:01:15 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                    <br /><span id="noteSpan"><b><i>Last Note: </i></b>Abdelrahman M 6/11/2026 Check</span>
+                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999P04UALL SMARTEDIT (P04UALL) PROCEDURE 97110 WITH A COMBINED DAILY FREQUENCY OF 4 HAS BEEN EXCEEDED BY 1 FOR DATE OF SERVICE 20260216. UNDER APPROPRIATE CIRCUMSTANCES, A DESIGNATED MODIFIER MAY BE REQUIRED TO IDENTIFY DISTINCT SERVICES. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+<input Value="False" id="SearchCriteria_Hidden" name="SearchCriteria.Hidden" type="hidden" value="False" />                    <tr class="gridViewRow gridViewExpandableRow " data-claimid="11134443896"
+                        data-patientname="BOLLING, LATOYA" data-instanceid="12243001616" data-noticecode="2" data-payername="United Healthcare (87726)" data-payerid="87726" data-isholdrequested="False"
+                        data-sequence="1" data-ishidden="False" data-hasdraft="False" data-servicedate="2/14/2026"
+                        data-isheld="False" data-isopen="False" data-hasremit="False" data-totalcharges="320.00"
+                        data-markasprintedpayerid="Z96202" data-appid="1"
+                        data-manualClaimStatus="False" data-daysold="3.15327977739468" data-isncpclaim="False">
+                        <td class="gridViewCell" align="center">
+                            <input class="selectRowCheckBox" id="claimCheckBox" name="claimCheckBox" type="checkbox" value="true" /><input name="claimCheckBox" type="hidden" value="false" /><br />
+                        </td>
+                        <td class="gridViewCell patientNumberCell" align="left">
+                            PV410296530
+                        </td>
+                        <td class="gridViewCell patientNameCell" align="center">
+                            BOLLING, LATOYA
+                        </td>
+                        <td class="gridViewCell latestDosCell" align="center">
+                            
+                            02/14/2026
+                        </td>
+                        <td class="gridViewCell dtLastSubmissionCell" align="center">
+                            06/09/2026
+                        </td>
+                        <td class="gridViewCell subPayerCell" align="center">
+                                <span title="Empire Plan (87726)">Empire Pl...(87726)</span>
+                        </td>
+                        <td class="gridViewCell chargesCell" align="center">
+                            $320.00
+                        </td>
+                        <td class="gridViewCell sequenceNumCell" align="left">
+                            1
+                        </td>
+                        <td class="gridViewCell descriptionCell errorStatusDescription" align="left">
+                            <a href="#" class="claimStatusLink errorStatusDescription" title="CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999P04UALL SMARTEDIT (P04UALL) PROCEDURE 97110 WITH A COMBINED DAILY FREQUENCY OF 4 HAS BEEN EXCEEDED BY 1 FOR DATE OF SERVICE 20260214. UNDER APPROPRIATE CIRCUMSTANCES, A DESIGNATED MODIFIER MAY BE REQUIRED TO IDENTIFY DISTINCT SERVICES. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. ">Rejected by Payer</a><br />
+                        </td>
+                        <td class="gridViewCell providerNameCell" align="center">
+                            <span>ABOUSHOKKA, MOSTAFA</span>
+                        </td>
+                        <td class="gridViewCell workGroupCell" align="left">
+                                    <span class="workgroupDisabled">Upper Brooklyn Cluster</span>
+                        </td>
+                            <td class="gridViewCell categoryCodeCell" align="center">
+                                <span id="noCategoryCodes">No Category Code Assigned</span>
+                        </td>
+                    </tr>
+                    <tr class="tagRow " data-ishidden="False">
+                        <td colspan="12" class="bottomHack">
+                            <div class="actionIcons">
+
+                                                                    <span title="Abdelrahman M 6/11/2026 Check"><img src="/Images/transparent.gif" class="note noExpand" height="1" width="1" /></span>
+                                                                                                    <span class="resubmit" title="Resubmitted on 6/9/2026 9:00:48 AM"><img src='/Images/transparent.gif' class="sprite-resubmitted sampleSpriteImage" height='1' width='1' /></span>
+                                                                                                                                
+                                                                    <br /><span id="noteSpan"><b><i>Last Note: </i></b>Abdelrahman M 6/11/2026 Check</span>
+                                                            </div>
+
+                                <div class="EventDiv" style="display: none;">
+                                    <div>
+                                        <span class='RejectedNotice'>Rejected</span>  -  CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999P04UALL SMARTEDIT (P04UALL) PROCEDURE 97110 WITH A COMBINED DAILY FREQUENCY OF 4 HAS BEEN EXCEEDED BY 1 FOR DATE OF SERVICE 20260214. UNDER APPROPRIATE CIRCUMSTANCES, A DESIGNATED MODIFIER MAY BE REQUIRED TO IDENTIFY DISTINCT SERVICES. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS. 
+                                    </div>
+                                </div>
+                        </td>
+                    </tr>
+            </tbody>
+    </table>
+    <div id="PagerDiv">
+        <div id="pagingDiv" class="PageCountClass">
+            <div id="pageDivContainer">
+                <div id="bottomResultCountDiv">
+                            <span class="bold">Results 1 - 30 of <span id="resultCountTotal">134</span></span>
+                </div>
+                <div id="pagerDiv">
+                        <button class="PagerButton smallDefaultButton" data-pagetype="first" disabled><img src="/Images/transparent.gif" class="sprite-arrowleft-firstpage" height='1' width='1' /></button>
+                        <button class="PagerButton smallDefaultButton" id="innerPagerLeft" data-pagetype="previous" disabled><img src="/Images/transparent.gif" class="sprite-arrowleft-previous" height='1' width='1' /></button>
+                                            <b>Page</b> <input id="currentPage" type="text" value="1" data-pagetype="specific" maxlength="6" size="3" style="text-align:center"> <b>of</b> <span id="totalPageCount">5</span>
+                                            <button class="PagerButton smallDefaultButton" id="innerPagerRight" data-pagetype="next"><img src="/Images/transparent.gif" class="sprite-arrowright-next" height='1' width='1' style="cursor: pointer" /></button>
+                        <button class="PagerButton smallDefaultButton" data-pagetype="last"><img src="/Images/transparent.gif" class="sprite-arrowright-lastpage" height='1' width='1' style="cursor: pointer" /></button>
+                </div>
+                
+                
+            </div>
+        </div>
+    </div>
+    <!--Hidden hover over menu-->
+    <div class="gridActionMenu">
+        <div class="innerGridActionDiv">
+                <a href="#" class="gridActionOption" id="gridActionEdit">Edit</a>
+            <a href="#" class="gridActionOption" id="gridActionView">View</a>
+                <a href="#" class="gridActionOption" id="gridActionArchive">Archive</a>
+                            <a href="#" class="gridActionOption" id="gridActionHold">Hold</a>
+                            <a href="#" class="gridActionOption" id="gridActionCopy">Copy</a>
+                            <a href="#" class="gridActionOption" id="gridActionSecond">2nd</a>
+                            <a href="#" class="gridActionOption" id="gridActionNotes">Notes</a>
+            <a href="#" class="gridActionOption" id="gridActionHistory">History</a>
+
+
+
+        </div>
+    </div>
+    <div id="claimListingModal">
+    </div>
+    <div id="framedUrlModalWindow" class="modalDiv">
+        <div id="printOnFormContainer">
+            <span id="pageHeading" class="printOnFormHeading">Print Your Claim</span>
+            <div class="printOnFormActionsContainer">
+                <ul class="markAsPrintedStep1">
+                    <li>
+                        After printing, It's recommended you update the status of your claim(s) by marking it as printed.  This action will only impact those claims that use the Print on Form Payer ID (Z96202).
+                    </li>
+                    <li>
+                        <input type="checkbox" id="chkbxPrintDelayReason37a" class="" value="" />
+                        <label for="chkbxPrintDelayReason37a">Include Delay Reason Code</label>
+                        <span class="tooltip-popup icon-info-circle" data-pop data-popup-content-text="Check this box to include a claim's delay reason code during printing.<br><br>  Professional claims will populate box 24c.<br>  Institutional claims will populate box 37a." data-popup-position="right" data-popup-open-event="hover"></span>
+                    </li>
+                    <li>
+                        <input type="button" value="Mark Claim(s) as Printed" id="btnMarkAsPrinted" class="primaryButton">
+                    </li>
+                </ul>
+                <ul class="markAsPrintedStep2">
+                    <li>
+                        This will be updated to: "Your claim(s)'s status will be updated to 'Claim to be Printed and Mailed'. Would you like to continue?
+                    </li>
+                    <li>
+                        <input type="button" value="Continue" id="btnMarkAsPrintedContinue" class="mediumDefaultButton">
+                        <a href="#" class="lnkMarkAsPrintedCancel"><span>Cancel</span></a>
+                    </li>
+                </ul>
+                <ul class="markAsPrintedStep3">
+                    <li>
+                        <div class="page-notification success" style="display: block;">
+                            <img class="success-image" src="/Images/transparent.gif" height="1" width="1">
+                            <span class="notification-message">Claim(s) sucessfully queued to be marked as printed for those with payer ID Z96202</span>
+                        </div>
+                    </li>
+                </ul>
+                <ul class="markAsPrintedErr">
+                    <li>
+                        <div class="page-notification failure" style="display: block;">
+                            <span class="notification-message">One or more claims encountered an error while being queued to be marked as printed. Please try again. If problem persists please contact support.</span>
+                        </div>
+                    </li>
+                    <li>
+                        <input type="button" value="Retry" id="btnMarkAsPrintedRetry" class="mediumDefaultButton">
+                        <a href="#" class="lnkMarkAsPrintedCancel"><span>Cancel</span></a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    var statusUrl = '/ClaimsMonitoring/ClaimStatus/StatusResponseForInquiry';
+</script>

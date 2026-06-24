@@ -1,0 +1,12 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+output/*.csv
+output/*.json
+output/scrape_*.log
+output/screenshots/
+output/pdfs/
+storage_state.json
+.playwright/

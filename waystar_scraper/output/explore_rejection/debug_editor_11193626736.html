@@ -1,0 +1,2556 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head1"><meta http-equiv="X-UA-Compatible" content="IE=edge" /><script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script><script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js"></script><meta http-equiv="Page-Enter" content="RevealTrans(Duration=0,Transition=0)" /><title>
+	Waystar Professional Claims Edit Claim #11193626736
+</title><link href="../../ClaimEditor.css" rel="stylesheet" type="text/css" />
+    <script src="../../../Scripts/json2.min.js" type="text/javascript" async="async"></script>
+    <script src="../../Common.js" type="text/javascript"> </script>
+    <script src="../../Validations.js" type="text/javascript"> </script>
+    <script src="../../../ClaimListing.js" type="text/javascript"></script>
+    <script src="../../../Scripts/ClaimLocker.js" type="text/javascript"> </script>
+    <style type="text/css">
+        .Menu1_3:hover { color: White; }
+
+        .Menu2_3:hover { color: White; }
+    </style>
+    
+    <script type="text/javascript">
+        var claimEdited = false;
+        var fromError = false;
+
+        function SetErrorFlag() {
+            fromError = true;
+        }
+
+        window.onunload = function () {
+            window.opener.editWindowClosed(getParameterByName('editclaimid'), claimEdited, fromError);
+        }
+
+        function ReplaceGroupNameChars() {
+            var tctrl = document.getElementById('svw_FV2_groupname');
+            var ctrlname = 'svw_FV2_groupname';
+            var value;
+            if (tctrl == 'undefined' || tctrl == null) {
+                tctrl = document.getElementById('ins_FV3_groupname');
+                ctrlname = 'ins_FV3_groupname';
+            }
+            if (tctrl == 'undefined' || tctrl == null) {
+                return;
+            }
+            else {
+                value = tctrl.value
+                value = value.replace('<', "&lt;");
+                value = value.replace('>', "&gt;");
+                document.getElementById(ctrlname).value = value;
+            }
+        }
+
+        function SendGoogleAnalyticsEvent() {
+            var origin = $('#OriginField').val();
+            var workgroup = $('#WorkgroupName').val();
+            var label;
+
+            if (origin == "MyWorkExtended") {
+                label = "ParentCustId: " + $('#ParentCustId').val() + ", Workgroup Name: " + workgroup;
+                ga('send', 'event', 'ClaimResubmission', 'MyWorkExtended', label, { 'nonInteraction': 1 });
+            } else if (origin == "ClaimListing_New") {
+                label = "ParentCustId: " + $('#ParentCustId').val();
+                ga('send', 'event', 'ClaimResubmission', 'ClaimListing_New', label, { 'nonInteraction': 1 });
+            } else if (origin == "MyWorkGroupedByRejection") {
+                label = "ParentCustId: " + $('#ParentCustId').val();
+                ga('send', 'event', 'ClaimResubmission', 'MyWorkGroupedByRejection', label, { 'nonInteraction': 1 });
+            } else if (origin == "ClaimSearch") {
+                label = "ParentCustId: " + $('#ParentCustId').val();
+                ga('send', 'event', 'ClaimResubmission', 'ClaimSearch', label, { 'nonInteraction': 1 });
+            }
+        }
+    </script>       
+<link id="ClaimEditorRejectionMessageCSS" href="../../ClaimEditorRejectionMessageGrid.css" rel="stylesheet" type="text/css" /><link href="/WebResource.axd?d=IPeluPODhuxgcsCane2vmErJCvwSwDKTof7cagTcyc4GH0BDQt3uEyZrwpyD6wZWzfXPrQg3zwhLpFkGzkIePcR4ZzZTDrgSTzDZrrQjPqxvTsU11rJOfOnI1ZQRLi52WyUQblbNSTSZDqqd1NnzlNXHhf7DOZ8ZO1CHCGW8-Fkh2A8a1B4jHLiwTNmZgt1y0&amp;t=639167285051623953" type="text/css" rel="stylesheet" /><style type="text/css">
+	.Menu1_0 { background-color:white;visibility:hidden;display:none;position:absolute;left:0px;top:0px; }
+	.Menu1_1 { color:#005588;font-family:Verdana;font-size:Larger;text-decoration:none; }
+	.Menu1_2 { color:#005588;background-color:#E9F7FF;font-family:Verdana;font-size:Larger;width:100%; }
+	.Menu1_3 {  }
+	.Menu1_4 { padding:5px 10px 5px 10px; }
+	.Menu1_5 { font-weight:bold; }
+	.Menu1_6 { border-color:#005588;border-width:2px;border-style:Solid; }
+	.Menu1_7 { color:White; }
+	.Menu1_8 { color:White;background-color:#284E98; }
+
+</style></head>
+<body id="PageBody">
+    <form name="form1" method="post" action="./Main.aspx?sec=0&amp;draft=N&amp;editclaimid=11193626736&amp;origin=ClaimListingNew&amp;workgroupName=undefined" onsubmit="javascript:return WebForm_OnSubmit();" onkeypress="javascript:return WebForm_FireDefaultButton(event, 'hiddenDefaultButton')" id="form1">
+<div>
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__LASTFOCUS" id="__LASTFOCUS" value="" />
+<input type="hidden" name="__VIEWSTATEFIELDCOUNT" id="__VIEWSTATEFIELDCOUNT" value="18" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="YP7QSMjPoKB4P5PllXn4zmhtRLvt5nuHj542I7nK2vK8Kpc8clalqrB+SppP2ti7Y5JlmmSziDAN5KXK4Q0w72Kx0p+/l90UNQWyWdxRa3EKpGISgQq22zGiiwYrVy78crZMMtz0kFsbnVxVDx45+3PIPV/Pt0QoNIoAVHqILCrgWXzMggrtHzvXmoPVcRoqmhSR+SSXIWx2bD5iBWH8hvhjWENPoCmOvhkW4MG5mCsqj2xUdumfpCmbsU/Ug2EUAxl+pu/zynFyJOAM2pYKT275AtICqh9+q/PcHz8IqqRJMfOi19a4kr3Qy37brPtXAScK2Rrqjj7iRZKI/oHXme1kLYDJFdJmeIyeUMNj7F9VcF0CdXGbE8DHPUfC0jHGlyYYhA1smjCZK+ymHyFybZ/YiLaUHQpGYu9sPZRrqvzSJKcyB8bhktI0y8zAyvXnM1YW/auZR8buCRQ4mwBs9hWXVbt1wWskNPXrq8jQa4/aruQISFuA7W5tflEbqEE6xfXjQtBCiElyUA/r9bwZv09SsuE/ZjB/3ezz+dcehAjPXrwiipRRCWL/4SDLkMlXiNv+D8PbQVjBpW3NrvMcd5okwHDBUIaDO4/l7Rt+9VJIFQk+MBaMTJL+mDReolB3l3GIKswGmHzkCnfSjImPEP2mxhAALMShQ8N76JgmOGJBtfL/kqIFoAh6rUJbyKgrXQw2irV88WHIU1wPAwznrTPeGjQNhDMp22HU73RIaW60EiMnx5RvC5YnvJI5M4goQTTzwCRtwa7FqBctZWTUel1kRKfcFvxc4wLbSRvbnGCGTIKtIefomEcGtd13a9K78JrbkSnsTzlM/Mwq2NLOEP6kIIaa98F3ZjmA6VUOmQ0DazJwgX23V8JqeV4VA/Zig6fKw0RfFSRjaa5RQafo8q3YqFCqrO8j2rrC/fXnkELG3ZVo5dv9J8wsDQJKWynttJ7/F1jFaolpn9wZ2xNbVIvbc0LWfKSLTzNhqGHsRZlMHx86kfyY8hqTr7eo2LIH" />
+<input type="hidden" name="__VIEWSTATE1" id="__VIEWSTATE1" value="t6QqXkJjf+druA+CarwukT0+4nhc0SCHGI/Bxv5EbWnyalXAOKGnD6iBK10LhTgg8WZd5VDxZjS9SC11k+4JSlDujPsQzq7MLJkbF9ZRtG7G2ZkPsGSEL3UYbfzJBSC8mCsrIMVS38yNBetckvOog/Ibn97/zBP5waoppXOuyLX+EeSpe5LuEhGl3CjsFhFzDFcVgNrbF1Q5+ZQLoYQPWnr3m7kvP2v1V8FvW4wGX6muv2ZaTYbf8avG0KqNOw/y9bDOc09EB4gR3Ktd9bFip5Y2zbxSt75MQydFDQK7sELElV3zaQUsuEr5ndljzaDL0mbFnigPkrdnl9Ew0tTdyWYFlv4G+D10tl0EEnqZ/v/6qdXCSYGgW8DGTZioLzcOY6FRcAUnKZe8cFUxNBYIk3jsz2hIhicENEIEMsdlDCRnqJurbo2pEsLzzL99iVi9OV3BZ7SJPa/O38+49p0StciUM5FlOOVzJ+61Li12Gp9ouuJdOpYEBCJg754qiwm6JeK6qX2XoZu395T77uHC+l57HZicoELURHYZVtK2YuM9rnJvbUwqp+mrQeJC6k2LKTSC8S9EJ3RsXOZr5uiUUm2WHf3pkBq4uFaoocCWpDGE+AzhdoHCgwa/iLvUYgKKSUsfsVLNHlrBs2bvorpSpVRtuOfLJJ9cF0x9zWjIe4SAnfEbb6Y2hKW9wOIwRYgOrcTGtcczn5Oqf7qsTrF5LBl4lUeqWKcP7Qj+mDo6GS9KDAx47kMKLlROxI8dZ9wkujRb+cI5h4OV/b6os4s/GvnWqn7FiBHYzU/lbvN1CeR6l2L/vGuiVC21AUsUNjMJqI1pAb8BltkmIgNqL3ww1GPxtQRKTce9Ts/gyqTonMPZmqlPDpD2oeAWmOW/gsxJRKkaS3wim/mV/pibt9wHhMQB65NzOY7EMz7K1H0fX1QcqSh16qA+pD+7bR0uKV+leUWsgFawm/CRXio48KZfBPQ0ZEoUt0U8AX5RXQTNTFvsB/2bCTLcyMA5pxZP6oUR" />
+<input type="hidden" name="__VIEWSTATE2" id="__VIEWSTATE2" value="EpwNzoCsk3KRnGZSQzY5JhtBkxYv/G+MJuNZGAtz2bViEoTw6NP4wjkbY+S9Vlr/ys1vJm6XparLMlvB/vEqqgUBEdV2cSxVZAnHqregDHbt1f4OvxYCBmzvfGPscuDjloU9gfK35jxZUDrcEoX0dY2Z7bDymDPoHL6N791R1qtjdT794OWS5/TH4AF+Xb1FA5mbZ+9hA1NhFZGivnX1O9MY5oiiyYXSB1VpRABj3+5antRmKlr3SOuAT6BQrBvrHBol54c5kz7MvKLYO2ObqF/6ZQUbJAzctQp/TsekE1ZuZYhpPHwLvnxi2FdbR7lGAZCuwvf02TX+yvembU0oK1m6nNOtzjh1OXHPA23d36zO37ClYCdW9BEOVcC2Jo5J/oL/xDdV5LWVkclx5hBi0jDhQ7g98zhsptr2bwmhmiJ0xm+zYBrrRIjx7tls3y6s0UpyVdJNzGf002anYA4g3DETb0hO4C+0pZAl1o3muAF4oRKfVG6cT5dSO5vf8LXzjV72dqe1HvtP5HdwZhbURoECjCrP2O9uP7+8WN6GWKIsQQA/g1L6titfNF9ri7gqFpW0oDxlNNP/CtwdvxC6xJMhGStA2H0uJ1jmUOLvs8xZIJMr9Q7dnxqhY/+OIer2JuCrAwrNvkNHwSgTq7qve+t+S6l0iBKd2pEF5X0AcGnGdqS3aS6kyvo8yo2DpcgS4Me45Krb11gBg4IANPLrsfuzZbTYHvBPOxt/3PK3FFCHVyl04akTAP4i9zQRb6yUG1I+YFtXg2GwZhTqfMtBJ0/lA4RFUo1pjHw4Q07nDSnQqlvKqQOr+jlIigIGlag6QQWIE720lvqbbllJMODgEdY8n1QpXxcRRIQM7E4Y896F4hrWtCCFWq6iuh/hdXALghgz5TdxGL0JEgfR5aN52WrnjJVvGbrq/OmTvH9FSLxNS8t/nYd9iQrGOCl4RzZap2XhI5+dNH5meoZq2RgYUG2OZFmF3vUOB97Kg/BN9c+Tru7Be1ScSs57FoSx7VVM" />
+<input type="hidden" name="__VIEWSTATE3" id="__VIEWSTATE3" value="iGzGHd1gZ00d7MtO/vVyij2G9/yyd8kFwpWudcZB6/RtIomoZO3p+02eUl8wiA7fKTVpbGwYUmf986CAhhi40iozEn14XNe0XFT/Co6V+VmPRSElzFPSA2cNQ7Szs4euPLM6U9Yy31zACcDaxQvRL9xTv5FeQChuRGZWbDn2ssQOX19JifOCzmbWUNij6hCLgJiBhwMD90M1THk6JRCDZX+albGgql6p2/fNUkCN7BYQkhw7eycCea9vLf+DM2Z8Ejm0WLBEDWCsQeBD/iv3gDq77bBCUzn+L2kvo4IdnXniaHDt53PACjGUT07ojvhmmBbHM21IZbS2OCjlUYEBHOiFpnWSHzL4qIQ8xASZ0WIsYeIj1wZERseckl1tlTvnUquDiZss2XrZQjRfiM9sYTzaAeiVNI/1TAw45V1uuMIdOJcbHFA5u6Ck/OwjIy3OMbw38cbB8Bj8jliQ13FHDssgci9RF4aFWOku+qW6g006PUTZqWt2ffMv+PxyWpQAJTi6Q5t+Z6NyIlLnCPLEEna893NhF3aioWHeLJb24z8ewESCWkOlFIaPdKCW1PeZGLumF4A3LoANcKCB1yRZic30vYrxZON9cfcUUnjI7+S0nir3dYRKDCJUuEYZhT745Au8vdfVzcC8pBK2P8YlcrqLrPdhdoUHBnnJPmLgPsdtTOWpIx/KeBy8uls4MdB0rku/wtiGfDFpuMSLvoDDiOs3d0IEhMy4M3gxcRQaRwggoBMs86AKQOSHqVNPVeponzcjjxuDnhv3xs7gP2eZn7IvB7BZAptUMloCv0lRRp4qjpRz9TnMuGpIDafbZ/cX+nmA+4ZWbNKw0vlJhFEtxI3OkOu+koTtYMO2YEaxwiCdgfLdPlQhvoBQTDRgBxWrQytAqcShny32FwIK4Av+SGhIYMYwJdPz/e7Q/SVHeF6Y5nZLMOkUxoqZw5lTW72A5FQFOFJFrnq9wbhJAeK9qP/y2hfTWBOmZ9Af2QS9fA82ZBC+4VscJ9uf91If7NSf" />
+<input type="hidden" name="__VIEWSTATE4" id="__VIEWSTATE4" value="GVdg0Hupz/1HcVhNszRSPRxKBlouK5JH8EAq4HcKA3lXoYImmMrg3kCcqa7vb2/+10wr5FdBulYatLK/YvKPvJCz66X0KloqQk2QMRPJtcPw4EUcbVAj+zjixgdt3w06c0Pha24IXIeNo1awgBC+pWLOvnb+Pa12IYNcKQzGdN/LX6ODtnCi7xdm7pk6/BwZWYU9oMx+Hcn2o36VPzDGSws1bzCuQF3Ao9+kIKxCaTDcvqBQUNLIZicVu6X881uKcSs4fxJJbjB4jdtw4wqX95gci6ikhPoCwylZaZ7XIyCOi9ERrLatc3QLSNttRQSBJpDYDloASFuSam+qlt3N9Tb0x5fv0AYJjlT6xJREqsyyg1tl+A6ZS9BxWkSwoK/VwuzxpuDy0PBmOBv16xaRWckf1ABnBFnNtwc9fe4u9xmQS5JzQzXogRn+GqpOyyiZLzFHSm/t4a+oTcoArs6hIJ8CGe2YIRNMcfv/wtaFAX+MfcZbcBii1+W1TigP3CNZn0FgcdO55asrueZgcGfaIXFvXFfwevTuZA3ZXAnNyblJJqdDcHw8R7//H4Zxi7Mv19674T0NzG9WsW3wL533cKjn2XQ9gOyf/3Zq4FL2GoQe8Du+RrPcv4ZeZlkP/RixVO4FCn/6EjiRIIHpw4+JhH6jycvzXLqPJVNP19jSzsc+Tq9z6klDZzMCcqIHuzu5mGne67ucQHq4TwGP9VUK8MkSIjJ5MWT+AZxBLOUlW7boBahrnxerhKwwSs4WkQN7FnMB8Oca+6sfHvyYquKyQ10CfC7J8haT10pCveME3ldQS5gLXhZb610cYyID/ucYp7FzcTGWzw/NPnY0dOontcVkvBSoCVwTn869g3N6ubHGn19EOq3PGGg9wJKyK/fD+SnKX4bQHCL7RIIIFdGYA/YUcMtC69XS2LTPe45Td8t3cx2yqPPAQmrPK5rlAnGrDW8sKz/J4I63ycOcaas7I01YUwQ2sZ/3nVCPrAbDrZJXNJ95A6ujj7OCTNkvscsi" />
+<input type="hidden" name="__VIEWSTATE5" id="__VIEWSTATE5" value="SDWrl1CUHxSLAuqlIRhvC/1mDiQI6zJLUZvMjRaIIHMef5SF1guEXv9tlXvgQzylJzbzjpB0+TdUxyi62AgUaXZNZLcXw6CDV/G+IDSCSK+0XNrTajbrkZjtiz/BLSc3JYNEyo5pOnKRZhX6N8j0XlqGQGKL4l2O7qdQu0YZGIPElj2+sQvFfdMA7mCVyrchBNZ7VYk+shIOZU6MGK31wHy/N7ArkEKLjj8my6uCRdLw+11kx1CSBFRFzptyWMKEW+S5culowt5rY5VtQKq7EfuvJXArg/WbAutn2q6nZybuzxFys9GQvR1PFgmI0IuNT3Uek9FRd6+8lnxvbSEWwfCHZqpm5gCc0Y5+oZGC2sd3IrR94Yq1jcwWfD5GqH/NwDAxMMUZO8P0WLbgMMp1sjxB6z+VwR6Yus1dEGmsiFjRqGJlDKwZXRH2uy1X8ZpKWnO7oEQMktAEZJYuISR6g3I746/M20epygl3k7DoGYI501fugfm+R7xIIdpHcuQJX7dnEvKIlOmUH/G+5YaPyBIeqhP5PkAbkyiJEo6Z6Q/VTS9MZNMU0xC4mxeODBkuK9u75ImjtCFyWHH+z02WBTK8DZ3Kpo64kqTQp0gydJkof7u14f1Eja900uHEOoRDeZG516c37W70ReojUEJmXokHBtHCiB0uCxGQAYg5v2dFlW8eY125YLArp9ieNPUMa7KzuJxNat5LUaZd1xwp3trvVrDcWo3Bk9mD57hSXfJyklYtLQoY+L1tIk8Xkx6xTsgkgyMdGXMxdtM4JfXZiVr0u6AXjOPXF32UjGQcEdpzaoZSivF6YprwgRrUsl2NGfBpIBiGPThJja69pKbIV4bIL4YpMC4Z4J7Ldic3pdC323l+Jh+ESVYjduJdC1oOjsCOHTFbKKgkCPzSV3WxTxtdxSsNhWWD00mGLnWLYszo3A+2jHb20Y3XeSOQiLFOawejWCOiymsahaLu/rzLnWjR/ULLDbdNVFhZ7XBs8j2ZNWVku2SqlSLYgSr9R3nC" />
+<input type="hidden" name="__VIEWSTATE6" id="__VIEWSTATE6" value="zus+Ut27xxMswCThL/IVnjz8J7OVedUGq77uQIwkGO74vgovyx24uEL/vas0MKk+/ZXmSF2gKTJxvduKm4SLhDsegtoZYnPj+jrOTBoWrqm4Q5KvYdfHenTzNyXLa8TBSCJgGByT/ikq1wBcVQCg3IBR3pruAmv5RO1stpKlIh+Hli0NPBpnTlizyyH7xX8LE8y50klgrPj7zvXOTqX0Uyue/xz+jV1Osl29yjb1V5ARpHUP+7bJ6y9cT95O3PxGrE8A0aDye2cPHXPSA0joD8fyTg/JQ/Xb/N2lUc/L70k35hPFRnTfDVtVofiFSqsV40M34f/3RzuuNivKgb5lCPrZ28GucrUw8hLgSzxK/l8DhO7y77JBN7+TbT1pXasS4bCBlvmNO4eL6dlX36Rv4HG0AE+aM3qL+dr624Hlw+lVdYRwTtoZ548nNZ1UGwg1xL54XBCr5/K0z7MCISs3/wdyTX/d+owxkVS6gwlTUb3vReC4FLyo5tUH47MCv3WFUshbnBtspEUMYyYJZA4BiSSOt/FYBIoCQXokP08ANHQJdIhIbOHeYQV0Miqitrw9fMeHopgZFdMk8WT4RxKKUxeBUWua1u6XLqAmwpWNqlTP+HtlC32jrgyHyCPMtkY3L6iWwZGXBnysLvwYN04NYfw1WN/DFBuSJKTUoZo0qyjy5xQE+QVJXg5FAB/jzSeGM2EyT8/825wKAqx/pGZ8LgiY1Zji0X+nBXTTsCk1hnZ7cwUQ51YaV353FPYtYsEDDFHPUvfqtE3oFfiCVbBsNAtB0bwdkSBelyHjC7Km8gKtWy0xsGA/3r2mXt3yzQTg1EoizWRI3vWCx3oXAb9s3dTSWI7e/fBxRih969A4QUnWmhUbsHZMfxHufRG0y56opI4A2TZcj/51t7NjbBQhWefQZ7BUG0K5ElVennX4FicfxlfrURmguujEcZ4eA9FPPZHsWhD1okb2+U2UKO7kTlKLZXtfCSK2inL4rrQbAjr0S+I//jUYseZcS8Q8W5F0" />
+<input type="hidden" name="__VIEWSTATE7" id="__VIEWSTATE7" value="PuPIdfgfrB3jdOnruRKG+wvePZdX12smGfxADGcBsGaZqXgEgN2ULFdpHTuZq+9HdtV1EwqG8YRES/TJUOxIjwApVCwmGS2vKbrU7zb4I/z0Ij7/I7+Q7qphAyOgLCZauNHrP9AyuaPozkp2BN2oz5S9j9I7byYZO85PMwMo4efLdVwJP7E2bxyaKcJ1NzQIgP1t2BAPLsabrXq/1gl7wFIezNkZbq+OA+o+R2YoZ31+vdMQNDAQIeJU7QtUJvx+s2O/B9Lsn3aFKAHiPJykHOd6oPTqv71LudP2WOPNmuQrZ8K8ORhP0aIoXDgnK5jQLU99Xm9fTQu3v68QydaszI4Ock2Pzfm9P8bj5HuLyUbMdDvNJ5RIl0k3JWW+A29YgsbUSVDvHsVTgVUD6IHSRed8lV2RV8Dh3DzTr6xcMNYfIK3oQeoyMPtyJilRIxw4wf9hwbLZnnpzioYoWv5LqsKQCaHUzvgE3q9FldrOrOrLLsQtPEryhif2TEAT32LAd2OlMCtVhBNppCk3FNRKFWt0QelqT1aUrfgD1p4EG7CAPelqBJMwF2a0KVojI+57lGoZfgJb5yM1W32aTUoXwbsJJ45kTixsAHS7QthE2EZN3FGvVdz32i6UpcqYCWiMMY5kYopT/o4rIIJBdDFWQkx9+2gXuG5j/nCDqszAdwrHXUXkkaRarnlsxoL27aZZRBHrHT5iPbLdYLBtTfctYhl000/RjpoHBvzxntXbIVzmUEXqwXqPKhae4HMuoPn35hYIrepyDagL0RuvOl0kBgZRkRSUM5CXS/uA9zk1l66Q1feW366gpPXB2G8HryMSJo+SHmHyTVjkvYlhKAdXb3SsnGvrFPziHV7bBvm8NpJoUMrF1xKjTQ+IRsbHrFp7ZeuzHrL4OEppU1JEvpF/XQlAIftGA4+kRsGO8ASfaqqjmMJLUiZ/v0DblfI9l8xYtY959/xm94c/vkV+Tqy7Y5cO8Gm6qE1s+ewfuDioN6qY795S5wr3GC/xlhPBbYb+" />
+<input type="hidden" name="__VIEWSTATE8" id="__VIEWSTATE8" value="6L0bgavvob9lFwr/oMMlSXoUkArTUi51bT6REz4I6DXSz1hBsuNBh9LT+hgPgf+qxlczzYW4qk1FQjzBAbk+gmGBbGAGUjKnRKbJVtGVbMOKm/MRgAvDve01XWsmAcBMnZy2Jm7GEi4aWvZRHJosVRc/sKQW0/AW8VXBF9qpAUORq6TH6wZ91IKUessnQPnzlpkZK/LIoShzVLOIiWGeCntzJBol8J04PenQYYk9nTpBzXLMMVuCtUhlR3T0K8Btzach2lNzAyXItwwipv1eLGsxMlL9dZq6hyRPkLbV2D1DlrVW6AQTugng/TuT3W6SOwsQyqlslRZ1mkX58Cx0sjw3hkuWEvXncZ4LHAPjfyIID/iD2LQS526CQmqZQpsg8dfDah4XArsu83vLF1vFOh3RvApCl2hTXkVIGalAdihBfPZeGGjkIT+7qLuGxUXqMzIglbKyG7TsdatLjh2X88xZz0Ha1BJmz45KuqmRqmmp38bshCIhXWEpsbD+Jr6i+hCWGFPJgnek9mElqIosBwm37ospXUy6TclvLAKXWX/nPbf1josYZdN1ObOuJDQL7Wuzn5GSHEchLsu4zStKFk+/uWx1LKdSLDDcZq1jUlfg7HAcKKEF0JBpVPCGPa9qbos3b0vANAZIl9JnZBBgJbjZgtYafl8UCUvNaMH6RRFUBL3ODmHqI8w0NARoWiNyznsGfb7JRB4hIu/8PEHQFBtmx9SXM9eEw//5uoNltzAyZh0qOMpvOOd/BaqgYWw2m0C4sNDkerNwT+J/Pg7xKXgPbDi+p5hPYIumNQJ+lBVd6NqDE2U5/jQUlp7KkD855yLD6wzHnKwNyFVV+8caq3dMPlKd2EO8vRIm3ACdmeH53ZN02HEax5QNwoMjYP+Qq9uDZP+f0W8p6qSkVmTVetBzkpBwFHiADkFTuSuVXsfRlVzxM/lv0JehrPFmeJATJy5pQq33DPJk05AXljDdJopi+L87xXswxdxZ53Mg6XOFDZWN1LklN6JxnSTLMqEM" />
+<input type="hidden" name="__VIEWSTATE9" id="__VIEWSTATE9" value="Lpdlc/Rf+YC+1lKJs+VGO+fsMxMetkunuaP+gLSgLUIksYjARL4z0IVmBOgtgGwx6wGd+0jBGRIEXvFW1gPewZE6Rl3GW9LC+b+yRsemzqRTBUAiFUsFSKTJK/lwxfKSSqoD9H6GhjHdKqnTom9KKCM0EIW01B85fK+tNQ6WNcJrSOmOrw/dsB8bTcNchfSi7fCKHsgXZclbmAAGVL5386lXJEnDo4oOkBtioQK/73qg3WxtQqgq4FkEbZf4e63HNkGZz2i0/9Uw3PkNUn/ektGz/SRwMMsJR5uy9wk0kJ96VvfvMHJfYOjhcATeZVFH6BVdymYpph4fTd+QrP+vM8Q5aN420fe4lSfCwWEsOJE7zeNq0AYwbmNNryf5rRByTVItdBwx5Y8KkLcaZsl/cSpQYcKz92AcoLrQp8e3x86dfKitYwGeeQiiOl8HlGqzvUngcYbMx6eSF1hjdSvUY3JNRgKIsdf1a2p+nh7pwE2w/x2S0UODyIOn1RTY6HDiSZuYBcnwxEuUtp+DkHQmvgpdXVXA9REoH6I1G7uQOYH3t5m5U9agIDxp8YnsT+xMCAg9dUA5JXl9f0RWew0WKVRX8THjqIDMNfuMygjTXSpdjtlRAxY/sJ8UuGxnBcTwcxsU3g2IEPBqc3HZvLY9uyADnQm9D5HPaMIJ2egggwMuPBc6EQMdDOEY4+p5ZVZUFxbhs5uNE9GvyUs/wYBjYX58RR7Qs06hvCKatIPktddPcw8xCZWcgDVpSLLO9EMT6lLCYLIJcovXbTROcNkis8VQ8pn1N6JXxWd15pRiCtHA6Zgz9YIgOCJgoBi9zIVQwAHwHqXHeqxULYydnlQmFZPb3+7oiBQguzrRyhGVxS5LIZpWtzhYpdEsGLIzeW/E2kJ0A1crug9MLkaK5eDCUH9u2HSqAuZ3akXAOt68YPMMp7ZEHrGpCHLj2OIZjN8UJJMiWKOApgwklnRTFrPCPGJPKXiQD/y8wylcYOgYjPS8WN7D7Jmkk27jIv6909gc" />
+<input type="hidden" name="__VIEWSTATE10" id="__VIEWSTATE10" value="JnBViTjUWqbn7O3uxijEfrCcKbTii3bdxqk+VNaQS2HLVSomJjcWq1Yf+VAQ4qJfsk1iW7JqIxmDrmv/rdIJNBet6oz/bDcmy4v0z33C9me0KSk2rxcB4KmCBjLPeH1bCQRLe0Cgcxubut68yzQAMQR4jb0DJtZNWWjgGiNjqEaB12P87AxYlrPK6zh95JtRJtRBVSTE+4H0AiKq8A/jsCiRtJxDsrqEJoZ5Rt9XLRK37itcfvpdghLc07wlm1civWkEg3EMVZ5WPZG5qKkgNe+2Pkvz04hZEpr7Ub9JBEZ3u8hc+Fxrh8kiwAD3RAnZft6VSlyMcAxOxEUfywQBBqFndKGUtnC0139ajFRXPPk8GhSpKnZkBWkhnQ49Q1epHhnqCt3Sw1KuDI7dEmYKthCe7gyMpQ1HfplzrqqdW6TXBVExH1qLbLKoL5e1HNjqsRfjytx5cnpUcOa48Wv+lBiGpLXpFqcm4r+yDXxLMF6E6B3gDhh6e9esgqDnmSgnTJ8cBVOpNSITX/Gb+B7blCPY/NOvmXW+P6pEkMHpxLRvz73oB1qhlDoEA14jqIsZRmP4KwlYxuL/X8tCSHFdfc+2M27VynHmW6LI6NSgnm+xykdjLOCXfP62uE0h4cICdIvifp+/7/doVi3N0vYpR12E6pd00qS0vXuibfAegIbtLQdEsfxbCwigbjHRilmsVK8larIQVWlYIpvAm0cPwjtDZBotOuz/A3B76yHJgud27kkNQShJYK6ThfMGRquyLbtxHsbNjEYzGDZaa6Ss8rWoGh2lKc/vq96vekujGMtKhc7LVY5Z1/AEjKMJG30x6BmONR1CS1hbSBFsOk1mPX7Sf1B3mJ5PRKJK1GRtLWn5Qp9co5yczT33O+51Dl+TUqay4pagJf5lW+LLaEA0EvXnUI+HuGAvTFZp6q2qjPqdSwcd9/017/A3rwjS9RMYZCC099Moitrj1767cCEXDuSHapuUYWwut4BwpNqCoJ6fpwSuLx9RTKu1KxzZ5l1E" />
+<input type="hidden" name="__VIEWSTATE11" id="__VIEWSTATE11" value="0KNnblwkmYR1Z/VDSJFi2cxGhxELfexdxWpezmdEHgUnDHZtoESlg4/BDLKxSNKcgv8YiFNMMmveH4VYe2gpwY3B/tHN0EtWHm2NfF/qc4yHv4FoRKAbOPUHrgm9PsWFjgzYvy8fHedABbcp2Zj6cghCq03aJjj3jFQy1ZQZJ1njb5VUbmFN7QWow//Ol3iv+cvQNkBGYOyfc95XeZ6o5x98vkg8n9A1x9vV1B3tRS8LrgjUpjzXhczd15QE8a72TU5MiULNI9BKfpdClZUsjzMzP+AL34JUFNYfTmjHbj1xPwJXP3QyJLgj9VA5oD3HQhDLZCRNBQX7lZ9SRxeJJBLMLok9bOqVB9eVsAe3QsCk7bdx7CTGQvCrV34PcOYd3HfxgA/poIy2VDW2mXBeCDYl3ILznfM/bh/1UXT4lplAfHxU04UFJYFwN+8qJd3Mivtr3ZXnHZDGPNdPRlztjgbQAL2rW94IBSi4Fs4bftZJV4LN7YLj/N6ivuqaWuNtNQ35V0arsr1dalAqiBlNIf/OKmB1IQtTbv4W5rT+fE+WkIBm4SbnwwWMZXXsiGM4EO1AfuhHhIdnoYY2+A6Vbp54OLAegN4dXq+5VoncJnjkudd9K2a0ttFOmeHtS0UgqdMaxxThp6mvy1NfbTW1z01RIzLZRdZ3ppxhO6Bdqy56AqLbhXwpAJazwQmNRBLLWJsMDiIP4HBosC02NWo4Mim6LzUvTjW7sC/ff2iMisjYCzDYdC8L5X62gWBcdFtopdj7pUMBEy5CsDbDtT+4qhzjrh2drWeamM7p7P4SR4IXYq8clO4epm56cS3k0oOE+Yey7Xka54zFsgNhs9FtngqE6c+NNhw4px+ujnVZPhRhchXMcqeiDQQkaiDc4DQYiFsoA4ZORJhLmfhQZ9jLC96sOMB33QKuSu5hvCCaz6YbutPRx5cjmZuErvjDYjhrPkItZWWV471Lnixu+s1P+i4++/1CxY/i6lvklrqS3wVmrMwtoEk0dg/T8xUqCmoC" />
+<input type="hidden" name="__VIEWSTATE12" id="__VIEWSTATE12" value="Z0041qRsrjO4lwyPL2eaf+rH/M2TdN7ATJP4dz6nrNrNC4RQPKfez9h6hbhSC24nrsplBSFNpMsB7U+T6BWni8WDOD3lh/0ZZCWgTrqREq02yaMPCul3YoJ/LLuvZb3OI/bdtfMD1VwRT3Ke6ggzKnigR/SRRQEapN/f4qCRK0bqS26Vx/bSxtO0/1k5IVe3CDhu8rOQvzr1hhBQleKlgLsDN8fJokB4oFyI7RfFQur6zKy66Y0DWYCk5lRI5TU6gl5McFOeLoO0cu/SalS3lnIlzuqd6EniZvCfmmXoXFq2b3zmgABVmgU2iS88s+U2nfK2sEqwoeCESIQGJfoJ5jMaTadPEQSzuq2ZTX0RqhHl1SIbaxTL0pYIIVi88eMYaw3jVxZAyd9BcMgFR+t5zfV+yT6yyfYJzUyNQEP5i4SMWVVuB1wnUuuXD7XJM9qzI4sqOovy352mpY5am6wL66ze56tJVgjswYgVbNIxpvwdQpTHvDxMxxxEWQcOT2wtXCpMpvGL0LMBPQ983Oo8IIpWW9wxx+X8xbYxXmDj/AFrF0p0lNL+mHwRpuoH3FI8TIfgMCXZsBipOFh7rCoTyq4b/tVrAXTOfO1L29NdnxMLjDWS2lIVpN9rOf6PNyWmTsXvKMMB1VK8qIusa7C8bPrbZ/SXv87qQ2JOzt0WzQMFu8hXXXEQvjw4HvoE0OITV9bZ47BfumCjn2Opwt9+8CMhAv0IS+1kfo792Ybtoi4mR6CsH+YyTPa50imUiQcpW4R47ln69u/4EViISx7WWfRgw6liZrWMudRRyOrSer/zkVgZB3v5g8xD6yW85riXe8KaxlpetE5HFjZ3fti8ar+NkLSa+4yEExQT2LvsoFVZsG9P0EiV8x7AaX1KfO7zvO0hGZ4agUtyZvQ4ITPZh89xtMYbCkV8Hgp6ZSdcqMFUBeeiMY/NvhtsxVgSepMvz2QRQGYllAdwd7C3FWUU5V7FxqjmPU0r8H/dXS65oCHznBv2Mq0+ZHKC8YgZEhP5" />
+<input type="hidden" name="__VIEWSTATE13" id="__VIEWSTATE13" value="oelJJUZKHrHoXxR7vbyK2q1STab2eNe9z0FKXNQLVkfVkax/k6LdoAf1UhwMWf2P5p1g16+0ylrUrvhBOd38G+9VdXMIwOJeU0bIEKOZpd6TZD78zfRZRrqQtriowAy72rwULpRwW2OjAQSIaUVlJdnnlD1W/duUiw7yl2lWhoy26N2VpXzcEWlGim49gt4zjJBalwx44puUJzr9AgoYSBpgcE2L5CT+D/FK4D+ZXKHDexFLfpUaSPstyICih3HKU301wqAY9RBEVqZk+V8aIfPOVhysC6RZEs+99yj9fammUpv8c2A1hZuV7ilS+L6yG4TlLki0ivX4H0DwqhYbKM/wJl4m0b8E0uwVci+9VWO7G73YnKbM96BCHhC9FviAb6M+hNa5T0DJPHcgRG3tpAC4NmJyRnTfjKb9AtGpj+adFwEZidleUXk53mcmN1ZixoHpVi/nkxXu5OErSDnPnrVYp8VyrxJMO06XTcL12w4jyRaYeXobCLCBKYJy2me/7+d6b5Ic3BQCvFq26+Dz62p19gLRIFXqsDWa2hKEqjM0S4XlHIu/a0rZJT0Kon+x9kQI9kpyn0ahj30TSnQ6xc7kgCtc7dm8Flubwbkn74txZYiVp+3qD3OY2866pWX4wq4XYM/xFq71Xk7o4nDpZppjt+Z+Ratu+I9jKAigXmgBlqVhpkgvygBJUxOmNJJEx0X0TlDAcje8uF5yBi7raQBopNf+4LuEKdzeLyqcsCuHGhcvWyEpHpq2zDMgOwqXcXcSdHynFBTaclBrqkoA0KLMFRCMWn7nWvkB0go0tD1Fs8eNgbq9AKBYX171q3Mf/Y/koTtrb3BUarx73WhKtspmfwWbJ6IzeLxGhcpsrNiZyyKDb4xWNjAMXK7omHs5wShEqVK65IbZ2i0ddPwT8TJYew0uwUYnaYMLcq24/TEbHA1MvuvmU/1UlxQYDCLFQxOOxnEMFR6kF3rzou5embREfnnv6Nt6h9x/tSwa307xGWMwirGPJKW2RT7gLcc3" />
+<input type="hidden" name="__VIEWSTATE14" id="__VIEWSTATE14" value="t+xRfitXwlmdw/h2vgjkQzZyBguvp6/YcpSxiTtTDu/H40q6bcgGNDRVyGjE5SdJ6/ElnYLlQen3+SyT9JtUW1CZsK3ej/6pXzYUgUwalKH5oSevv99yas6RoY48ar7IP9jdo9lh+o5f2edvO7JOhFqw+FXqk9fxU+D59j4yv5QxaDiMJqJaDDOPJbYuR+Mg1GCIeuxiy1te60SuDWec4oA5Km+ybLUlEF5lB2IM62PbYEhkVV4Dy65VuVcbRWcubY60eob9bo+T99j06S/vH7SCWwdXhTIAxpSrfhQ35Qt3D25SDT3Ih343Y/ShRVYYOV1rkkWtI/yUyDLf71L9BknUZw1pFZQhaEbDZsBb5j6+CmP7X0ntSEqucRHQwr+/Nuczz78ybzQg24CN6IE10qLrvfy+/OIRnjF6R/jFyDtg58LILdDOrQB6dLhzJgpwjDpgFwE4H16sDQwfMC8v6cjjAWxEQ5zjCgDUQTxbLfQBxZdaiU8Xas/58ci6mBF15+oQXb9QiXm1YcyCl0XYF+v/TrzMfAfnlumIzhRf1Qugs+eHkvSAg9sZPFXqquqx+EWdRO1I/Ctm32Za/P+d46uRqKty+meJOIqimNUpOeHZa3DAPs/cZT0lq1hwrH6aQ3KhMgrHtWyRktclmN6k12rtmIZFo17f6I1SCXlPlNXqvD2XrfRWm+i+ja3+M9nYOS0SlH4VisHjSj5Un3g8KGItlYfznPpaKaDvnCCQKRiHw3Sv3RcD+7xUFD5qnJK3FRzFDn3HVoZZAs+yNSC2wPAIP0KNmqXQdXPvEtAlW/Yy2in532TSwFXnZagPaAfqUrRJxz0KYe+eRUFA3ZDDB8OkYbL2LaZRVdyd1ja61SMNnvpgRgNtKgfW9BXiFdA/X0l6gzStVwxExHjjq5n83oruw6oGV1HuOaJjYDKPAA3duTMqM7WS0tYe/Fyr4ELsS9BMXPkTxhTztaj7t84bJFLugCLGGuf1Uk2Su2grWrBw9vZKsTDvkly1EvheXez6" />
+<input type="hidden" name="__VIEWSTATE15" id="__VIEWSTATE15" value="cKKNGxvhozmkvR9nIhxhGFoRh4rwEMxXiRiKNOrGbDDcBmdpQGbHUmag4IDxPtM66SLi1GlaNkpyaW6zT3wUkB2ZXcyRKgF1TpePwd3+RT2Dd2tMed//yJMuDv2W955ct+UEkYJ0XTiCDdW4+wuHLRWTaEPDPoX2RxPtNYBCNYfgKAme25sM/VSCe0d3sIlpYC3VMwt0lszZE0XD6BDCAD94dbgA2/82d4jdC1kUQwISxwB4AFaRTt3uCPXNGciyqWIbesAZG6SCr5MazBRhkUXLsSYYCApAzg+2BZuRPVK2haj1U4ZegKKU8PG9sgQzHzeG9FaKVPdTIsmk/RVBbMmtvN8gRnZrui1yXSp05QA6uMeEyt5SJXPK3bJhlC3YOd1JcytXLy46UieG20mp8azTvYI6hOBsKU6/daUOEVMmiRdI1GS/puT9Qtl0x/TG1uyOp7RIQtVGlEvwH4hPsif+xadcT4GMpF7mSViijj6PDY3cjznPEdQ3IiJmIo2QE2UaQQS4SprBpiPZvpiylGt83buxkfn0f7rzEsYPNniyjYhvHLG1qqObigzYHBASuT3qNpAX92Zvv7fgmwVk4Xh1F8nKT4gz8uNw2XnGtJqHKFUBEDtH8Phll255fSrn/xO4mjKtuNWzxwNSFobDd4sQXoM/GBEPC3IUtU1De8ddbJtG/LK930Bj5UffjbNItF38/Tz7AruhU3vItCzK92ThG7OS+lsq0HAyDCGRfAmnTbrml3VNP1P03BLtmIQ1GYghrRlL62kgqnAs9REV6jNc28Eny/L9UGcHEti/vde8dVpJJK/UKoZzsofTuO4ufZL0Nje2mMJ344rkSuX5/OCfTxNODoU1iJVoh3VPGsfFNkT8gtzjc+qNG9VmmovrjSCAYByBlK7HWm3o1WSaAjHWLn1Vy3wVMzyFQ7ITm7Gp8g2JcJoCNyoBuhV34aN0oqYB+B5yFLdb48x26MGsOPX2iRBajdWwufPRPqhxZ5CVu8eCuTo27dN9UPBqZ57d" />
+<input type="hidden" name="__VIEWSTATE16" id="__VIEWSTATE16" value="CfDZIPYZEMi3wsa5fqWuIIG+RJhBjwijED50Z2hZDtGXq7RhzQXqtGST0TgyGq2AKfDCqhsqCL3WLRbLBVR+P2eV4dPDiixBfsxNIbigsylLm1SA1ZvcQRkY/rszDOnEeG8z5bZJO0vRt26jgwCcg3BkABPcVdcRyRLbHE5BYWAIBlpAN+Hf/LFypcWI8zKB5j4I2IfJDCS8HjhvPEv15EuY50vgS8K2rbtqlR6NtIndZYRJygid3jHa/oqrznSvJXdBQFMpNt6DNGtQIeP49lO9hIDV33T+LRsOnFSaHjyZ6meMHgjBXYADIGRr/p6HYZfsn/oV0u+rZXOeRw/Hrd2e6fOuek6fFTX7tgDVUUAo3VZTAQHTLq0q+WUk/tJR3HcTOOLCZabf7aud/a1UfZsJSY7FU00tt9Xbl5n2nRHywYs/0/zsNAB18PQBEtVfcqxt0PxVJaOwlj8/l0sNtTDwL7obF1JS2jC8b5XK35Hz1etfbwf4NI63WkWZXwGmaL6iHQPNSGbnTvaxrqXE0GHve892WP+q/LbnLHOAif1HzIhkBWAmGdYbyn0xHazByVCEHoHbbko3N+ExfMza3B32C3LwrrwBUahUACbU9jRo9rbohO5BgCJrcWRwnQVg+7tLatH5jrVG22johY9j+eVzoEe9j2axBeLxGSHSuQdR5jQVMl6Yda0kvhzCuXAaqfC8VMZw/4cMZzvGU3cUvnQUIn+JjVUqhlT992vDFlU8t8Rdi1G1YihNHBN9xu6naHZkZbSSArwyzbvp4FrYRQzFnOPtgf14FZY2Lr0YU6JfdkFGHNJmlsFMzYWJtvPXKSQoYSol1z8GVrD5mcjc3F6m5mIYMI1xq7ktZZqe+C9dquqwdsp+s9b/52DxRQHugD6tFTN9h8Zz3tMB6NqVNhSMCz/lHWf5EvGqtjsWPIxAl4dXQedD/cOBFBWG6yLFSF3rek/YsKBMXi8KZBZHeWDQfgC7F346sIzdqt92AJ7NMd0nMZ4AIXEfl62mXMie" />
+<input type="hidden" name="__VIEWSTATE17" id="__VIEWSTATE17" value="fKxZOmPSbdRJDGCRk8+9VgLuLldzU0wRzV6f/EqE29GRBPgahFjp2e4fUAqLdicbaqq/DeoEqYjwCs9HivP24xFA8R27LDV79OTfDOIfkWF9JmCCL57CwWPD/I+GaLq0L8rnXqTBIPtgEFGadAAsmv/jW797oQ+emnIKD7G3TXcA79MrgphklghCXCCNGmRHZyv8YlpyBHxqTq2bnoju0odsTtV332WZwHNJleb9NG72v4lAECkZdylN7Dml9KoXjXnA9j+LbX5jNXYFeD77tcln9oqWbRhh2H33GS0gP9Ka+kTghmbfqIVpeEGvFq5lEL+ygzw5ADte/AXP5IU7G40GtDDZtyhgXrxFjYZJCWZUsS/kY2jSP6/hgWWQf92A6cib2FEiQMkZm3wG9pmRFjeMCNyMIu/kcA8ufjhH9MOScwNnnA6BiPNLdkMDg7+vF30+3mbRXJYMytdWgaF99OOBb4hK11gaONCfxVnzSKT+OUnrCFWhLrKIVvYCe1yaTqvDqyfWlAzFNGCTpLcyZwM9V1ryH0VpTNCqdys9T3OtivZD8DvfevoFM6m/hmZbzfR75v6Ljty9pyzGY7F8Bl+LdXYJyXcNCQyuCzYTAy9KYtbUC2uXPF4SLd8JykPUV1ek+a08nr48GbfEm+O/v1rszL2GQ5H24AFeQBJYFB3aZiNxz0j2tjBsRMLovKxL2y8RD0bt6HRCEHCgMtRtFxWVfQpvw5WpV6S+gDiVxszTnNp95rzM0zPo8xhL2YyJUUp2FkuddhhqFq59HvUpY1FHm0IovzoaQ1DpgMZdq5Y=" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/WebResource.axd?d=pynGkmcFUV13He1Qd6_TZFwTiAWrPRx3qDUkXeITkSoNvcRW0Sw1sA042NmvtjWTvy6hwTBkRiM-tFhhJ2v4T0Y-k1U11gvSYdLvBLSmE4NQYZJdp-eDpLJ43x-YpjMY0&amp;t=638901392248157332" type="text/javascript"></script>
+
+
+<script src="../../ClaimEditorModernize.js" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=8hq7BRDbEEVS6gJmybQk_B0j2dLFsKW00hwSEydQFKv1VHcxiMPgh0pT5BD4uc04f9Ix1rclo7Qx34hQXhC_OzsFnmfFRGiWxjIoUYHi9kaoI_wCUTkNWS23jf47-gos7YIMULajWZ6iHbx4wvpHSbhCxmGymzLtaimycqOjnW19_gT91f8TxYPMXhVlIZAOqCNEZmTHjQityRYNd8H5_8QpCgm8tjVCzeeikjVcJ4A1&amp;t=ffffffff92a774c3" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=QjTYQgeaGaGGibF7itqLSwCk6_fj8y34n3tWlOVpzniqKo9WEwEpwzV8WeOB8jZB71Dja9CX8SxwEEZ0ff2nMbKQbWpYWFFwwnpuakANf5vt7JR5QsGp3ZEDUme1bTCY3AY_jOwq1scWdAF-aO_TysrbwttmHi_TUYI6PwUTH5M1&amp;t=ffffffff93d1c106" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=nv7asgRUU0tRmHNR2D6t1Ldl2eN8G5GZ6da-TuXJMZgik8NsdLnifCaU2jVC84VOhKdtEd-Eeb7_HlpEytQZQMLWxnD3UoXKY6MvTkzhNOBaLrO5SSm7HEv8GyyMlm8yxarj3OL1ldnZBBuKrWZUadlgNKa4zdS-ZX7O6HSUruQhmthLv6l91gI-tKeeDtqg0&amp;t=ffffffff93d1c106" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=NJmAwtEo3Ipnlaxl6CMhvvyL24YRN-kejiOtfYPlK5sUJfIAa4A_mNqPFf22xgMvWYdWuovvSTvsGgsWlnSH-tMVDy4JwDTPeqRMIFamY_SSWwFxw0po7Y8hHI6uKIry5C9EsFGjzq091dd1YOYCalcqiR_PZyzChAXZk7dni8Nxt-pBlCs0WiYVetRUsXjdPd9mKG_9PZw2CI8IslGCjQ2&amp;t=5c0e0825" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=dwY9oWetJoJoVpgL6Zq8OLMWxCJmwnNMGBUhJlhSfQdH4c1zncG13pntlyV1Nu_aK34CDH4J9TzC4wQDx8wSXiP7wmxShwwD2llppH2UlUVS6Yu5dOFTa2UTZXbCNQD1CWL1Q4HBN43u_YO2h3XFr10LhhEHX_tmo3z2awdiqyNzGtwTW8U50IIt0V6g2o5cIOthBwg7ze-g84lEHkIcFA2&amp;t=5c0e0825" type="text/javascript"></script>
+<script src="../../ContractValidation.js" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=LkSbRRtTbnpvh0g927IxkNa7gyl82EmI4qLfAcZ1yOCj8ZdYEUKUgKgT7O28_3HEzKPX_kjAFkUVKpCchYmKrpOaJQfKGdpAUV2olEDoPa9GuleUjnGZOovnLI21dUyju29-PK6k7eBYh9Gmhg2Ysms9uBjji4jDWKgnsyi_mL0dMUIzPmHEC-mfwEMnwN270&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=8CjII1v0OLoMNKf5zGXmemSypYMQxv2TE4gPXYPlPhYX9ny5BoKRXqBcIuazZYo_MI2EH6Pqb0fZKwgJdPLcZg4MrKL8gymSK1bYBTBDVPFUaqjQ2CWrFRBdGznfJHflGU-TyAdou5KRDIAISlHUn0uk0uct2gfLAVC8I0-69uvQP4C__LjE4UZZxJV0e7eWD4WinLdv7Mhtouyfa88iLg2&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=KX4QNANnKa1x0eXaV-mU8afBGXFmI7ipJdl5NnPGLVJejcZdJjygICTUjA2GILlSpReoPzlnBn6yofzJ3LxiL_kqjp7NZKtIGJsFYqKrNnfMybT7VrJUzC59vUr0zttR4qjS2JsayUGW4Y6a_UNOH7B4oK--5Q6ONcnhtrhAsI0V5l7bXPVlOkRj_EbeNdD6n4t56jVAUQvu6Qya_fQJIZDHTeFaMC0sLDlAOlnC8mQ1&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=dMtrWYtYVdP90oUUR-ZVm3sxlK1FHyOPK9pdJDhVUHS1RimPg-GPgV89-FYmFViQ3jzZ5MWFhQ6ooNh5b78tiWOh-4tFPir3hLlzG253zV06ND1Rk-w50orWVOT6Cb8070pxzKAfFlDaK23pN4wVuTxiRkyTvpPmbxTEulVsXMzb-mnD6GqmH1JmtBV2_Bce0&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=xBoAaY2gMNDIXUBp-mSd-HrcDtJQgQV6PuQFaijg8LjT0VCx_FJRrl6I2g7qnGpcAD9TPjJqfgC-C7LmAagF7pNaZweY7Y7rM2zaOGa962SD4jduH_QeXn5doi_wJCSHHvQIECz9F2ZLJndGKCBAgkClYCDubsjo3Q2XQvNGzbe8vxhuCDNg7NMDOCijYHSeZkfy3nP70NGgnB-bNe_Bmg2&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=5JV_HzXC51KbVUbSK0puXI_0Z0xfXzYiuDv8QtjOoi9lyE9XXdTV50_mdbShJpGKP4-zHscpNrt5ude9a-rAB1xg2pg4iTz88WbR2c7kGW7ITll7U9Hs_y27tmPCz7JuVUqnSX09QusYyNnGd_l8XMeMPinMpdm7ZaWcT_dXfCCrq6o18XytL9_EbyV4Z1cFe2-rXW3NVxvmIy23QNxW1Q2&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=5FocryJ2cv5qg4FLY9c9yhrCC9M3XRs1UUImibSr9Jps2EnJ2EGFUSCbjamawVWQ1L1aAybqpSNZts05qZ_K9kjOrxoHpCaeGXuGCwO8DwUQ3wbZREYwamUhT3ZC6cD8Ej0qEPGjDriKX_UIYFeLBaiATGBXwQLn3iDC7gHtL5-KdiS21DoDFEBL854Uu6-9wxyehOqu2yvnTJqVcK-U8w2&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=ARLCQT9A5Y3qvwz7XXyq1JHB28eLJCfZ9XpqymIuC_VevGJ7E8ZCVVZK2xKGt1Ve4oPALYtHnOozyvKBJn1j7omYSM0hg3cLpgp1rKQ-ISxJb9SfHRWd9lIsb19G4JKhSrSfFNsSYoMQ39tKofGmyHfy_eXldNEbQzCVHuv984-hDjvmCuFVvzAgFjJXYedsxOvOnPBUd_t8UBFE9fX0mvwdIxfxPGgYdXhMs5ItXAs1&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/ScriptResource.axd?d=bA03AV4s9-VFMjh0KH3xxSk2rhi0_wv6-_EidquHgGlnaRoNy9L1gYMUFiyeBKmI91KBVdhaLmnV1DcN13vK9_PU3sHfhxHL-aZ3VOraMTyNqfIwjKsq6vyYMjkeiVCgfHjsu8qm7LGw-iZc4jQwytm_XhatH8CFZggkxJrUtznjgdY4crB3pAexGgIZ2r_U-oXbdOWIOHeTIgy6lFzq3g2&amp;t=5f915bbd" type="text/javascript"></script>
+<script src="/WebResource.axd?d=JoBkLzP19aTuxbWOhHobYqPaT7yoO_x5ZjU-wFXscUY206rTU3F9SfPrKRcELfSOCA7g9_8P6MSeyjKUu31MQ1cmzGY0hlVzD41amzBQZSgOOVjzT-sRwo5Ma_0W3fm90&amp;t=638901392248157332" type="text/javascript"></script>
+<script type="text/javascript">
+//<![CDATA[
+function WebForm_OnSubmit() {
+if (typeof(ValidatorOnSubmit) == "function" && ValidatorOnSubmit() == false) return false;ReplaceGroupNameChars();
+return true;
+}
+//]]>
+</script>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="59BC7D22" />
+	<input type="hidden" name="__VIEWSTATEENCRYPTED" id="__VIEWSTATEENCRYPTED" value="" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="AUuFzPw5kT0mVkJAUo0vu98y81QZlUd7jGbdITxYQex4xEEa8O5prqXgYyC3SmhVgF2PtmMhyk8CC1/XED61/aF2RJ6/J6b+LgJszCbXngfnsAbXpixvzg/NDvC28zgL/NXj3OQfAVUKjTyGDfP4VblgRrfYDfAK9pk4RTMrNhAJEm/yTLgw2B8EVnIfI5nq8M4eoW74z+ZWBMg3JKI3ptr/RbGThNLPE9PQu0qEsNzGLfbPDN7a3X0PYzt+FAFkOJikgMs34RpKgh1W0Ai+zd8Cc1nVuDTgOuoONUDGTwMgxOZBr4TdX0G4HxZnY5Qv/0fWy0YHiNG+oem1I5kmTjnU6pO9PBKLqPWFOeQSZdFQUJXcQ8KVc1lhC8o1ISVg8HA9JaDi/Bs8HJTq0Dw+pCVtyq4sRZg0My9kY2ewyxNE5Fo4LsU9UlKgzRoJjE2t+vBtdgrBxwC6Xsn07hn2SoAy8y9v4NHvKpoCuUWzoj62RIMlwen3Ha/TEDPGdEm85QgfswyxjiejaF3OavGMEyqs5P39U0YYdRzv6JilGNekCxh2Bf9DnrhpRNow4ar2SecDAqmbncilHAQCuX/7ZDGZ+hc6NXQrIFH7IezSrTy8QE3s/yiRdE9yBIvITi6DaimD3575l5U6qOf8v9ovMttihAXp/AfFPgLc3rFyuPPG9vAphW4pyYMVEqmtTSsm+vTrDUc7TzxEw0o01kibuLltvTtT1pAejnewlzOWmdSIDGmIbUaM63mwIsAYI+6zaaF4AvxPg9UMFIJgGdjNdTLgjJcl45Bnx7N2Nol13VPQDsgkfHdHsMUrYcM3iZ59WdBK/tB84ETE7cpz16385t5AwWKDW0ryLMecnWalOEge56EBHYgFR55j7OOVMNYcRAGnt56YKr5KgTRVd9dEp/lyGBxKDIkEuYb5FX62KZcCwu/H7y+IVNlKs9yeNd4IJ4SvNxMfBB42azctr2cB3wiPXQeKM0bbFc6dvpkyq9rZWthT8xQ3Ah3kBNfLsGAWgj6E7NizxV3KqskRohO2AVMgWzYZUXA55lxVukbSdCzGamAsdPVI3J3GQIXciXzUEnnI6mQqBOBe46YjgmBC5k+z/mKpn0UZ0wAf0+4/Muu/ETDQMn3gMDeFk0RAckQsfhWh3CknVXwtSDk3GlZG936jYP4b9/YYfWjdO0m5XMpvYgeeTIfcc3xTu15O7fsi0FUI7vvz5RcJ+eA/KaqDA8CaMzIBVPw0y7hk/rcY9jmBlBsooUQ65bP2XfxmhE/Y1ngWB91oMrmuVgtPdDI7zEJksGxtT7NhzLeadwC6gqh3Jo2fFIzUZyCvceQuLhFUhNwI59sLA1mBCg0At/FZYDk4NZoe/lrDHJdW32KNwRoULKOE00qgi8b5+SmHIPekPcU2lkL4MjN2zk8fNKKcyKeRD8deMgFSyegIQ5+pPkVoCKJBPW8EROuJOsXuhcQws2bMDOYLY4HpjnVvChQJM+cgLVSR5myH0WiQIdKhxl7Ddow5eV7yn/RL09yFiduDtRMJWMyn5U3v9tpfntn78B+IPrasEZZ4akxzzfJt6KCfd0hfaAUQi4XUyZLgfZf3fVISVBWVuC2cDQ66wXO5Jjj2YovJ4J3Ncl+955sJanqE8AUDYsA7DbLpqkfnF+8zuvMvDfs/Pmqs9FTdE4qkbt3S3N5pW6JaMEcnX2c7SG7ds4ol5Vm1GZvdjDr9RFWTySCNmfenMqsLZ459xaYKdbL8kVQhq4KXnRJxmhY8ZyBOyS2MueAZdYbXgf1ZwiGeBu8I+uNaysowPX1p/FZ3TQx/e3t+QY8tk3h9sfrUn2C44VXu4dWRjT7Frc//GHq5d2GXajYFXi0LEJOAHxMA/U9/rpVTnFFcAIy5hfaVB8V/PZNGWvDF7y+NGGEroolCmfeer0nsJryvJRaAhlDlUWWXloIljCov8P6tFTX52qwi6nEYRwF8V5xThHcCYHTpe5zOcvwh6T2/mOBVxB1tUFl8+vDIpY1GQQmsQJKb00AKhoj/gwCcLdx3UmswoIaBE7oNhzpptx1Np4FbwbHOyR0lrGy38QGO/5862xOHosT3trRL5qcE8wI6voe98Wh4DN72bqdpIf8+Q6kq8I8y+Qy9d9ULuHtLZrBypJh1jz38ht3o2lgwK0831TPxEAHzTBcahF34dCiN9kyXHNm7GDV2Sv3gZGYMYLKRkceD9xtjhxR9qAqgIJ3sF0vAhouIe7KFZWBGxsi3hn5sxY+/9BJE1FezxA70mDx9k+zdZuqSY/ycJJZFvr7RwjV6sIbLQwikSinL2EAHPmqFkcnuPl6z1J0DuJtOJbb5uUCOFiJyPvsYEnlAVh1E/nxIttrZXHQD6FkqzWqTyyEAcgdzZdvdYtcb4fttJ89qZJqN5/JLEq+U8WhXCgOlSjAgpqFC4+mpvMGi/nrRlBMR/330TMm+DDPmq4qu7N+U0tQsIzoeXv7PN8AWfoRUve2ZBemd7xP/kq8NAx7650Xzo91m1gNdqF2Ym5wfQo5MhGm95BfEkBGseuH3p052eSfF5xW0zkyWYdiLLZwkkz2uSBJNpv9TQ5WWlpRvxtwQVC7JGwNFQ61eLMEa2Xb+ysGTq9Eat7yCuTuR6kkL1P3gO7Rssi5ITmWUcXHgMRmnjYcVlJIvdLu5Lzk1RXHGXUopySkStqYZHirwF7EW+AwsMHvHa+t0zvAmCZJn2+C0W/oK5KZ+vFpyU+9bPz2uH+41FaUiTLOUluk+2Rdka7qT5NZgoywZ/43I4JT+WygCF2WdaOP/zEvMQkINboZysRw2d1GDnXT8rrqI5KGdsgtEUw4cQ/oM29cb/mlxdwS9isOuhYIbHoEopRz+ByEhK1TwNukNYWKgt6m75DgQ+TncgkJwXmFFSLnU4QJygkwdVv9S2gBjhWaaK9Ud1KO4RgUalFSCC7i9CTziRVdagql3SrKG0DgLC/4mwMb4gMermp5SXPnJj77DE2OVKKe80jxp4D/msIbwq1XGXDYrfm9R1SeRrjdIIr1x91WgpLviDhuPsPyiipPs6zGbf4CDqHdVbJ9CJ4V/lRmqU/ZlztDcel/Zc/F23CrcRBwii/vwjT1LeuuFFKz6+wKOgofQXXuA9DoeOQXgu5YbCuRLbsYXhaCBytHeu8A87gTtPc2yYnqhmifzQg2MkmiySZkMKk/XCcfN1XOz84u7xrunKlied0cdOWIgOz57cPTxCNdBLeCevtpcxr9MJJiQUiT4cbp7dWGgz5ID1dVQT99jxUkCszfeB0TnIUBBVt27RPkD2ASn3g6Hn4kHL455r4Yi6/2oYGLx90Z5Rm99MTke+3qWNKBeGoWRbjL4suuVoLgvQCFsV3OIAoHGDFAEvhMNxayqG+t+UFKTiNi/jAlc7cavI++x6w03T/xQjnqn3oCWBw7N/SNxcBgDn9TWnDihbxoF3xU0pVF/OZghMU9LMD2ATd5yETCDABfLlS2OwkRAT4480cG8RHPdt4SG0dWwVxLkaCK3T3GqcUP7ZlwyUcki8vE7am9NTb8W5x3Vtq6+hsgrZinl0d2VVy+yehTlOZR6x3vlqw0Tls7/f2TE8ojIiPnbl+oJmSyOrinetpcUu83vad/WTdIU+nPxlmwUOGlOBqjh32dkUdI3DaPmubkHXW8UZG/3n5TRbwNnCM/3f0XRs3du0PD/Mhw7l34/eWkRywuanvlNwAsyejZnNQYlzz6HszCc8V2WrJx+oe0nXYbZZ/O19bI/sTrhgFaSW/5mnvrCKDWjwpc8JJdZGLWUtsCEArJTQBdOUWibveqlzoaatyECQy1O8KnlWQhlGPtDWZICPHfci3DHN0ACo2EaMB1/lyE5sV8GSh2hYvJCRbsBhZFFv6mhxriBocY9AsYDWPXVGZhfpApgAmUuW+ECuKvbqW5Vc+rogNanqZ+v9yZ/NO9U70kuzkMBpUXLNoA4i1OtC+BfztX/q/2pWoL7K4eXC4u3RgtAanhPBb2QdhEbStf8ENookHFFewrFN7gMo4N4duLVKFOr8KbLY4Y/7G0hsoJK/URkIbbk0Lh4vtmyPb3Q4BmteVqUOax++UqOWhBLb3El2n650fNBOMv2OFGD4PMnVCZXThXJFPCfJezu1eLfZWOGoEaewQeUIw7nTftpOJ3qM9ffsCThv5cR1/ac1VR1vjJsveUe3b5Wv0msqS5eYo7okQRumdK2AyRuiUECnon40JMhwuQ5HcYCV8KtOQRohmcJossRukM5ud9GIXXZBBR0Ex9n28dpzQh0M6EO260d2+vLjJXp8RP0c4rN7GjI1rf+eT6hiHON6Pi4L/pUsluHzDdqPYInfbfAmAmuLkeGWCZXKJLHis4zXbGk8LrydNR1aEgEW/zn0SI/Ct6fHXmPn3t2sLdS2uQYeZrsZsG9hNHCbJvxGmPsIL+4mncRYLiCiLdVgc6z93RJPjkh+aV9e79hcUAuaaHbf0Ex/kUb1vTf4XHGNF8z/HUSq9F2F1SsI+9M/LchW9pjuYzbTkL6fJaBq+9B/UVDfNSgB4A74lRa0Iz0CGAso4lk8Fmvy9aNaWOVxDel9VWscZb85uL10XtOhjyQgF/v0/882/CRvrU1XhCWOdeMqpjVgeQc9bQtFXrzCSB5fL24rC4+l2rlHET9GWbKcmWSjn0MQ0oHJl5nnYnRXPe47YqpABtlCKBuwiEoLoIfQlcmvVLk2CQCjhPysneADe9ESeVFMkgPkEpYrzhhKL3XKBkXmE7KfjjQ4MP2ZdiEs5pZ50WkmEE47b4JOGZEO6D5yg61VjdIY/nVqkE6XnQhOEXIFPeLcH9Wv3m/97CpJtFplHef9Ep6bDZMqO25vXYcN9vgvaxgLFs+ivGtJJGJiS5zT+xwme+Exu4Tkk9AxYvPb8VIrWZReR/YPdHqT+Q6veUJhMyinz2wkPsSqP4ODkUlvbOKS9rwIsPHpEDSHpyPGTL1MVf9O4fSTu6s3yJ4WLSvRsh7OJ9fx4lTwo4CXcZqfKiKDWqAMNQX1JvnH3uPDi1jQ/2RQyqokxIEGGuF7Pmc/FWWAnBGRFzqzdA1oMP3XQEKIqPZtl2TNbNBCk7a7mSO3NHiodYUeJu37yCUdUzbuUImDk4lQR1OyzNzgi72UXH2Yac2irXEA/C9jV1ELV1SRmMFzCYdC5Y5E4WufJoEKPr6dz2/in58glkS1Q0UOX8O7pERFuku3pgIAItbjsyFvKGyb7iuEEG1NSoXWxksTvOAod77EZoG8vNZ26QjKIvxgmHD/iLO7EBvfflHRtc+/AVy5CCNOqLxGkzgqlFmo9j91Ltf2CeZxmCOqOvvPOIi6DoVZ5EhfV/TeOPZc5xKIVgM3vwev18iPjzrBVuP5bnJk4mhyhppYBULLOkOhBcSSDM9zgAFbsTYPOw73n80WfucCDP7m4hzeR1JB+sNVID5K4BPEcVesR6Vda2ArCP0e1oKHywS51egeMpNOal6u1bCfYru1mk62H414jsGADS+kaeGGmXZYCMAFfu4GkxoAV0HfVCB0zKBejtZDRDaQn7xt+5AKHXyg0X9zqynK0+oA0ysl4cYlV7xCLhFpoaT99Hwaz7Zld9fpq2Hwb6jom+61UgXhxtU/+i9i7PZW+V1LWZgsA0+BiNBqtCc1d+OZG4v70eT1hRN3hgCw/5KCl4vdPjQP4rIIBZW4x0Vb2LXdtusYfGKscYIgbn7q37rWiEm+dukIslg7PiecxuzJuxdylXjNOTuHEw8AKAnKzB9A/Er8jEStj/fwQIdF5hMWcJ0gjt+JanMlL9jbO3m1AGqeYSnYoEpFK0QnKQNF3PrtZqeuoosB6lkKv0rpcuRYkFpn/K6BjLzGmgu4EPmhMhz84ULF33rs4DGbHJdUqjZiITXHpdD+EPj7QXAmebEp4W4IoHObsmPqgG542jN+vXFWNSQ8rsimVPlO74Q47JQ17qhZyo6EvBsnEN4LUYM1mzozrqpsYklhfb+m2fdpzeLyU8H/Y94779kRBZXYCxjv9PShkN22GvwxuwvlVUncU9TYCwG0GYIp3HMLHhgPTlvTKiMuWyT9K83aci4" />
+</div>
+    <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('ScriptManager1', 'form1', ['tsvw$dgc$ctl00','','tsvw$ssl$UP1','','tsvw$ssl$UP2','','tsvw$pi1$ProviderUpdatePanel','','tsvw$FV1$UP','','tsvw$FV2$UP1','','tsvw$FV2$UP','','tsvw$FV2$ctl03',''], ['svw$FV1$sex',''], [], 90, '');
+//]]>
+</script>
+
+    
+    <input type="submit" name="hiddenDefaultButton" value="Button" onclick="return false;" id="hiddenDefaultButton" class="displayNone" />
+    <input type="hidden" name="hiddenRejectionEditedXMLFieldIDs" id="hiddenRejectionEditedXMLFieldIDs" />
+    <input type="hidden" name="hiddenClaimEditorControlHierarchy" id="hiddenClaimEditorControlHierarchy" /> 
+    <input type="hidden" name="GoogleAnalyticsTrackingId" id="GoogleAnalyticsTrackingId" />
+    <input type="hidden" name="OriginField" id="OriginField" value="ClaimListingNew" />   
+    <input type="hidden" name="ParentCustId" id="ParentCustId" value="296638" />   
+    <input type="hidden" name="WorkgroupName" id="WorkgroupName" value="undefined" />   
+    <input type="hidden" name="hiddenIsTestClaim" id="hiddenIsTestClaim" />
+    <input type="hidden" name="hdnIsClaimEditorModernizeUIBetaEnabled" id="hdnIsClaimEditorModernizeUIBetaEnabled" />
+
+<div id="headerLeft">
+    <table width="100%" class="headerPatientInformation">
+        <tr>
+            <td valign="top" width="40%">
+                <table cellspacing="0" border="0" id="FV" style="border-collapse:collapse;">
+	<tr>
+		<td colspan="2">
+                        <table class="headerInformation">
+                            <tr>
+                                <td class="headerCaption">
+                                    Patient:
+                                </td>
+                                <td class="nobr">
+                                    <span id="FV_PatientName">HUSER, STEFAN</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="headerCaption">
+                                    Payer:
+                                </td>
+                                <td>
+                                    <span id="FV_Payer">EMBLEM MEDICAID (55247)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="headerCaption">
+                                    Provider:
+                                </td>
+                                <td>
+                                    <span id="FV_Provider">  PHYSICAL THERAPY OF THE CITY </span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="headerCaption">
+                                    Claim ID:
+                                </td>
+                                <td nowrap>
+                                    <span id="FV_ClaimId" style="display:inline-block;height:10px;width:100px;">11193626736</span>
+                                    <span class="headerCaption">Claim Number: </span>
+                                    <span id="FV_ClaimNumber">PV410222877</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="headerCaption" nowrap>
+                                    Total Charges:
+                                </td>
+                                <td>
+                                    <span id="FV_totalCharges">$310.00</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="headerCaption">
+                                    Seq:
+                                </td>
+                                <td>
+                                    <span id="FV_Label1" style="display:inline-block;width:100px;">Primary (1)</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="headerCaption">
+                                    
+                                </td>
+                                <td>
+                                    
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+	</tr>
+</table>
+            </td>
+        </tr>
+        <tr valign="top">
+            <td valign="top" colspan="2">
+                <table id="NotesTable" class="editorHeader" border="0" style="width:100%;">
+	<tr>
+		<td><a id="LastNoteButton" href="javascript:__doPostBack(&#39;LastNoteButton&#39;,&#39;&#39;)" style="font-weight:bold;">Last Note:</a>&nbsp;
+                            <span id="NoteDate" style="font-weight:bold;">06/11/26</span>&nbsp;
+                            <span id="NoteSource">Abdelrahman Mamdouh</span>&nbsp;
+                            <span id="NoteText">Check</span></td>
+	</tr>
+</table>
+            </td>
+        </tr>
+    </table>
+    <table width="100%" class="editorHeader headerActionButtons">
+        <tr>
+            <td class="actionContainer">
+                <input type="submit" name="ResubmitButton" value="Resubmit" onclick="return confirmCopyProd(true);" id="ResubmitButton" class="smallPrimaryButton resub5010P" name="resub5010P" />
+                
+                    
+                    
+                <br />
+                <input id="ReapplyOverrides" type="checkbox" name="ReapplyOverrides" /><label for="ReapplyOverrides">Re-Apply Overrides</label>
+                <br/>
+                
+            </td>
+        </tr>
+        <tr class="draftActionsRow">
+            <div id="DraftPanel" style="width:100%;">
+	
+                <td align="right">
+                    
+                </td>
+                <!---<td align="left">
+                </td>--->
+                <td>
+                </td>
+                <td>
+                    <input type="submit" name="SaveDraftButton" value="Save Draft" onclick="claimEdited=true;" id="SaveDraftButton" class="smallDefaultButton" />
+                <!---</td>
+                <td>>
+                </td>--->
+            
+</div>
+            <td>
+            </td>
+            <td align="right" style="padding-right: 4px">
+                <input type="submit" name="AddNoteButton" value="Add Note" id="AddNoteButton" class="smallDefaultButton" />
+            </td>
+        </tr>
+    </table>
+</div>
+
+    <div id="headerRight">
+            <div">
+                
+                <div id="rejectionPanel">
+	
+
+                
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script src="https://www.zirmed.com/Static/javascript/JQuery/jquery.ui.core.js"> </script>
+<script src="https://www.zirmed.com/Static/javascript/JQuery/jquery.ui.widget.js"> </script>
+<script src="https://www.zirmed.com/Static/javascript/JQuery/jquery.ui.mouse.js"> </script>
+<script src="https://www.zirmed.com/Static/javascript/JQuery/jquery.ui.draggable.js"> </script>
+
+<style type="text/css">
+    .dxgvTitlePanel, .dxgvTable caption {
+        background-color: #eeeeee;
+        border-bottom: 0px;
+        color: #E41104;
+        font-family: Helvetica, Arial;
+        font-size: 14px;
+        font-weight: bold;
+        padding: 3px 3px 5px;
+        text-align: left;
+        width: 560px;
+    }
+
+    #tooltip {
+        background-color: #eee;
+        border: 1px solid #111;
+        font-size: 30%;
+        opacity: 0.45;
+        padding: 1px;
+        position: absolute;
+        z-index: 3000;
+    }
+
+        #tooltip h3, #tooltip div {
+            color: Black;
+            font-size: x-small;
+            margin: 0;
+        }
+
+    .GCStyle {
+        background-color: #284E98;
+        color: white;
+    }
+
+    .HiddenColumn {
+        display: none;
+    }
+</style>
+<script type="text/javascript">
+    $(function () {
+        $("RejectionGridToolTip").draggable();
+    });
+
+    
+
+    function changeButtonImage(theElement, theNewImage) {
+        document.getElementById(theElement).src = theNewImage;
+    }
+</script>
+<span id="setTooltip1">
+
+    
+</span>
+<div id="RejectionGridToolTip" onmouseup=" SaveLocation(this) " style="background-color: #eeeeee; border: 1px solid #acacac; cursor: pointer; left: 0; max-height: 135px; max-width: 400px; padding: 0px 4px; position: absolute; text-align: left; top: 0; visibility: hidden;">
+    <img id="ToolTipClose" alt="Close" src="https://www.zirmed.com/Static/Images/14x14-red-x.png" onclick=" CloseToolTip() "
+        style="cursor: default; float: right; padding-top: 4px;" /><br />
+    <br />
+    <div style="background-color: White; cursor: default; height: 84px; margin: 8px 0px 5px 0px; max-width: 390px; overflow-x: auto; padding: 7px 8px; text-align: left;">
+        
+    </div>
+</div>
+<script>
+    window.onload = function () {
+        if (document.getElementById('hiddenRejectionTooltipPinned').value.substring(0, 4) == "true") {
+            ShowToolTip1();
+        }
+    }
+</script>
+
+</div>
+            </div>
+    </div>
+    <div id="pnlDeleteDraft" class="modalPopup" style="width:500px;border-color: Black;
+        display: none;">
+	
+        <div style="padding: 10px;">
+            <div class="subtitle">
+                Delete Draft Claim
+            </div>
+            <br />
+            <hr />
+            <div class="txtAlert">
+                Do you wish to delete this draft and exit?
+            </div>
+            <br />
+            <div style="text-align: center">
+                <a onclick="if (IsAJAXPostback()){return false;}claimEdited=true;" id="btnWarningOK" class="imgbtn" href="javascript:__doPostBack(&#39;btnWarningOK&#39;,&#39;&#39;)"><span class="standardbtnleft" style="width:4px" onmouseover="ButtonMouseOver('standardbtn','btnWarningOK');" onmouseout="ButtonMouseOut('standardbtn','btnWarningOK');" id="btnWarningOK_left">&nbsp;</span><span class="standardbtnright" onmouseover="ButtonMouseOver('standardbtn','btnWarningOK');" onmouseout="ButtonMouseOut('standardbtn','btnWarningOK');" id="btnWarningOK_right">Yes</span></a>
+                &nbsp;&nbsp;&nbsp;&nbsp;
+                <a onclick="if (IsAJAXPostback()){return false;};" id="btnWarningCancel" class="imgbtn" href="javascript:__doPostBack(&#39;btnWarningCancel&#39;,&#39;&#39;)"><span class="standardbtnleft" style="width:4px" onmouseover="ButtonMouseOver('standardbtn','btnWarningCancel');" onmouseout="ButtonMouseOut('standardbtn','btnWarningCancel');" id="btnWarningCancel_left">&nbsp;</span><span class="standardbtnright" onmouseover="ButtonMouseOver('standardbtn','btnWarningCancel');" onmouseout="ButtonMouseOut('standardbtn','btnWarningCancel');" id="btnWarningCancel_right">No</span></a>
+            </div>
+        </div>
+    
+</div>
+    
+    <input type="hidden" name="hdnDDModCon" id="hdnDDModCon" />
+    <input name="testvalapb" type="text" id="testvalapb" class="displayNone" />
+    
+    
+    
+    
+    
+    
+    
+    <table width="100%" class="viewPanel">
+        <tr>
+            <td valign="top" width="75" bgcolor="#E9F7FF">
+                <a href="#Menu1_SkipLink"><img alt="Skip Navigation Links" src="/WebResource.axd?d=rKN1opQVoh180LaGjXZZkIrQckY2NLOi9ANZ2UBXc6VLiJkjfb_Ee9MeuSt-PeUANryqST7ZVFEucA-eoSu6Zaj1hy6JcnjJ1WXD_5JGkCtDRjK8v3X4dBsNr5PoMMm20&amp;t=638901392248157332" width="0" height="0" style="border-width:0px;" /></a><table id="Menu1" class="Menu Menu1_2" cellpadding="0" cellspacing="0" border="0">
+	<tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n0">
+		<td><table class="Menu1_4 Menu1_6" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3 Menu1_5" href="javascript:__doPostBack(&#39;Menu1&#39;,&#39;svw&#39;)">Claim Overview</a></td>
+			</tr>
+		</table></td>
+	</tr><tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n1">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3" href="javascript:__doPostBack(&#39;Menu1&#39;,&#39;pat&#39;)">Patient</a></td>
+			</tr>
+		</table></td>
+	</tr><tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n2">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3" href="javascript:__doPostBack(&#39;Menu1&#39;,&#39;ins&#39;)">Insurance</a></td>
+			</tr>
+		</table></td>
+	</tr><tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n3">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3" href="javascript:__doPostBack(&#39;Menu1&#39;,&#39;prt&#39;)">Provider</a></td>
+			</tr>
+		</table></td>
+	</tr><tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n4">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3" href="javascript:__doPostBack(&#39;Menu1&#39;,&#39;clt&#39;)">Claim</a></td>
+			</tr>
+		</table></td>
+	</tr><tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n5">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3" href="javascript:__doPostBack(&#39;Menu1&#39;,&#39;slv&#39;)">Service Line</a></td>
+			</tr>
+		</table></td>
+	</tr><tr onmouseover="Menu_HoverStatic(this)" onmouseout="Menu_Unhover(this)" onkeyup="Menu_Key(event)" id="Menu1n6">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3" href="/Claims/History/ViewClaimPDF?appId=1&amp;claimId=11193626736&amp;form=cms1500_0212" target="_blank">CMS 1500</a></td>
+			</tr>
+		</table></td>
+	</tr><tr id="Menu1n7">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3"></a></td>
+			</tr>
+		</table></td>
+	</tr><tr id="Menu1n8">
+		<td><table class="Menu1_4" cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+				<td style="white-space:nowrap;width:100%;"><a class="Menu1_1 Menu1_3"><div style='color:#E9F7FF;'><table><tr><td style='height:270px'></td></tr></table></div></a></td>
+			</tr>
+		</table></td>
+	</tr>
+</table><a id="Menu1_SkipLink"></a>
+            </td>
+            <td style="border: solid 1px Black" valign="top">
+                <div id="ViewPanel" style="overflow:auto;height: 525px; overflow: auto;">
+	<table cellspacing="0" border="0" id="svw_FV1" style="border-collapse:collapse;">
+		<tr>
+			<td colspan="2">   
+        <table class="tblSpacing0">
+            <tr>
+                <td>
+                    <div id="svw_FV1_VS" style="color:Red;display:none;">
+
+			</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="sectionTitle">
+                    Patient
+                </td>
+            </tr>
+            <tr>
+                <td class="paddingTop4">
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                <input name="svw$FV1$lname" type="text" value="HUSER" maxlength="60" size="35" id="svw_FV1_lname" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" />
+                            </td>
+                            <td>
+                                <input name="svw$FV1$fname" type="text" value="STEFAN" maxlength="35" size="25" id="svw_FV1_fname" />
+                            </td>
+                            <td>
+                                <input name="svw$FV1$mname" type="text" maxlength="25" size="25" id="svw_FV1_mname" />
+                            </td>
+                            <td>
+                                <input name="svw$FV1$suffix" type="text" maxlength="10" size="10" id="svw_FV1_suffix" />
+                            </td>
+                            <td>
+                                <select name="svw$FV1$sex" onchange="CheckRequired(this);setTimeout(&#39;__doPostBack(\&#39;svw$FV1$sex\&#39;,\&#39;\&#39;)&#39;, 0)" id="svw_FV1_sex">
+				<option value=""></option>
+				<option value="F">Female</option>
+				<option selected="selected" value="M">Male</option>
+				<option value="U">Unknown</option>
+
+			</select>
+                                <input type="hidden" name="svw$FV1$sexX" id="svw_FV1_sexX" value="M" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp;<b>Last</b><span id="svw_FV1_lnameRV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>&nbsp;First
+                            </td>
+                            <td>&nbsp;Middle
+                            </td>
+                            <td>&nbsp;Suffix
+                            </td>
+                            <td>&nbsp;<b>Gender</b><span id="svw_FV1_sexRV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td class="paddingTop4">
+                                <input name="svw$FV1$add1" type="text" value="3715 27TH ST APT 4B" maxlength="55" size="55" id="svw_FV1_add1" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                &nbsp;<b>Address Line 1</b><span id="svw_FV1_add1RV" style="color:Red;font-size:Large;display:none;">*</span>
+                                    <span id="svw_FV1_add1CV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="paddingTop6">
+                                <input name="svw$FV1$add2" type="text" maxlength="55" size="55" id="svw_FV1_add2" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp;Address Line 2
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0 paddingTop4">
+                        <tr>
+                            <td>
+                                <input name="svw$FV1$city" type="text" value="LONG ISLAND" maxlength="30" size="30" id="svw_FV1_city" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" />
+                                <span id="svw_FV1_cityCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                <input name="svw$FV1$state" type="text" value="NY" maxlength="2" size="5" id="svw_FV1_state" onkeyup="ValidateStateZipCheck(this)" onblur="ValidateStateZipCheck(this)" />
+                                <span id="svw_FV1_stateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                <input name="svw$FV1$zip" type="text" value="11101" maxlength="15" size="12" id="svw_FV1_zip" onkeyup="ValidateStateZipCheck(this)" onblur="ValidateStateZipCheck(this)" />
+                                <span id="svw_FV1_zipCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                <input name="svw$FV1$country" type="text" maxlength="3" size="12" id="svw_FV1_country" onkeyup="ValidateStateZipCheck(this)" onblur="ValidateStateZipCheck(this)" />                                
+                            </td>
+                            <td>
+                                <input name="svw$FV1$countrysub" type="text" maxlength="3" size="12" id="svw_FV1_countrysub" />
+                                <span id="svw_FV1_countrysubCV" style="color:Red;font-size:Large;display:none;">*</span>
+                                <span id="svw_FV1_countrysub2CV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp;<b>City</b><span id="svw_FV1_cityRV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>&nbsp;<b>State</b><span id="svw_FV1_stateRV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>&nbsp;<b>Zip</b><span id="svw_FV1_zipRV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>&nbsp;Country Code
+                            </td>
+                            <td>&nbsp;Subdivision
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0 paddingTop4">
+                        <tr>
+                            <td>
+                                Member ID
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV1$membernum" type="text" value="JYM00411G01" maxlength="80" size="12" id="svw_FV1_membernum" />
+                            </td>
+                            <td>
+                                <b>Date of Birth</b><span id="svw_FV1_birthdateRV" style="color:Red;font-size:Large;display:none;">*</span><span id="svw_FV1_birthdateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV1$birthdate" type="text" value="8/19/1964" maxlength="10" size="12" id="svw_FV1_birthdate" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" onfocus="currentField=this;" />
+                            </td>
+                            <td>
+                                Date of Death<span id="svw_FV1_deathdateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV1$deathdate" type="text" maxlength="10" size="12" id="svw_FV1_deathdate" onfocus="currentField=this;" />
+                            </td>
+                            <td>
+                                SSN
+                            </td>
+                            <td>
+                                <input name="svw$FV1$ssn" type="text" maxlength="50" size="12" id="svw_FV1_ssn" />
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                <table class="tblSpacing0">
+                                    <tr>
+                                        <td>
+                                            <div id="svw_FV1_UP">
+				
+                                                    
+                                                
+			</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>       
+    </td>
+		</tr>
+	</table>
+<table cellspacing="0" border="0" id="svw_FV2" style="border-collapse:collapse;">
+		<tr>
+			<td colspan="2">
+        <table class="tblSpacing0">
+            <tr>
+                <td>
+                    <div id="svw_FV2_VS" style="color:Red;display:none;">
+
+			</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="sectionTitle">
+                    Destination Insurance
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div id="svw_FV2_UP1">
+				
+                            <table class="tblSpacing0">
+                                <tr>
+                                    <td>
+                                        <input name="svw$FV2$name" type="text" value="EMBLEM MEDICAID" maxlength="60" size="50" id="svw_FV2_name" />
+                                    </td>
+                                    <td>
+                                        <input name="svw$FV2$payerid" type="text" value="55247" maxlength="80" size="10" id="svw_FV2_payerid" />
+                                        <input type="image" name="svw$FV2$PayerSearchButton" id="svw_FV2_PayerSearchButton" src="https://www.zirmed.com/Static/Images/eyeglasses.gif" align="top" onclick="PayerSearch(&#39;1&#39;, &#39;https://general.zirmed.com/&#39;, &#39;../../../&#39;);return false;" style="border-width:0px;" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        &nbsp;<b>Payer Name</b>
+                                    </td>
+                                    <td>
+                                        &nbsp;Payer ID
+                                    </td>
+                                </tr>
+                            </table>
+                        
+			</div>
+                </td>
+            </tr>
+            <tr> 
+                <td>
+                    &nbsp;
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td class="sectionTitle" colspan="4" style="padding-right: 10px;">
+                                Subscriber
+                            </td>
+                            <td class="padRightLg" colspan="2">
+                                <a id="svw_FV2_copyPatientInfo" AutoPostBack="true" Checked="false" href="javascript:__doPostBack(&#39;svw$FV2$copyPatientInfo&#39;,&#39;&#39;)">Copy Patient Info</a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div id="svw_FV2_UP">
+				
+                            <table class="tblSpacing0">
+                                <tr>
+                                    <td>
+                                        <span><input id="svw_FV2_rbOrganization" type="radio" name="svw$FV2$EntityType" value="rbOrganization" onclick="javascript:setTimeout(&#39;__doPostBack(\&#39;svw$FV2$rbOrganization\&#39;,\&#39;\&#39;)&#39;, 0)" /><label for="svw_FV2_rbOrganization">Organization</label></span>
+                                        <span><input id="svw_FV2_rbIndividual" type="radio" name="svw$FV2$EntityType" value="rbIndividual" checked="checked" /><label for="svw_FV2_rbIndividual">Individual</label></span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <input name="svw$FV2$lname" type="text" value="HUSER" maxlength="60" size="35" id="svw_FV2_lname" />
+                                    </td>
+                                    <td>
+                                        <input name="svw$FV2$fname" type="text" value="STEFAN" maxlength="35" size="35" id="svw_FV2_fname" />
+                                    </td>
+                                    <td>
+                                        <input name="svw$FV2$mname" type="text" maxlength="25" size="25" id="svw_FV2_mname" />
+                                    </td>
+                                    <td>
+                                        <input name="svw$FV2$suffix" type="text" maxlength="10" size="10" id="svw_FV2_suffix" />
+                                    </td>
+                                    <td class="padRightLg">
+                                        <select name="svw$FV2$sex" id="svw_FV2_sex">
+					<option value=""></option>
+					<option value="F">Female</option>
+					<option selected="selected" value="M">Male</option>
+					<option value="U">Unknown</option>
+
+				</select>
+                                        <input type="hidden" name="svw$FV2$sexX" id="svw_FV2_sexX" value="M" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        &nbsp;<span id="svw_FV2_lnameLabel"><b>Last</b></span>
+                                    </td>
+                                    <td>
+                                        &nbsp;<span id="svw_FV2_fnameLabel">First</span>
+                                    </td>
+                                    <td>
+                                        &nbsp;<span id="svw_FV2_mnameLabel">Middle</span>
+                                    </td>
+                                    <td>
+                                        &nbsp;<span id="svw_FV2_suffixLabel">Suffix</span>
+                                    </td>
+                                    <td>
+                                        &nbsp;<span id="svw_FV2_genderLabel"><B>Gender</B></span>
+                                    </td>
+                                </tr>
+                            </table>
+                        
+			</div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                <input name="svw$FV2$add1" type="text" value="3715 27TH ST APT 4B" maxlength="55" size="55" id="svw_FV2_add1" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                &nbsp;<span id="svw_FV2_sbradd1lbl" style="font-weight:bold;">Address Line 1</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                <input name="svw$FV2$add2" type="text" maxlength="55" size="55" id="svw_FV2_add2" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                &nbsp;Address Line 2
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                <input name="svw$FV2$city" type="text" value="LONG ISLAND" maxlength="30" size="30" id="svw_FV2_city" />
+                            </td>
+                            <td>
+                                <input name="svw$FV2$state" type="text" value="NY" maxlength="2" size="4" id="svw_FV2_state" />
+                            </td>
+                            <td>
+                                <input name="svw$FV2$zip" type="text" value="11101" maxlength="15" size="12" id="svw_FV2_zip" />
+                            </td>
+                            <td>
+                                <input name="svw$FV2$country" type="text" maxlength="3" size="12" id="svw_FV2_country" />
+                            </td>
+                            <td>
+                                <input name="svw$FV2$countrysub" type="text" maxlength="3" size="12" id="svw_FV2_countrysub" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                               &nbsp;<span id="svw_FV2_sbrcitylbl" style="font-weight:bold;">City</span>                                                    
+                            </td>
+                            <td>
+                                &nbsp;<span id="svw_FV2_sbrstatelbl" style="font-weight:bold;">State</span>
+                            </td>
+                            <td>
+                                &nbsp;<span id="svw_FV2_sbrziplbl" style="font-weight:bold;">Zip</span>
+                            </td>
+                            <td>
+                                &nbsp;Country Code
+                            </td>
+                            <td>
+                                &nbsp;Subdivision
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="tblSpacing0 paddingTop6">
+                        <tr>
+                            <td>
+                                <b>Member ID</b>
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV2$membernum" type="text" value="JYM00411G01" maxlength="80" id="svw_FV2_membernum" />
+                            </td>
+                            <td>
+                                Group Name
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV2$groupname" type="text" maxlength="60" id="svw_FV2_groupname" />
+                            </td>
+                            <td>
+                                Group #
+                            </td>
+                            <td>
+                               <input name="svw$FV2$groupnum" type="text" maxlength="50" id="svw_FV2_groupnum" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <b>Date of Birth</b><span id="svw_FV2_birthdateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV2$birthdate" type="text" value="8/19/1964" id="svw_FV2_birthdate" onfocus="currentField=this;" />
+                            </td>
+                            <td>
+                                Referral #
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV2$referralnum" type="text" maxlength="50" id="svw_FV2_referralnum" />
+                            </td>
+                            <td>
+                                Prior Auth #
+                            </td>
+                            <td class="padRightLg">
+                                <input name="svw$FV2$priorauth" type="text" value="0000" maxlength="50" id="svw_FV2_priorauth" />
+                            </td>
+                        </tr>
+                    </table>
+                    <div id="svw_FV2_ctl03">
+				
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                <b>Patient Relationship<br />
+                                to Insured</b>
+                            </td>
+                            <td>
+                                <select name="svw$FV2$relation" onchange="javascript:setTimeout(&#39;__doPostBack(\&#39;svw$FV2$relation\&#39;,\&#39;\&#39;)&#39;, 0)" id="svw_FV2_relation">
+					<option value=""></option>
+					<option selected="selected" value="18">Self (18)</option>
+					<option value="01">Spouse (01)</option>
+					<option value="19">Child (19)</option>
+					<option value="40">Cadaver Donor (40)</option>
+					<option value="20">Employee (20)</option>
+					<option value="53">Life Partner (53)</option>
+					<option value="39">Organ Donor (39)</option>
+					<option value="G8">Other Relationship (G8)</option>
+					<option value="21">Unknown (21)</option>
+
+				</select>
+                                <input type="hidden" name="svw$FV2$relationX" id="svw_FV2_relationX" value="18" />
+                            </td>
+                        </tr>
+                    </table>
+                    
+			</div>
+                </td>
+            </tr>
+        </table>
+    </td>
+		</tr>
+	</table>
+<table cellspacing="0" border="0" id="svw_FV3" style="border-collapse:collapse;">
+		<tr>
+			<td colspan="2">
+        <table class="tblSpacing0">
+            <tr>
+                <td>
+                    <div id="svw_FV3_VS" style="color:Red;display:none;">
+
+			</div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    &nbsp;
+                </td>
+            </tr>
+            <tr>
+                <td class="sectionTitle">
+                    Dates
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <table class="tblSpacing0">
+                        <tr>
+                            <td>
+                                Last Seen
+                            </td>
+                            <td>
+                                <input name="svw$FV3$lastseendate" type="text" maxlength="10" size="12" id="svw_FV3_lastseendate" onfocus="currentField=this;" /><span id="svw_FV3_lastseendateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                Admission
+                            </td>
+                            <td>
+                                <input name="svw$FV3$admissiondate" type="text" maxlength="10" size="12" id="svw_FV3_admissiondate" onfocus="currentField=this;" /><span id="svw_FV3_admissiondateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                Discharge
+                            </td>
+                            <td>
+                                <input name="svw$FV3$dischargedate" type="text" maxlength="10" size="12" id="svw_FV3_dischargedate" onfocus="currentField=this;" /><span id="svw_FV3_dischargedateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Last Worked
+                            </td>
+                            <td>
+                                <input name="svw$FV3$lastworkeddate" type="text" maxlength="10" size="12" id="svw_FV3_lastworkeddate" onfocus="currentField=this;" /><span id="svw_FV3_lastworkeddateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                Return to Work
+                            </td>
+                            <td>
+                                <input name="svw$FV3$returntoworkdate" type="text" maxlength="10" size="12" id="svw_FV3_returntoworkdate" onfocus="currentField=this;" /><span id="svw_FV3_returntoworkdateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                            <td>
+                                Onset of Current<br />
+                                Illness/Symptom
+                            </td>
+                            <td>
+                                <input name="svw$FV3$illnessdate" type="text" maxlength="10" size="12" id="svw_FV3_illnessdate" onfocus="currentField=this;" /><span id="svw_FV3_illnessdateCV" style="color:Red;font-size:Large;display:none;">*</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+		</tr>
+	</table>
+<table class="tblSpacing0">
+    <tr>
+        <td class="sectionTitle">
+            Diagnosis Codes
+        </td>
+    </tr>
+</table>
+<div id="svw_dgc_ctl00">
+		
+        <table cellspacing="0" border="0" id="svw_dgc_FV" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <table>
+                    <tr>
+                        
+                    </tr>
+                </table>       
+                <div id="svw_dgc_FV_icdRadioButtons" class="">            
+                    <table class="tblSpacing0">
+                        <tr style="font-weight: bold;">
+                            <td>
+                                <span XMLFieldID="1171" style="padding-right: 1.6em;"><input id="svw_dgc_FV_icd9" type="radio" name="svw$dgc$FV$icdType" value="ICD9CM" onclick="javascript:setTimeout(&#39;__doPostBack(\&#39;svw$dgc$FV$icd9\&#39;,\&#39;\&#39;)&#39;, 0)" /><label for="svw_dgc_FV_icd9">ICD-9</label></span>
+                            </td>
+                            <td>
+                                <span XMLFieldID="1171"><input id="svw_dgc_FV_icd10" type="radio" name="svw$dgc$FV$icdType" value="ICD10" checked="checked" /><label for="svw_dgc_FV_icd10">ICD-10</label></span>
+                            </td>
+                            
+                        </tr>
+                    </table>            
+                </div>        
+                <div class="errorMessage">
+                    
+                </div>
+                <table class="tblSpacing0">
+                    <tr>
+                        
+                        <td>
+                            <a id="svw_dgc_FV_codeSearch" onclick="CodeSearch(&#39;&#39;,&#39;diag&#39;,document.getElementById(&#39;svw_dgc_FV_icd9&#39;).checked,&#39;True&#39;, &#39;../../../&#39;);return false;" href="#"><img src="../../Images/ZoomHS.png" alt="" style="border-width:0px;" /></a>
+                        </td>
+                        <td style="text-align: right; width: 20px;" align="right">
+                            1.</td>
+                        <td>
+                            <input name="svw$dgc$FV$code1" type="text" value="M5451" maxlength="30" size="8" id="svw_dgc_FV_code1" ItemNumber="1" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                        <td style="text-align: right; width: 20px;">
+                            2.</td>
+                        <td>
+                            <input name="svw$dgc$FV$code2" type="text" maxlength="30" size="8" id="svw_dgc_FV_code2" ItemNumber="2" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                        <td style="text-align: right; width: 20px;" align="right">
+                            3.</td>
+                        <td>
+                            <input name="svw$dgc$FV$code3" type="text" maxlength="30" size="8" id="svw_dgc_FV_code3" ItemNumber="3" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                        <td style="text-align: right; width: 20px" align="right">
+                            4.
+                        </td>
+                        <td align = "left">
+                            <input name="svw$dgc$FV$code4" type="text" maxlength="30" size="8" id="svw_dgc_FV_code4" ItemNumber="4" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                    </tr>
+                    <tr>
+                        
+                        <td></td>
+                        <td style="text-align: right; width: 20px">
+                            5.
+                        </td>
+                        <td>
+                            <input name="svw$dgc$FV$code5" type="text" maxlength="30" size="8" id="svw_dgc_FV_code5" ItemNumber="5" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                        <td style="text-align: right; width: 20px;" align="right">
+                            6.
+                        </td>
+                        <td>
+                            <input name="svw$dgc$FV$code6" type="text" maxlength="30" size="8" id="svw_dgc_FV_code6" ItemNumber="6" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                        <td style="text-align: right; width: 20px;" align="right">
+                            7.</td>
+                        <td>
+                            <input name="svw$dgc$FV$code7" type="text" maxlength="30" size="8" id="svw_dgc_FV_code7" ItemNumber="7" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                        <td style="text-align: right; width: 20px;" align="right" >
+                            8.</td>
+                        <td>
+                            <input name="svw$dgc$FV$code8" type="text" maxlength="30" size="8" id="svw_dgc_FV_code8" ItemNumber="8" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                    </tr>
+                    <tr>
+                        
+                        <td></td>
+                        <td style="text-align: right; width: 20px">
+                            9.
+                        </td>
+                        <td>
+                            <input name="svw$dgc$FV$code9" type="text" maxlength="30" size="8" id="svw_dgc_FV_code9" ItemNumber="9" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                        </td>
+                        
+                
+                        <td style="text-align: right; width: 20px;" align="right">
+                            10.
+                        </td>
+                        <td>
+                            <input name="svw$dgc$FV$code10" type="text" maxlength="30" size="8" id="svw_dgc_FV_code10" ItemNumber="10" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                            
+                        </td>
+                        <td style="text-align: right; width: 20px;" align="right">
+                            11.
+                        </td>
+                        <td>
+                            <input name="svw$dgc$FV$code11" type="text" maxlength="30" size="8" id="svw_dgc_FV_code11" ItemNumber="11" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                            
+                        </td>
+                        <td style="text-align: right; width: 20px;" align="right">
+                            12.
+                        </td>
+                        <td>
+                            <input name="svw$dgc$FV$code12" type="text" maxlength="30" size="8" id="svw_dgc_FV_code12" ItemNumber="12" onfocus="diaginput=this;" onblurx="ValidateDiagProcCode(this, &#39;ICD9CM&#39;);" style="width:60px;" />
+                            
+                        </td>
+                    </tr>
+                </table>
+            </td>
+			</tr>
+		</table>
+    
+	</div>
+
+<table class="tblSpacing0">
+    <tr>
+        <td class="sectionTitle">
+            Anesthesia Related Procedures
+        </td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+    var rootDir5010PAnesthesiaCodes = '../../../';
+</script>
+<table cellspacing="0" border="0" id="svw_anc_FV" style="border-collapse:collapse;">
+		<tr>
+			<td colspan="2">
+        <table>
+            <tr>
+                
+                <td>
+                </td>
+                <td style="width: 17px">
+                    
+                </td>
+                <td style="text-align: right; width: 20px;" align="right">
+                    1.
+                </td>
+                <td>
+                    <input name="svw$anc$FV$code1" type="text" maxlength="30" size="6" id="svw_anc_FV_code1" onfocus="procinput=this;" />
+                </td>
+                <td style="text-align: right; width: 20px;" align="right">
+                    2.
+                </td>
+                <td>
+                    <input name="svw$anc$FV$code2" type="text" maxlength="30" size="6" id="svw_anc_FV_code2" onfocus="procinput=this;" />
+                </td>
+            </tr>
+        </table>
+    </td>
+		</tr>
+	</table>
+
+<table class="tblSpacing0">
+    <tr>
+        <td class="sectionTitle">
+            Place of Service
+        </td>
+    </tr>
+</table>
+<table cellspacing="0" border="0" id="svw_pos_FV" style="border-collapse:collapse;">
+		<tr>
+			<td colspan="2">
+        <table cellpadding="0" cellspacing="0">
+            <tr>
+                <td>
+                    <div id="svw_pos_FV_VS" style="color:Red;display:none;">
+
+			</div>
+                    <span id="svw_pos_FV_posRV" style="color:Red;font-size:Large;display:none;"></span></td>
+            </tr>
+            <tr>
+                <td>
+                    <select name="svw$pos$FV$pos" id="svw_pos_FV_pos">
+				<option value=""></option>
+				<option value="01">Pharmacy (01)</option>
+				<option selected="selected" value="11">Office (11)</option>
+				<option value="02">Telehealth Provided Other than in Patient&#39;s Home (02)</option>
+				<option value="03">School (03)</option>
+				<option value="04">Homeless Shelter (04)</option>
+				<option value="05">Indian Health Service Free-standing Facility (05)</option>
+				<option value="06">Indian Health Service Provider-based Facility (06)</option>
+				<option value="07">Tribal 638 Free-standing Facility (07)</option>
+				<option value="08">Tribal 638 Provider-based Facility (08)</option>
+				<option value="09">Prison - Correctional Facility (09)</option>
+				<option value="10">Telehealth Provided in Patient&#39;s Home (10)</option>
+				<option value="12">Home (12)</option>
+				<option value="13">Assisted Living Facility (13)</option>
+				<option value="14">Group Home (14)</option>
+				<option value="15">Mobile Unit (15)</option>
+				<option value="16">Temporary Lodging (16)</option>
+				<option value="17">Walk-In Retail Health Clinic (17)</option>
+				<option value="18">Employment/Worksite (18)</option>
+				<option value="19">Off Campus-Outpatient Hospital (19)</option>
+				<option value="20">Urgent Care Facility (20)</option>
+				<option value="21">Inpatient Hospital (21)</option>
+				<option value="22">On Campus-Outpatient Hospital (22)</option>
+				<option value="23">Emergency Room - Hospital (23)</option>
+				<option value="24">Ambulatory Surgical Center (24)</option>
+				<option value="25">Birthing Center (25)</option>
+				<option value="26">Military Treatment Facility (26)</option>
+				<option value="27">Outreach Site/Street (27)</option>
+				<option value="31">Skilled Nursing Facility (31)</option>
+				<option value="32">Nursing Facility (32)</option>
+				<option value="33">Custodial Care Facility (33)</option>
+				<option value="34">Hospice (34)</option>
+				<option value="41">Ambulance - Land (41)</option>
+				<option value="42">Ambulance - Air or Water (42)</option>
+				<option value="49">Independent Clinic (49)</option>
+				<option value="50">Federally Qualified Health Center (50)</option>
+				<option value="51">Inpatient Psychiatric Facility (51)</option>
+				<option value="52">Psychiatric Facility-Partial Hospitalization (52)</option>
+				<option value="53">Community Mental Health Center (53)</option>
+				<option value="54">Intermediate Care Facility/Mentally Retarded (54)</option>
+				<option value="55">Residential Substance Abuse Treatment Center (55)</option>
+				<option value="56">Psychiatric Residential Treatment Facility (56)</option>
+				<option value="57">Non-residential Substance Abuse Treatment Facility (57)</option>
+				<option value="58">Non-residential Opioid Treatment Facility (58)</option>
+				<option value="60">Mass Immunization Center (60)</option>
+				<option value="61">Comprehensive Inpatient Rehabilitation Facility (61)</option>
+				<option value="62">Comprehensive Outpatient Rehabilitation Facility (62)</option>
+				<option value="65">End-Stage Renal Disease Treatment Facility (65)</option>
+				<option value="66">Programs of All-Inclusive Care for the Elderly (PACE) Center (66)</option>
+				<option value="71">Public Health Clinic (71)</option>
+				<option value="72">Rural Health Clinic (72)</option>
+				<option value="81">Independent Laboratory (81)</option>
+				<option value="99">Other Place of Service (99)</option>
+
+			</select>
+                    <input type="hidden" name="svw$pos$FV$posX" id="svw_pos_FV_posX" value="11" />
+                </td>
+            </tr>
+        </table>
+    </td>
+		</tr>
+	</table>
+
+<table class="tblSpacing0">
+    <tr>
+        <td class="sectionTitle paddingTop6">
+            Service Line Information
+        </td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+    var procinput;
+    var rootDir5010PSimpleViewSL = '../../../';
+
+    // Trigger an async postback when a row is selected by the user.
+    // The Click_SL handler is assigned to each selectable element in each row by the
+    // SetRowOnClicks method in the code behind.
+
+    function Click_SL(seq) {
+        //check to make sure we have the viewstate fully loaded..
+        var prm = Sys.WebForms.PageRequestManager.getInstance();
+        if (prm.get_isInAsyncPostBack()) {
+            return;
+        }
+
+        // Get the last row selected
+        var lastSeqNum = document.getElementById('svw_ssl_hdnLastSeqNum').value;
+
+        // Only trigger when a different row is being selected
+        if (seq != lastSeqNum) {
+
+            // Assign the new row number to the hidden value and trigger an async postback.
+            document.getElementById('svw_ssl_hdnSeqNum').value = seq;
+            __doPostBack("svw_ssl_trigger", "");
+
+            // Loop through all rows in the grid setting the background.
+            var table = document.getElementById('svw_ssl_FV_GV');
+            var row;
+
+            for (i = 1; i < table.rows.length; i++) {
+
+                row = table.rows[i];
+
+                if (row.cells[0].firstChild.innerText == seq) {
+                    row.style.backgroundColor = '#9ED8B1';
+                    procinput = row.cells[4].firstChild.id;
+                } else {
+                    row.style.backgroundColor = '';
+                }
+            }
+        }
+    }
+</script>
+<div id="svw_ssl_VS" style="color:Red;display:none;">
+
+	</div>
+<div id="svw_ssl_UP1">
+		
+        
+<span id="svw_ssl_topPager" style="display:inline-block;"><div id="svw_ssl_topPager_pagerContainer" onkeypress="javascript:return WebForm_FireDefaultButton(event, &#39;svw_ssl_topPager_lnkGo&#39;)">
+			<table id="svw_ssl_topPager_tblPager" cellspacing="0" cellpadding="0" border="0" style="width:770px;border-collapse:collapse;">
+				<tr>
+					<td id="svw_ssl_topPager_tcControls" style="width:150px;"></td><td align="center" style="width:460px;"><span id="svw_ssl_topPager_lblDisplay" style="font-weight:bold;">Displaying&nbsp;1&nbsp;-&nbsp;3&nbsp;of&nbsp;3&nbsp; </span></td><td style="width:10px;"></td><td class="PageCountClass" style="width:120px;white-space:nowrap;">&nbsp;Page&nbsp;<input name="svw$ssl$topPager$txtPage" type="text" value="1" maxlength="6" size="3" id="svw_ssl_topPager_txtPage" onclick="this.select();" onkeyup="if (isNaN(parseInt(value))||parseInt(value)&lt;1) value=&#39;&#39;; else value=parseInt(value);if(parseInt(value)>1)value=value.substr(0,value.length-1)" />&nbsp;of&nbsp;<span id="svw_ssl_topPager_lblPageCount">1</span></td><td style="width:10px;"></td><td style="width:20px;padding-right:2px;">&nbsp;</td>
+				</tr>
+			</table>
+		</div></span>
+
+        <table cellspacing="0" border="0" id="svw_ssl_FV" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <div id="ServiceLinesDiv" style="overflow: auto;">
+                    <div>
+					<table cellspacing="0" rules="all" bordercolor="#005588" border="1" id="svw_ssl_FV_GV" style="border-collapse:collapse;">
+						<tr align="left" valign="top">
+							<th scope="col">#</th><th scope="col" style="font-weight:normal;"><b>Service<br />From</b></th><th scope="col" style="font-weight:normal;">Service<br />To</th><th scope="col" style="font-weight:normal;">Place of<br />Service</th><th scope="col" style="font-weight:normal;">
+                                    <table>
+                                        <tr>
+                                            <td>
+                                                <span id="svw_ssl_FV_GV_ctl01_proccodelbl"><b>Procedure<br />Code</b></span>
+                                            </td>
+                                            <td>
+                                                <input type="image" name="svw$ssl$FV$GV$ctl01$linkProccode" id="svw_ssl_FV_GV_ctl01_linkProccode" NavigateUrl="#" src="../../Images/ZoomHS.png" onclick="CptCodeSearchProf(procinput, rootDir5010PSimpleViewSL);return false;" style="border-width:0px;" />
+                                                <td>
+                                                    <tr>
+                                    </table>
+                                </th><th scope="col" style="font-weight:normal;">Modifier(s)</th><th scope="col" style="font-weight:normal;"><b>Diagnosis<br />Pointers</b></th><th scope="col" style="font-weight:normal;"><b>Charges</b></th><th scope="col" style="font-weight:normal;"><b>Units/<br />Min</b></th><th scope="col" style="font-weight:normal;">Emg</th><th scope="col" style="font-weight:normal;">EPSDT</th><th scope="col" style="font-weight:normal;">Fam<br />Plan</th><th scope="col">&nbsp;</th>
+						</tr><tr style="background-color:#9ED8B1;">
+							<td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <span id="svw_ssl_FV_GV_ctl02_seq" style="display:inline-block;width:15px;">1</span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl02$servicefromdate" type="text" value="2/27/2026" maxlength="10" size="14" id="svw_ssl_FV_GV_ctl02_servicefromdate" onfocus="currentField=this;" style="border-width:0px;" /><span id="svw_ssl_FV_GV_ctl02_servicefromdateCV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                            <span id="svw_ssl_FV_GV_ctl02_servicefromdateRV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl02$servicetodate" type="text" maxlength="10" size="12" id="svw_ssl_FV_GV_ctl02_servicetodate" onfocus="currentField=this;" style="border-width:0px;" /><span id="svw_ssl_FV_GV_ctl02_servicetodateCV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl02$pos" type="text" maxlength="2" size="6" id="svw_ssl_FV_GV_ctl02_pos" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl02$proccode" type="text" value="97110" maxlength="48" size="8" id="svw_ssl_FV_GV_ctl02_proccode" onfocus="procinput=this;" onblurx="ValidateDiagProcCode(this, &#39;CPT&#39;);" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);" style="white-space:nowrap;">
+                                    <input name="svw$ssl$FV$GV$ctl02$mod1" type="text" value="GP" maxlength="2" id="svw_ssl_FV_GV_ctl02_mod1" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl02$mod2" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl02_mod2" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl02$mod3" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl02_mod3" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl02$mod4" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl02_mod4" style="width:15px;" />
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);" style="white-space:nowrap;">
+                                    <input name="svw$ssl$FV$GV$ctl02$diagptr1" type="text" value="1" maxlength="2" id="svw_ssl_FV_GV_ctl02_diagptr1" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl02$diagptr2" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl02_diagptr2" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl02$diagptr3" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl02_diagptr3" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl02$diagptr4" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl02_diagptr4" style="width: 12px" />
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl02$chg" type="text" value="180.00" size="10" id="svw_ssl_FV_GV_ctl02_chg" class="alignRight" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl02$qty" type="text" value="3" size="4" id="svw_ssl_FV_GV_ctl02_qty" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl02_emergency" type="checkbox" name="svw$ssl$FV$GV$ctl02$emergency" /></span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl02_epsdt" type="checkbox" name="svw$ssl$FV$GV$ctl02$epsdt" /></span>
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl02_familyplan" type="checkbox" name="svw$ssl$FV$GV$ctl02$familyplan" /></span>
+                                </td><td onfocus="Click_SL(&#39;1&#39;);" onmousedown="Click_SL(&#39;1&#39;);" onkeydown="Click_SL(&#39;1&#39;);" style="white-space:nowrap;">
+                                    <a id="svw_ssl_FV_GV_ctl02_DeleteButton" onblur="Click_SL(&#39;2&#39;);" href="javascript:__doPostBack(&#39;svw$ssl$FV$GV$ctl02$DeleteButton&#39;,&#39;&#39;)">Delete</a>
+                                    
+                                </td>
+						</tr><tr>
+							<td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <span id="svw_ssl_FV_GV_ctl03_seq" style="display:inline-block;width:15px;">2</span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl03$servicefromdate" type="text" value="2/27/2026" maxlength="10" size="14" id="svw_ssl_FV_GV_ctl03_servicefromdate" onfocus="currentField=this;" style="border-width:0px;" /><span id="svw_ssl_FV_GV_ctl03_servicefromdateCV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                            <span id="svw_ssl_FV_GV_ctl03_servicefromdateRV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl03$servicetodate" type="text" maxlength="10" size="12" id="svw_ssl_FV_GV_ctl03_servicetodate" onfocus="currentField=this;" style="border-width:0px;" /><span id="svw_ssl_FV_GV_ctl03_servicetodateCV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl03$pos" type="text" maxlength="2" size="6" id="svw_ssl_FV_GV_ctl03_pos" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl03$proccode" type="text" value="97112" maxlength="48" size="8" id="svw_ssl_FV_GV_ctl03_proccode" onfocus="procinput=this;" onblurx="ValidateDiagProcCode(this, &#39;CPT&#39;);" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);" style="white-space:nowrap;">
+                                    <input name="svw$ssl$FV$GV$ctl03$mod1" type="text" value="GP" maxlength="2" id="svw_ssl_FV_GV_ctl03_mod1" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl03$mod2" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl03_mod2" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl03$mod3" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl03_mod3" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl03$mod4" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl03_mod4" style="width:15px;" />
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);" style="white-space:nowrap;">
+                                    <input name="svw$ssl$FV$GV$ctl03$diagptr1" type="text" value="1" maxlength="2" id="svw_ssl_FV_GV_ctl03_diagptr1" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl03$diagptr2" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl03_diagptr2" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl03$diagptr3" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl03_diagptr3" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl03$diagptr4" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl03_diagptr4" style="width: 12px" />
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl03$chg" type="text" value="70.00" size="10" id="svw_ssl_FV_GV_ctl03_chg" class="alignRight" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl03$qty" type="text" value="1" size="4" id="svw_ssl_FV_GV_ctl03_qty" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl03_emergency" type="checkbox" name="svw$ssl$FV$GV$ctl03$emergency" /></span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl03_epsdt" type="checkbox" name="svw$ssl$FV$GV$ctl03$epsdt" /></span>
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl03_familyplan" type="checkbox" name="svw$ssl$FV$GV$ctl03$familyplan" /></span>
+                                </td><td onfocus="Click_SL(&#39;2&#39;);" onmousedown="Click_SL(&#39;2&#39;);" onkeydown="Click_SL(&#39;2&#39;);" style="white-space:nowrap;">
+                                    <a id="svw_ssl_FV_GV_ctl03_DeleteButton" onblur="Click_SL(&#39;3&#39;);" href="javascript:__doPostBack(&#39;svw$ssl$FV$GV$ctl03$DeleteButton&#39;,&#39;&#39;)">Delete</a>
+                                    
+                                </td>
+						</tr><tr>
+							<td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <span id="svw_ssl_FV_GV_ctl04_seq" style="display:inline-block;width:15px;">3</span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl04$servicefromdate" type="text" value="2/27/2026" maxlength="10" size="14" id="svw_ssl_FV_GV_ctl04_servicefromdate" onfocus="currentField=this;" style="border-width:0px;" /><span id="svw_ssl_FV_GV_ctl04_servicefromdateCV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                            <span id="svw_ssl_FV_GV_ctl04_servicefromdateRV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl04$servicetodate" type="text" maxlength="10" size="12" id="svw_ssl_FV_GV_ctl04_servicetodate" onfocus="currentField=this;" style="border-width:0px;" /><span id="svw_ssl_FV_GV_ctl04_servicetodateCV" style="color:Red;font-size:Large;visibility:hidden;">*</span>
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl04$pos" type="text" maxlength="2" size="6" id="svw_ssl_FV_GV_ctl04_pos" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl04$proccode" type="text" value="97140" maxlength="48" size="8" id="svw_ssl_FV_GV_ctl04_proccode" onfocus="procinput=this;" onblurx="ValidateDiagProcCode(this, &#39;CPT&#39;);" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);" style="white-space:nowrap;">
+                                    <input name="svw$ssl$FV$GV$ctl04$mod1" type="text" value="GP" maxlength="2" id="svw_ssl_FV_GV_ctl04_mod1" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl04$mod2" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl04_mod2" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl04$mod3" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl04_mod3" style="width:15px;" /><input name="svw$ssl$FV$GV$ctl04$mod4" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl04_mod4" style="width:15px;" />
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);" style="white-space:nowrap;">
+                                    <input name="svw$ssl$FV$GV$ctl04$diagptr1" type="text" value="1" maxlength="2" id="svw_ssl_FV_GV_ctl04_diagptr1" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl04$diagptr2" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl04_diagptr2" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl04$diagptr3" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl04_diagptr3" style="width: 12px" /><input name="svw$ssl$FV$GV$ctl04$diagptr4" type="text" maxlength="2" id="svw_ssl_FV_GV_ctl04_diagptr4" style="width: 12px" />
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl04$chg" type="text" value="60.00" size="10" id="svw_ssl_FV_GV_ctl04_chg" class="alignRight" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <input name="svw$ssl$FV$GV$ctl04$qty" type="text" value="1" size="4" id="svw_ssl_FV_GV_ctl04_qty" style="border-width:0px;" />
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl04_emergency" type="checkbox" name="svw$ssl$FV$GV$ctl04$emergency" /></span>
+                                </td><td align="center" valign="middle" onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl04_epsdt" type="checkbox" name="svw$ssl$FV$GV$ctl04$epsdt" /></span>
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);">
+                                    <span><input id="svw_ssl_FV_GV_ctl04_familyplan" type="checkbox" name="svw$ssl$FV$GV$ctl04$familyplan" /></span>
+                                </td><td onfocus="Click_SL(&#39;3&#39;);" onmousedown="Click_SL(&#39;3&#39;);" onkeydown="Click_SL(&#39;3&#39;);" style="white-space:nowrap;">
+                                    <a id="svw_ssl_FV_GV_ctl04_DeleteButton" href="javascript:__doPostBack(&#39;svw$ssl$FV$GV$ctl04$DeleteButton&#39;,&#39;&#39;)">Delete</a>
+                                    <a id="svw_ssl_FV_GV_ctl04_AddButton" href="javascript:__doPostBack(&#39;svw$ssl$FV$GV$ctl04$AddButton&#39;,&#39;&#39;)">Add</a>
+                                </td>
+						</tr>
+					</table>
+				</div>
+                </div>
+            </td>
+			</tr>
+		</table>
+    
+	</div>
+<div id="svw_ssl_UP2">
+		
+        <input type="submit" name="svw$ssl$trigger" value="" id="svw_ssl_trigger" class="displayNone" />
+        <input type="hidden" name="svw$ssl$hdnSeqNum" id="svw_ssl_hdnSeqNum" />
+        <input type="hidden" name="svw$ssl$hdnLastSeqNum" id="svw_ssl_hdnLastSeqNum" value="1" />
+    
+	</div>
+
+<table class="tblSpacing0 paddingTop6">
+    <tr>
+        <td></td>
+    </tr>
+    <tr>
+        <td class="sectionTitle">
+            Provider Information
+        </td>
+    </tr>
+</table>
+<div id="svw_pi1_ProviderUpdatePanel">
+		
+        <table class="widthProviders" cellspacing="0" border="0" id="svw_pi1_billFV" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <div id="svw_pi1_billFV_VSbill" style="color:Red;display:none;">
+
+				</div>
+                <table class="tblSpacing2">
+                    <tr>
+                        <td>
+                            <b>Billing Provider</b>
+                        </td>
+                        <td>
+                            <span><input id="svw_pi1_billFV_rbOrganization" type="radio" name="svw$pi1$billFV$EntityType" value="rbOrganization" checked="checked" /><label for="svw_pi1_billFV_rbOrganization">Organization</label></span>
+                            <span><input id="svw_pi1_billFV_rbIndividual" type="radio" name="svw$pi1$billFV$EntityType" value="rbIndividual" onclick="javascript:setTimeout(&#39;__doPostBack(\&#39;svw$pi1$billFV$rbIndividual\&#39;,\&#39;\&#39;)&#39;, 0)" /><label for="svw_pi1_billFV_rbIndividual">Individual</label></span>
+                        </td>
+                        <td class="paddingLeft20">
+                            <b>NPI</b>
+                            <span id="svw_pi1_billFV_NpiValidator" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            <input name="svw$pi1$billFV$npi" type="text" value="1265940399" maxlength="10" size="12" id="svw_pi1_billFV_npi" />
+                        </td>
+                        <td>
+                            Provider #
+                            <input name="svw$pi1$billFV$provnum" type="text" maxlength="50" size="12" id="svw_pi1_billFV_provnum" />
+                        </td>
+                        <td>
+                            <b>Tax ID</b>
+                            <input name="svw$pi1$billFV$tin" type="text" value="823830674" maxlength="50" size="10" id="svw_pi1_billFV_tin" />
+                        </td>
+                        <td>
+                            <span><input id="svw_pi1_billFV_rbSsn" type="radio" name="svw$pi1$billFV$TaxIdType" value="rbSsn" /><label for="svw_pi1_billFV_rbSsn">SSN</label></span>
+                            <span><input id="svw_pi1_billFV_rbEin" type="radio" name="svw$pi1$billFV$TaxIdType" value="rbEin" checked="checked" /><label for="svw_pi1_billFV_rbEin">EIN</label></span>
+                        </td>                     
+                    </tr>
+                </table>
+                <table class="tblSpacing0">
+                    <tr>
+                        <td>
+                            <input name="svw$pi1$billFV$orgName" type="text" value="PHYSICAL THERAPY OF THE CITY" maxlength="60" size="45" id="svw_pi1_billFV_orgName" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" />
+                        </td>
+                        <td>
+                                
+                        </td>
+                        <td>    
+                             
+                        </td>
+                        <td>
+                                 
+                        </td>
+                        <td>
+                            
+                        </td>
+                        <td>
+                            <input name="svw$pi1$billFV$add1" type="text" value="8746 20TH AVE L" maxlength="55" size="25" id="svw_pi1_billFV_add1" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$billFV$add2" type="text" maxlength="55" size="25" id="svw_pi1_billFV_add2" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$billFV$city" type="text" value="BROOKLYN" maxlength="30" size="15" id="svw_pi1_billFV_city" onkeyup="CheckRequired(this)" onblur="CheckRequired(this)" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$billFV$state" type="text" value="NY" maxlength="2" size="4" id="svw_pi1_billFV_state" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$billFV$zip" type="text" value="112144802" maxlength="15" size="12" id="svw_pi1_billFV_zip" />
+                        </td>
+                    </tr>               
+                    <tr>
+                        <td>
+                            <span id="svw_pi1_billFV_orgNameLabel" style="font-weight:bold;">Organization</span>
+                            <span id="svw_pi1_billFV_orgNameRV" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>                          
+                                
+                                  
+                        </td>
+                        <td>                           
+                                
+                                                      
+                        </td>
+                        <td>
+                                                    
+                        </td>
+                        <td>
+                            
+                        </td>
+                        <td>
+                            <b>&nbsp;Address Line 1</b><span id="svw_pi1_billFV_add1RV" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>&nbsp;Address Line 2</td>
+                        <td>
+                            <b>&nbsp;City</b><span id="svw_pi1_billFV_cityRV" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            <b>&nbsp;State</b>
+                        </td>
+                        <td>
+                            <b>&nbsp;Zip</b>
+                        </td>
+                    </tr>
+                </table>
+                <hr class="hrProv" />
+            </td>
+			</tr>
+		</table>       
+        <table class="widthProviders" cellspacing="0" border="0" id="svw_pi1_FVRen" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <div id="svw_pi1_FVRen_VSren" style="color:Red;display:none;">
+
+				</div>
+                <table class="tblSpacing2 fillWidth">
+                    <tr>
+                        <td class="nobr">
+                            <b>Rendering Provider</b>
+                        </td>
+                        <td class="nobr alignLeft">
+                            <span><input id="svw_pi1_FVRen_rbOrganization" type="radio" name="svw$pi1$FVRen$RenEntityType" value="rbOrganization" onclick="javascript:setTimeout(&#39;__doPostBack(\&#39;svw$pi1$FVRen$rbOrganization\&#39;,\&#39;\&#39;)&#39;, 0)" /><label for="svw_pi1_FVRen_rbOrganization">Organization</label></span>
+                            <span><input id="svw_pi1_FVRen_rbIndividual" type="radio" name="svw$pi1$FVRen$RenEntityType" value="rbIndividual" checked="checked" /><label for="svw_pi1_FVRen_rbIndividual">Individual</label></span>
+                        </td>
+                        <td class="paddingLeft20">
+                            NPI
+                                <span id="svw_pi1_FVRen_NpiValidator" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRen$npi" type="text" value="1861273070" maxlength="10" size="12" id="svw_pi1_FVRen_npi" />
+                        </td>
+                        <td class="nobr">
+                            Provider #
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRen$provnum" type="text" maxlength="50" size="18" id="svw_pi1_FVRen_provnum" />
+                        </td>
+                        <td class="nobr alignRight paddingRight20">                            
+                            <a id="svw_pi1_FVRen_copyBilling" Checked="false" AutoPostBack="true" href="javascript:__doPostBack(&#39;svw$pi1$FVRen$copyBilling&#39;,&#39;&#39;)">Copy from Billing</a>
+                        </td>
+                    </tr>
+                </table>
+                <table class="tblSpacing2">
+                    <tr>
+                        <td>
+                            
+                            <input name="svw$pi1$FVRen$lname" type="text" value="TORIO" maxlength="60" size="45" id="svw_pi1_FVRen_lname" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRen$fname" type="text" value="ELOISA" maxlength="35" size="25" id="svw_pi1_FVRen_fname" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRen$mname" type="text" maxlength="25" size="25" id="svw_pi1_FVRen_mname" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRen$suffix" type="text" maxlength="10" size="10" id="svw_pi1_FVRen_suffix" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span id="svw_pi1_FVRen_lnameLabel"> Last</span>
+                        </td>
+                        <td>
+                            <span id="svw_pi1_FVRen_fnameLabel"> First</span>
+                        </td>
+                        <td>
+                            <span id="svw_pi1_FVRen_mnameLabel"> Middle</span>
+                        </td>
+                        <td>
+                            <span id="svw_pi1_FVRen_suffixLabel"> Suffix</span>
+                        </td>
+                    </tr>
+                </table>
+                <hr class="hrProv" />
+            </td>
+			</tr>
+		</table>
+        <table class="widthProviders" cellspacing="0" border="0" id="svw_pi1_FVPayto" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <div id="svw_pi1_FVPayto_VSpay" style="color:Red;display:none;">
+
+				</div>
+                <table class="tblSpacing2 fillWidth">
+                    <tr>
+                        <td>
+                            <b>Pay-To Provider</b>
+                            <span class="paddingLeft20">
+                                <span disabled="disabled"><input id="svw_pi1_FVPayto_rbOrganization" type="radio" name="svw$pi1$FVPayto$paytoEntityType" value="rbOrganization" checked="checked" disabled="disabled" /><label for="svw_pi1_FVPayto_rbOrganization">Organization</label></span>
+                                <span disabled="disabled"><input id="svw_pi1_FVPayto_rbIndividual" type="radio" name="svw$pi1$FVPayto$paytoEntityType" value="rbIndividual" disabled="disabled" onclick="javascript:setTimeout(&#39;__doPostBack(\&#39;svw$pi1$FVPayto$rbIndividual\&#39;,\&#39;\&#39;)&#39;, 0)" /><label for="svw_pi1_FVPayto_rbIndividual">Individual</label></span>
+                            </span>
+                        </td>                       
+                        <td class="alignRight paddingRight20">                                                       
+                            <a id="svw_pi1_FVPayto_copyBilling" AutoPostBack="true" href="javascript:__doPostBack(&#39;svw$pi1$FVPayto$copyBilling&#39;,&#39;&#39;)">Copy from Billing</a>
+                        </td>
+                    </tr>
+                </table>
+                <table class="tblSpacing2">                    
+                    <tr>
+                        <td>
+                            <input name="svw$pi1$FVPayto$orgName" type="text" maxlength="60" size="45" id="svw_pi1_FVPayto_orgName" disabled="disabled" />                       
+                                                    
+                                                    
+                                                    
+                            
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVPayto$add1" type="text" maxlength="55" size="25" id="svw_pi1_FVPayto_add1" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVPayto$add2" type="text" maxlength="55" size="25" id="svw_pi1_FVPayto_add2" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVPayto$city" type="text" maxlength="30" size="15" id="svw_pi1_FVPayto_city" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVPayto$state" type="text" maxlength="2" size="4" id="svw_pi1_FVPayto_state" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVPayto$zip" type="text" maxlength="15" size="12" id="svw_pi1_FVPayto_zip" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span id="svw_pi1_FVPayto_orgNameLabel"> Organization</span>                        
+                                                    
+                                                    
+                                                    
+                            
+                        </td>
+                        <td>
+                            &nbsp;Address Line 1
+                        </td>
+                        <td>
+                            &nbsp;Address Line 2
+                        </td>
+                        <td>
+                            &nbsp;City
+                        </td>
+                        <td>
+                            &nbsp;State
+                        </td>
+                        <td>
+                            &nbsp;Zip
+                        </td>
+                    </tr>
+                </table>
+                <hr class="hrProv"/>
+            </td>
+			</tr>
+		</table>
+        <table class="widthProviders" cellspacing="0" border="0" id="svw_pi1_FVRef" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <div id="svw_pi1_FVRef_VSpay" style="color:Red;display:none;">
+
+				</div>
+                <table class="tblSpacing2">
+                    <tr>
+                        <td>
+                            <b>Referring Provider &nbsp;</b>
+                        </td>
+                        <td class="paddingLeft20">
+                            NPI
+                            <span id="svw_pi1_FVRef_NpiValidator" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRef$npi" type="text" value="1285291534" maxlength="10" size="12" id="svw_pi1_FVRef_npi" />
+                        </td>
+                        <td>
+                            Provider #
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRef$provnum" type="text" maxlength="50" size="18" id="svw_pi1_FVRef_provnum" />
+                        </td>
+                        <td>
+                            UPIN
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRef$upin" type="text" maxlength="30" size="20" id="svw_pi1_FVRef_upin" />
+                        </td>
+                    </tr>
+                </table>
+                <table class="tblSpacing2">
+                    <tr>
+                        <td>                            
+                            <input name="svw$pi1$FVRef$lname" type="text" value="FENG" maxlength="60" size="45" id="svw_pi1_FVRef_lname" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRef$fname" type="text" value="JIE" maxlength="35" size="25" id="svw_pi1_FVRef_fname" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRef$mname" type="text" maxlength="25" size="25" id="svw_pi1_FVRef_mname" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVRef$suffix" type="text" maxlength="10" size="10" id="svw_pi1_FVRef_suffix" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span id="svw_pi1_FVRef_lnameLabel">Last</span>
+                        </td>
+                        <td>
+                            &nbsp;<span id="svw_pi1_FVRef_fnameLabel">First</span>
+                        </td>
+                        <td>
+                            &nbsp;<span id="svw_pi1_FVRef_mnameLabel">Middle</span>
+                        </td>
+                        <td>
+                            &nbsp;<span id="svw_pi1_FVRef_suffixLabel">Suffix</span>
+                        </td>
+                    </tr>
+                </table>
+                <hr class="hrProv"/>
+            </td>
+			</tr>
+		</table>
+        <table class="widthProviders" cellspacing="0" border="0" id="svw_pi1_FVFac" style="border-collapse:collapse;">
+			<tr>
+				<td colspan="2">
+                <div id="svw_pi1_FVFac_VSFac" style="color:Red;display:none;">
+
+				</div>
+                <table class="tblSpacing2">
+                    <tr>
+                        <td>
+                            <b>Facility</b>
+                        </td>
+                        <td class="paddingLeft20">
+                            NPI
+                            <span id="svw_pi1_FVFac_NpiValidator" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$npi" type="text" value="1265940399" maxlength="10" size="12" id="svw_pi1_FVFac_npi" />
+                        </td>
+                        <td>
+                            Provider #
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$provnum" type="text" maxlength="50" size="20" id="svw_pi1_FVFac_provnum" />
+                        </td>
+                    </tr>
+                </table>
+                <table class="tblSpacing2">
+                    <tr>
+                        <td>
+                            <input name="svw$pi1$FVFac$name" type="text" value="PHYSICAL THERPAY OF THE CITY" maxlength="60" size="45" id="svw_pi1_FVFac_name" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$add1" type="text" value="3164 21ST ST" maxlength="55" size="25" id="svw_pi1_FVFac_add1" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$add2" type="text" maxlength="55" size="25" id="svw_pi1_FVFac_add2" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$city" type="text" value="ASTORIA" maxlength="30" size="15" id="svw_pi1_FVFac_city" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$state" type="text" value="NY" maxlength="2" size="4" id="svw_pi1_FVFac_state" />
+                        </td>
+                        <td>
+                            <input name="svw$pi1$FVFac$zip" type="text" value="111064573" maxlength="15" size="12" id="svw_pi1_FVFac_zip" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span id="svw_pi1_FVFac_orgNameLabel">Organization</span><span id="svw_pi1_FVFac_FacNameValidator" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            &nbsp;Address Line 1<span id="svw_pi1_FVFac_FacAddValidator" style="color:Red;font-size:Large;display:none;">*</span>
+                        </td>
+                        <td>
+                            &nbsp;Address Line 2
+                        </td>
+                        <td>
+                            &nbsp;City
+                        </td>
+                        <td>
+                            &nbsp;State
+                        </td>
+                        <td>
+                            &nbsp;Zip
+                        </td>
+                    </tr>
+                </table>
+            </td>
+			</tr>
+		</table>
+    
+	</div>
+
+<br />
+</div>
+            </td>
+        </tr>
+    </table>
+    <div id="AddNotePanel" class="modalPopup" style="width:525px;display: none">
+	
+        <table cellpadding="1" cellspacing="0" border="0" width="500" style="left: 25px;
+            margin-left: 10px; top: 25px;">
+            <tr>
+                <td class="sectionTitle">
+                    New Note
+                </td>
+            </tr>
+            <tr>
+                <td align="center">
+                    <textarea name="NewNoteText" rows="4" cols="20" maxlength="780" id="NewNoteText" style="width:500px;">
+</textarea>
+                </td>
+            </tr>
+            <tr>
+                <td align="center">
+                    <input type="submit" name="SaveNoteButton" value="Add a User Note" id="SaveNoteButton" />
+                    &nbsp;
+                    <input type="submit" name="CancelAddNoteButton" value="Cancel" id="CancelAddNoteButton" />
+                </td>
+            </tr>
+        </table>
+    
+</div>
+    <div id="NotesPanel" class="modalPopup" style="width:600px;display: none">
+	
+        <table width="100%">
+            <tr>
+                <td>
+                    <table id="NotesList" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;">
+		<tr style="color:White;background-color:#00639C;font-weight:bold;">
+			<td style="width:75px;">Date</td><td style="width:75px;">Time</td><td style="width:150px;">User</td><td>Note</td>
+		</tr><tr valign="top" style="background-color:White;">
+			<td id="NotesList_ctl01_Date" style="width:75px;">06/11/26</td><td id="NotesList_ctl01_Time" style="width:75px;">10:59 AM</td><td id="NotesList_ctl01_Name" style="width:150px;">Abdelrahman Mamdouh</td><td id="NotesList_ctl01_Note">Check</td>
+		</tr>
+	</table>
+                </td>
+            </tr>
+            <tr>
+                <td align="center">
+                    <input type="submit" name="CloseNotesButton" value="Close" id="CloseNotesButton" />
+                </td>
+            </tr>
+        </table>
+    
+</div>
+    <input type="hidden" name="SavedPatientName" id="SavedPatientName" value="HUSER, STEFAN" />
+    <input type="hidden" name="SavedPayerName" id="SavedPayerName" value="EMBLEM MEDICAID" />
+    <input type="hidden" name="SavedPayerId" id="SavedPayerId" value="55247" />
+    <input type="hidden" name="taxonomy" id="taxonomy" />
+    <input type="hidden" name="payerid" id="payerid" />
+    <input type="hidden" name="payername" id="payername" />
+    <input type="hidden" name="hiddenRejectionControlIDs" id="hiddenRejectionControlIDs" />
+    <input type="hidden" name="hiddenRejectionTooltipPinned" id="hiddenRejectionTooltipPinned" />
+
+    <input type="submit" name="postPayerSearch" value="" onclick="CopyPayerValues(&#39;svw_FV2_payerid&#39;, &#39;svw_FV2_name&#39;);return false;" id="postPayerSearch" class="displayNone" />
+    
+    
+    
+<script type="text/javascript">
+//<![CDATA[
+var Page_ValidationSummaries =  new Array(document.getElementById("svw_FV1_VS"), document.getElementById("svw_FV2_VS"), document.getElementById("svw_FV3_VS"), document.getElementById("svw_pos_FV_VS"), document.getElementById("svw_ssl_VS"), document.getElementById("svw_pi1_billFV_VSbill"), document.getElementById("svw_pi1_FVRen_VSren"), document.getElementById("svw_pi1_FVPayto_VSpay"), document.getElementById("svw_pi1_FVRef_VSpay"), document.getElementById("svw_pi1_FVFac_VSFac"));
+var Page_Validators =  new Array(document.getElementById("svw_FV1_lnameRV"), document.getElementById("svw_FV1_sexRV"), document.getElementById("svw_FV1_add1RV"), document.getElementById("svw_FV1_add1CV"), document.getElementById("svw_FV1_cityCV"), document.getElementById("svw_FV1_stateCV"), document.getElementById("svw_FV1_zipCV"), document.getElementById("svw_FV1_countrysubCV"), document.getElementById("svw_FV1_countrysub2CV"), document.getElementById("svw_FV1_cityRV"), document.getElementById("svw_FV1_stateRV"), document.getElementById("svw_FV1_zipRV"), document.getElementById("svw_FV1_birthdateRV"), document.getElementById("svw_FV1_birthdateCV"), document.getElementById("svw_FV1_deathdateCV"), document.getElementById("svw_FV2_birthdateCV"), document.getElementById("svw_FV3_lastseendateCV"), document.getElementById("svw_FV3_admissiondateCV"), document.getElementById("svw_FV3_dischargedateCV"), document.getElementById("svw_FV3_lastworkeddateCV"), document.getElementById("svw_FV3_returntoworkdateCV"), document.getElementById("svw_FV3_illnessdateCV"), document.getElementById("svw_pos_FV_posRV"), document.getElementById("svw_ssl_FV_GV_ctl02_servicefromdateCV"), document.getElementById("svw_ssl_FV_GV_ctl02_servicefromdateRV"), document.getElementById("svw_ssl_FV_GV_ctl02_servicetodateCV"), document.getElementById("svw_ssl_FV_GV_ctl03_servicefromdateCV"), document.getElementById("svw_ssl_FV_GV_ctl03_servicefromdateRV"), document.getElementById("svw_ssl_FV_GV_ctl03_servicetodateCV"), document.getElementById("svw_ssl_FV_GV_ctl04_servicefromdateCV"), document.getElementById("svw_ssl_FV_GV_ctl04_servicefromdateRV"), document.getElementById("svw_ssl_FV_GV_ctl04_servicetodateCV"), document.getElementById("svw_pi1_billFV_NpiValidator"), document.getElementById("svw_pi1_billFV_orgNameRV"), document.getElementById("svw_pi1_billFV_add1RV"), document.getElementById("svw_pi1_billFV_cityRV"), document.getElementById("svw_pi1_FVRen_NpiValidator"), document.getElementById("svw_pi1_FVRef_NpiValidator"), document.getElementById("svw_pi1_FVFac_NpiValidator"), document.getElementById("svw_pi1_FVFac_FacNameValidator"), document.getElementById("svw_pi1_FVFac_FacAddValidator"));
+//]]>
+</script>
+
+<script type="text/javascript">
+//<![CDATA[
+var svw_FV1_VS = document.all ? document.all["svw_FV1_VS"] : document.getElementById("svw_FV1_VS");
+svw_FV1_VS.validationGroup = "pat";
+var svw_FV1_lnameRV = document.all ? document.all["svw_FV1_lnameRV"] : document.getElementById("svw_FV1_lnameRV");
+svw_FV1_lnameRV.controltovalidate = "svw_FV1_lname";
+svw_FV1_lnameRV.errormessage = "Last name is a required field.";
+svw_FV1_lnameRV.display = "Dynamic";
+svw_FV1_lnameRV.validationGroup = "pat";
+svw_FV1_lnameRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_FV1_lnameRV.initialvalue = "";
+var svw_FV1_sexRV = document.all ? document.all["svw_FV1_sexRV"] : document.getElementById("svw_FV1_sexRV");
+svw_FV1_sexRV.controltovalidate = "svw_FV1_sex";
+svw_FV1_sexRV.errormessage = "Gender is a required field.";
+svw_FV1_sexRV.display = "Dynamic";
+svw_FV1_sexRV.validationGroup = "pat";
+svw_FV1_sexRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_FV1_sexRV.initialvalue = "";
+var svw_FV1_add1RV = document.all ? document.all["svw_FV1_add1RV"] : document.getElementById("svw_FV1_add1RV");
+svw_FV1_add1RV.controltovalidate = "svw_FV1_add1";
+svw_FV1_add1RV.errormessage = "Address Line 1 is a required field.";
+svw_FV1_add1RV.display = "Dynamic";
+svw_FV1_add1RV.validationGroup = "pat";
+svw_FV1_add1RV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_FV1_add1RV.initialvalue = "";
+var svw_FV1_add1CV = document.all ? document.all["svw_FV1_add1CV"] : document.getElementById("svw_FV1_add1CV");
+svw_FV1_add1CV.controltovalidate = "svw_FV1_add1";
+svw_FV1_add1CV.errormessage = "Subscriber Address Line 1 is required when relationship is \'Self\'.";
+svw_FV1_add1CV.display = "Dynamic";
+svw_FV1_add1CV.validationGroup = "ins";
+svw_FV1_add1CV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_FV1_cityCV = document.all ? document.all["svw_FV1_cityCV"] : document.getElementById("svw_FV1_cityCV");
+svw_FV1_cityCV.controltovalidate = "svw_FV1_city";
+svw_FV1_cityCV.errormessage = "Subscriber City is required when relationship is \'Self\'.";
+svw_FV1_cityCV.display = "Dynamic";
+svw_FV1_cityCV.validationGroup = "ins";
+svw_FV1_cityCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_FV1_stateCV = document.all ? document.all["svw_FV1_stateCV"] : document.getElementById("svw_FV1_stateCV");
+svw_FV1_stateCV.controltovalidate = "svw_FV1_city";
+svw_FV1_stateCV.errormessage = "Subscriber State is required when relationship is \'Self\' and address in US, including its territories, or Canada.";
+svw_FV1_stateCV.display = "Dynamic";
+svw_FV1_stateCV.validationGroup = "ins";
+svw_FV1_stateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_FV1_zipCV = document.all ? document.all["svw_FV1_zipCV"] : document.getElementById("svw_FV1_zipCV");
+svw_FV1_zipCV.controltovalidate = "svw_FV1_zip";
+svw_FV1_zipCV.errormessage = "Subscriber Zip is required when relationship is \'Self\' and address in US, including territories, or Canada, or when a postal code exists for the country.";
+svw_FV1_zipCV.display = "Dynamic";
+svw_FV1_zipCV.validationGroup = "ins";
+svw_FV1_zipCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_FV1_countrysubCV = document.all ? document.all["svw_FV1_countrysubCV"] : document.getElementById("svw_FV1_countrysubCV");
+svw_FV1_countrysubCV.controltovalidate = "svw_FV1_countrysub";
+svw_FV1_countrysubCV.errormessage = "Only one of State or Subdivision may be present.";
+svw_FV1_countrysubCV.display = "Dynamic";
+svw_FV1_countrysubCV.validationGroup = "ins";
+svw_FV1_countrysubCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_FV1_countrysub2CV = document.all ? document.all["svw_FV1_countrysub2CV"] : document.getElementById("svw_FV1_countrysub2CV");
+svw_FV1_countrysub2CV.controltovalidate = "svw_FV1_countrysub";
+svw_FV1_countrysub2CV.errormessage = "If Subdivision is present, then Country is required.";
+svw_FV1_countrysub2CV.display = "Dynamic";
+svw_FV1_countrysub2CV.validationGroup = "ins";
+svw_FV1_countrysub2CV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_FV1_cityRV = document.all ? document.all["svw_FV1_cityRV"] : document.getElementById("svw_FV1_cityRV");
+svw_FV1_cityRV.controltovalidate = "svw_FV1_city";
+svw_FV1_cityRV.errormessage = "City is a required field.";
+svw_FV1_cityRV.display = "Dynamic";
+svw_FV1_cityRV.validationGroup = "pat";
+svw_FV1_cityRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_FV1_cityRV.initialvalue = "";
+var svw_FV1_stateRV = document.all ? document.all["svw_FV1_stateRV"] : document.getElementById("svw_FV1_stateRV");
+svw_FV1_stateRV.controltovalidate = "svw_FV1_state";
+svw_FV1_stateRV.focusOnError = "t";
+svw_FV1_stateRV.errormessage = "State is a required field for US and Canadian addresses.";
+svw_FV1_stateRV.display = "Dynamic";
+svw_FV1_stateRV.validationGroup = "pat";
+svw_FV1_stateRV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV1_stateRV.clientvalidationfunction = "ValidateStateZip";
+svw_FV1_stateRV.validateemptytext = "true";
+var svw_FV1_zipRV = document.all ? document.all["svw_FV1_zipRV"] : document.getElementById("svw_FV1_zipRV");
+svw_FV1_zipRV.controltovalidate = "svw_FV1_zip";
+svw_FV1_zipRV.focusOnError = "t";
+svw_FV1_zipRV.errormessage = "Zip is a required field for US and Canadian addresses.";
+svw_FV1_zipRV.display = "Dynamic";
+svw_FV1_zipRV.validationGroup = "pat";
+svw_FV1_zipRV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV1_zipRV.clientvalidationfunction = "ValidateStateZip";
+svw_FV1_zipRV.validateemptytext = "true";
+var svw_FV1_birthdateRV = document.all ? document.all["svw_FV1_birthdateRV"] : document.getElementById("svw_FV1_birthdateRV");
+svw_FV1_birthdateRV.controltovalidate = "svw_FV1_birthdate";
+svw_FV1_birthdateRV.errormessage = "Date of birth is a required field.";
+svw_FV1_birthdateRV.display = "Dynamic";
+svw_FV1_birthdateRV.validationGroup = "pat";
+svw_FV1_birthdateRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_FV1_birthdateRV.initialvalue = "";
+var svw_FV1_birthdateCV = document.all ? document.all["svw_FV1_birthdateCV"] : document.getElementById("svw_FV1_birthdateCV");
+svw_FV1_birthdateCV.controltovalidate = "svw_FV1_birthdate";
+svw_FV1_birthdateCV.errormessage = "Invalid Date of Birth.";
+svw_FV1_birthdateCV.display = "Dynamic";
+svw_FV1_birthdateCV.validationGroup = "pat";
+svw_FV1_birthdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV1_birthdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV1_deathdateCV = document.all ? document.all["svw_FV1_deathdateCV"] : document.getElementById("svw_FV1_deathdateCV");
+svw_FV1_deathdateCV.controltovalidate = "svw_FV1_deathdate";
+svw_FV1_deathdateCV.errormessage = "Invalid Date of Death.";
+svw_FV1_deathdateCV.display = "Dynamic";
+svw_FV1_deathdateCV.validationGroup = "pat";
+svw_FV1_deathdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV1_deathdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV2_VS = document.all ? document.all["svw_FV2_VS"] : document.getElementById("svw_FV2_VS");
+svw_FV2_VS.validationGroup = "ins";
+var svw_FV2_birthdateCV = document.all ? document.all["svw_FV2_birthdateCV"] : document.getElementById("svw_FV2_birthdateCV");
+svw_FV2_birthdateCV.controltovalidate = "svw_FV2_birthdate";
+svw_FV2_birthdateCV.errormessage = "Invalid Date of Birth.";
+svw_FV2_birthdateCV.display = "Dynamic";
+svw_FV2_birthdateCV.validationGroup = "ins";
+svw_FV2_birthdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV2_birthdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV3_VS = document.all ? document.all["svw_FV3_VS"] : document.getElementById("svw_FV3_VS");
+svw_FV3_VS.validationGroup = "gen";
+var svw_FV3_lastseendateCV = document.all ? document.all["svw_FV3_lastseendateCV"] : document.getElementById("svw_FV3_lastseendateCV");
+svw_FV3_lastseendateCV.controltovalidate = "svw_FV3_lastseendate";
+svw_FV3_lastseendateCV.errormessage = "Invalid Last Seen Date.";
+svw_FV3_lastseendateCV.display = "Dynamic";
+svw_FV3_lastseendateCV.validationGroup = "gen";
+svw_FV3_lastseendateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV3_lastseendateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV3_admissiondateCV = document.all ? document.all["svw_FV3_admissiondateCV"] : document.getElementById("svw_FV3_admissiondateCV");
+svw_FV3_admissiondateCV.controltovalidate = "svw_FV3_admissiondate";
+svw_FV3_admissiondateCV.errormessage = "Invalid Admission Date.";
+svw_FV3_admissiondateCV.display = "Dynamic";
+svw_FV3_admissiondateCV.validationGroup = "gen";
+svw_FV3_admissiondateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV3_admissiondateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV3_dischargedateCV = document.all ? document.all["svw_FV3_dischargedateCV"] : document.getElementById("svw_FV3_dischargedateCV");
+svw_FV3_dischargedateCV.controltovalidate = "svw_FV3_dischargedate";
+svw_FV3_dischargedateCV.errormessage = "Invalid Discharge Date.";
+svw_FV3_dischargedateCV.display = "Dynamic";
+svw_FV3_dischargedateCV.validationGroup = "gen";
+svw_FV3_dischargedateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV3_dischargedateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV3_lastworkeddateCV = document.all ? document.all["svw_FV3_lastworkeddateCV"] : document.getElementById("svw_FV3_lastworkeddateCV");
+svw_FV3_lastworkeddateCV.controltovalidate = "svw_FV3_lastworkeddate";
+svw_FV3_lastworkeddateCV.errormessage = "Invalid Last Worked Date.";
+svw_FV3_lastworkeddateCV.display = "Dynamic";
+svw_FV3_lastworkeddateCV.validationGroup = "gen";
+svw_FV3_lastworkeddateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV3_lastworkeddateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV3_returntoworkdateCV = document.all ? document.all["svw_FV3_returntoworkdateCV"] : document.getElementById("svw_FV3_returntoworkdateCV");
+svw_FV3_returntoworkdateCV.controltovalidate = "svw_FV3_returntoworkdate";
+svw_FV3_returntoworkdateCV.errormessage = "Invalid Return to Work Date.";
+svw_FV3_returntoworkdateCV.display = "Dynamic";
+svw_FV3_returntoworkdateCV.validationGroup = "gen";
+svw_FV3_returntoworkdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV3_returntoworkdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_FV3_illnessdateCV = document.all ? document.all["svw_FV3_illnessdateCV"] : document.getElementById("svw_FV3_illnessdateCV");
+svw_FV3_illnessdateCV.controltovalidate = "svw_FV3_illnessdate";
+svw_FV3_illnessdateCV.errormessage = "Invalid Illness Date.";
+svw_FV3_illnessdateCV.display = "Dynamic";
+svw_FV3_illnessdateCV.validationGroup = "gen";
+svw_FV3_illnessdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_FV3_illnessdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_pos_FV_VS = document.all ? document.all["svw_pos_FV_VS"] : document.getElementById("svw_pos_FV_VS");
+svw_pos_FV_VS.validationGroup = "posv";
+var svw_pos_FV_posRV = document.all ? document.all["svw_pos_FV_posRV"] : document.getElementById("svw_pos_FV_posRV");
+svw_pos_FV_posRV.controltovalidate = "svw_pos_FV_pos";
+svw_pos_FV_posRV.errormessage = "Place of Service is a required field.";
+svw_pos_FV_posRV.display = "None";
+svw_pos_FV_posRV.validationGroup = "posv";
+svw_pos_FV_posRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_pos_FV_posRV.initialvalue = "";
+var svw_ssl_VS = document.all ? document.all["svw_ssl_VS"] : document.getElementById("svw_ssl_VS");
+svw_ssl_VS.validationGroup = "slv";
+var svw_ssl_FV_GV_ctl02_servicefromdateCV = document.all ? document.all["svw_ssl_FV_GV_ctl02_servicefromdateCV"] : document.getElementById("svw_ssl_FV_GV_ctl02_servicefromdateCV");
+svw_ssl_FV_GV_ctl02_servicefromdateCV.controltovalidate = "svw_ssl_FV_GV_ctl02_servicefromdate";
+svw_ssl_FV_GV_ctl02_servicefromdateCV.errormessage = "Invalid Service From Date.";
+svw_ssl_FV_GV_ctl02_servicefromdateCV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl02_servicefromdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl02_servicefromdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+svw_ssl_FV_GV_ctl02_servicefromdateCV.validateemptytext = "true";
+var svw_ssl_FV_GV_ctl02_servicefromdateRV = document.all ? document.all["svw_ssl_FV_GV_ctl02_servicefromdateRV"] : document.getElementById("svw_ssl_FV_GV_ctl02_servicefromdateRV");
+svw_ssl_FV_GV_ctl02_servicefromdateRV.controltovalidate = "svw_ssl_FV_GV_ctl02_servicefromdate";
+svw_ssl_FV_GV_ctl02_servicefromdateRV.errormessage = "Service From Date is a required field.";
+svw_ssl_FV_GV_ctl02_servicefromdateRV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl02_servicefromdateRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl02_servicefromdateRV.initialvalue = "";
+var svw_ssl_FV_GV_ctl02_servicetodateCV = document.all ? document.all["svw_ssl_FV_GV_ctl02_servicetodateCV"] : document.getElementById("svw_ssl_FV_GV_ctl02_servicetodateCV");
+svw_ssl_FV_GV_ctl02_servicetodateCV.controltovalidate = "svw_ssl_FV_GV_ctl02_servicetodate";
+svw_ssl_FV_GV_ctl02_servicetodateCV.errormessage = "Invalid Service To Date.";
+svw_ssl_FV_GV_ctl02_servicetodateCV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl02_servicetodateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl02_servicetodateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_ssl_FV_GV_ctl03_servicefromdateCV = document.all ? document.all["svw_ssl_FV_GV_ctl03_servicefromdateCV"] : document.getElementById("svw_ssl_FV_GV_ctl03_servicefromdateCV");
+svw_ssl_FV_GV_ctl03_servicefromdateCV.controltovalidate = "svw_ssl_FV_GV_ctl03_servicefromdate";
+svw_ssl_FV_GV_ctl03_servicefromdateCV.errormessage = "Invalid Service From Date.";
+svw_ssl_FV_GV_ctl03_servicefromdateCV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl03_servicefromdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl03_servicefromdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+svw_ssl_FV_GV_ctl03_servicefromdateCV.validateemptytext = "true";
+var svw_ssl_FV_GV_ctl03_servicefromdateRV = document.all ? document.all["svw_ssl_FV_GV_ctl03_servicefromdateRV"] : document.getElementById("svw_ssl_FV_GV_ctl03_servicefromdateRV");
+svw_ssl_FV_GV_ctl03_servicefromdateRV.controltovalidate = "svw_ssl_FV_GV_ctl03_servicefromdate";
+svw_ssl_FV_GV_ctl03_servicefromdateRV.errormessage = "Service From Date is a required field.";
+svw_ssl_FV_GV_ctl03_servicefromdateRV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl03_servicefromdateRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl03_servicefromdateRV.initialvalue = "";
+var svw_ssl_FV_GV_ctl03_servicetodateCV = document.all ? document.all["svw_ssl_FV_GV_ctl03_servicetodateCV"] : document.getElementById("svw_ssl_FV_GV_ctl03_servicetodateCV");
+svw_ssl_FV_GV_ctl03_servicetodateCV.controltovalidate = "svw_ssl_FV_GV_ctl03_servicetodate";
+svw_ssl_FV_GV_ctl03_servicetodateCV.errormessage = "Invalid Service To Date.";
+svw_ssl_FV_GV_ctl03_servicetodateCV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl03_servicetodateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl03_servicetodateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_ssl_FV_GV_ctl04_servicefromdateCV = document.all ? document.all["svw_ssl_FV_GV_ctl04_servicefromdateCV"] : document.getElementById("svw_ssl_FV_GV_ctl04_servicefromdateCV");
+svw_ssl_FV_GV_ctl04_servicefromdateCV.controltovalidate = "svw_ssl_FV_GV_ctl04_servicefromdate";
+svw_ssl_FV_GV_ctl04_servicefromdateCV.errormessage = "Invalid Service From Date.";
+svw_ssl_FV_GV_ctl04_servicefromdateCV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl04_servicefromdateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl04_servicefromdateCV.clientvalidationfunction = "ValidateAndFormatDate";
+svw_ssl_FV_GV_ctl04_servicefromdateCV.validateemptytext = "true";
+var svw_ssl_FV_GV_ctl04_servicefromdateRV = document.all ? document.all["svw_ssl_FV_GV_ctl04_servicefromdateRV"] : document.getElementById("svw_ssl_FV_GV_ctl04_servicefromdateRV");
+svw_ssl_FV_GV_ctl04_servicefromdateRV.controltovalidate = "svw_ssl_FV_GV_ctl04_servicefromdate";
+svw_ssl_FV_GV_ctl04_servicefromdateRV.errormessage = "Service From Date is a required field.";
+svw_ssl_FV_GV_ctl04_servicefromdateRV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl04_servicefromdateRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl04_servicefromdateRV.initialvalue = "";
+var svw_ssl_FV_GV_ctl04_servicetodateCV = document.all ? document.all["svw_ssl_FV_GV_ctl04_servicetodateCV"] : document.getElementById("svw_ssl_FV_GV_ctl04_servicetodateCV");
+svw_ssl_FV_GV_ctl04_servicetodateCV.controltovalidate = "svw_ssl_FV_GV_ctl04_servicetodate";
+svw_ssl_FV_GV_ctl04_servicetodateCV.errormessage = "Invalid Service To Date.";
+svw_ssl_FV_GV_ctl04_servicetodateCV.validationGroup = "slv";
+svw_ssl_FV_GV_ctl04_servicetodateCV.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_ssl_FV_GV_ctl04_servicetodateCV.clientvalidationfunction = "ValidateAndFormatDate";
+var svw_pi1_billFV_VSbill = document.all ? document.all["svw_pi1_billFV_VSbill"] : document.getElementById("svw_pi1_billFV_VSbill");
+svw_pi1_billFV_VSbill.validationGroup = "bil";
+var svw_pi1_billFV_NpiValidator = document.all ? document.all["svw_pi1_billFV_NpiValidator"] : document.getElementById("svw_pi1_billFV_NpiValidator");
+svw_pi1_billFV_NpiValidator.controltovalidate = "svw_pi1_billFV_npi";
+svw_pi1_billFV_NpiValidator.errormessage = "Invalid NPI";
+svw_pi1_billFV_NpiValidator.display = "Dynamic";
+svw_pi1_billFV_NpiValidator.validationGroup = "bil";
+svw_pi1_billFV_NpiValidator.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_pi1_billFV_NpiValidator.clientvalidationfunction = "ValidateNpi";
+var svw_pi1_billFV_orgNameRV = document.all ? document.all["svw_pi1_billFV_orgNameRV"] : document.getElementById("svw_pi1_billFV_orgNameRV");
+svw_pi1_billFV_orgNameRV.controltovalidate = "svw_pi1_billFV_orgName";
+svw_pi1_billFV_orgNameRV.errormessage = "Organization is a required field and cannot be blank.";
+svw_pi1_billFV_orgNameRV.display = "Dynamic";
+svw_pi1_billFV_orgNameRV.validationGroup = "bil";
+svw_pi1_billFV_orgNameRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_pi1_billFV_orgNameRV.initialvalue = "";
+var svw_pi1_billFV_add1RV = document.all ? document.all["svw_pi1_billFV_add1RV"] : document.getElementById("svw_pi1_billFV_add1RV");
+svw_pi1_billFV_add1RV.controltovalidate = "svw_pi1_billFV_add1";
+svw_pi1_billFV_add1RV.errormessage = "Address Line 1 is a required field and cannot be blank.";
+svw_pi1_billFV_add1RV.display = "Dynamic";
+svw_pi1_billFV_add1RV.validationGroup = "bil";
+svw_pi1_billFV_add1RV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_pi1_billFV_add1RV.initialvalue = "";
+var svw_pi1_billFV_cityRV = document.all ? document.all["svw_pi1_billFV_cityRV"] : document.getElementById("svw_pi1_billFV_cityRV");
+svw_pi1_billFV_cityRV.controltovalidate = "svw_pi1_billFV_city";
+svw_pi1_billFV_cityRV.errormessage = "City is a required field and cannot be blank.";
+svw_pi1_billFV_cityRV.display = "Dynamic";
+svw_pi1_billFV_cityRV.validationGroup = "bil";
+svw_pi1_billFV_cityRV.evaluationfunction = "RequiredFieldValidatorEvaluateIsValid";
+svw_pi1_billFV_cityRV.initialvalue = "";
+var svw_pi1_FVRen_VSren = document.all ? document.all["svw_pi1_FVRen_VSren"] : document.getElementById("svw_pi1_FVRen_VSren");
+svw_pi1_FVRen_VSren.validationGroup = "ren";
+var svw_pi1_FVRen_NpiValidator = document.all ? document.all["svw_pi1_FVRen_NpiValidator"] : document.getElementById("svw_pi1_FVRen_NpiValidator");
+svw_pi1_FVRen_NpiValidator.controltovalidate = "svw_pi1_FVRen_npi";
+svw_pi1_FVRen_NpiValidator.errormessage = "Invalid NPI";
+svw_pi1_FVRen_NpiValidator.display = "Dynamic";
+svw_pi1_FVRen_NpiValidator.validationGroup = "ren";
+svw_pi1_FVRen_NpiValidator.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_pi1_FVRen_NpiValidator.clientvalidationfunction = "ValidateNpi";
+var svw_pi1_FVPayto_VSpay = document.all ? document.all["svw_pi1_FVPayto_VSpay"] : document.getElementById("svw_pi1_FVPayto_VSpay");
+svw_pi1_FVPayto_VSpay.validationGroup = "pay";
+var svw_pi1_FVRef_VSpay = document.all ? document.all["svw_pi1_FVRef_VSpay"] : document.getElementById("svw_pi1_FVRef_VSpay");
+svw_pi1_FVRef_VSpay.validationGroup = "ref";
+var svw_pi1_FVRef_NpiValidator = document.all ? document.all["svw_pi1_FVRef_NpiValidator"] : document.getElementById("svw_pi1_FVRef_NpiValidator");
+svw_pi1_FVRef_NpiValidator.controltovalidate = "svw_pi1_FVRef_npi";
+svw_pi1_FVRef_NpiValidator.errormessage = "Invalid NPI";
+svw_pi1_FVRef_NpiValidator.display = "Dynamic";
+svw_pi1_FVRef_NpiValidator.validationGroup = "ref";
+svw_pi1_FVRef_NpiValidator.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_pi1_FVRef_NpiValidator.clientvalidationfunction = "ValidateNpi";
+var svw_pi1_FVFac_VSFac = document.all ? document.all["svw_pi1_FVFac_VSFac"] : document.getElementById("svw_pi1_FVFac_VSFac");
+svw_pi1_FVFac_VSFac.validationGroup = "fac";
+var svw_pi1_FVFac_NpiValidator = document.all ? document.all["svw_pi1_FVFac_NpiValidator"] : document.getElementById("svw_pi1_FVFac_NpiValidator");
+svw_pi1_FVFac_NpiValidator.controltovalidate = "svw_pi1_FVFac_npi";
+svw_pi1_FVFac_NpiValidator.errormessage = "Invalid NPI";
+svw_pi1_FVFac_NpiValidator.display = "Dynamic";
+svw_pi1_FVFac_NpiValidator.validationGroup = "fac";
+svw_pi1_FVFac_NpiValidator.evaluationfunction = "CustomValidatorEvaluateIsValid";
+svw_pi1_FVFac_NpiValidator.clientvalidationfunction = "ValidateNpi";
+var svw_pi1_FVFac_FacNameValidator = document.all ? document.all["svw_pi1_FVFac_FacNameValidator"] : document.getElementById("svw_pi1_FVFac_FacNameValidator");
+svw_pi1_FVFac_FacNameValidator.controltovalidate = "svw_pi1_FVFac_npi";
+svw_pi1_FVFac_FacNameValidator.errormessage = "Facility Organization name is required when Address Line 1 is present.";
+svw_pi1_FVFac_FacNameValidator.display = "Dynamic";
+svw_pi1_FVFac_FacNameValidator.validationGroup = "fac";
+svw_pi1_FVFac_FacNameValidator.evaluationfunction = "CustomValidatorEvaluateIsValid";
+var svw_pi1_FVFac_FacAddValidator = document.all ? document.all["svw_pi1_FVFac_FacAddValidator"] : document.getElementById("svw_pi1_FVFac_FacAddValidator");
+svw_pi1_FVFac_FacAddValidator.controltovalidate = "svw_pi1_FVFac_npi";
+svw_pi1_FVFac_FacAddValidator.errormessage = "Facility Address Line 1 is required when name is present.";
+svw_pi1_FVFac_FacAddValidator.display = "Dynamic";
+svw_pi1_FVFac_FacAddValidator.validationGroup = "fac";
+svw_pi1_FVFac_FacAddValidator.evaluationfunction = "CustomValidatorEvaluateIsValid";
+//]]>
+</script>
+
+
+<script type="text/javascript">
+//<![CDATA[
+diaginput=document.getElementById('svw_dgc_FV_code1');procinput=document.getElementById('svw_anc_FV_code1');procinput=document.getElementById('svw_ssl_FV_GV_ctl02_proccode');document.getElementById('Menu1n0').style.backgroundColor = 'white';(function(apiKey){
+   (function(p, e, n, d, o) {
+       var v, w, x, y, z; o = p[d] = p[d] || { }; o._q = o._q || [];
+       v = ['initialize', 'identify', 'updateOptions', 'pageLoad', 'track']; for (w = 0, x = v.length; w < x; ++w) (function(m) {
+           o[m] = o[m] || function() { o._q[m === v[0] ? 'unshift' : 'push']([m].concat([].slice.call(arguments, 0))); };
+       })(v[w]);
+       y = e.createElement(n); y.async = !0; y.src = 'https://cdn.pendo.io/agent/static/' + apiKey + '/pendo.js';
+       z = e.getElementsByTagName(n)[0]; z.parentNode.insertBefore(y, z);
+   })(window, document, 'script', 'pendo');
+   pendo.initialize({
+       visitor: {
+          id: 'abdelrahman.hamdy@cobsolution.com',
+          name: 'Abdelrahman Hamdy',
+          csrep: 'False',
+          usrid: '1834705'
+           },
+       account: {
+          id: 'Physical Therapy of the City P.C.',
+          city: 'New York',
+          state: 'NY',
+          custid: '296638',
+          domainid: '296638'
+           }
+   });
+})('dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5');
+var Menu1_Data = new Object();
+Menu1_Data.disappearAfter = 500;
+Menu1_Data.horizontalOffset = 0;
+Menu1_Data.verticalOffset = 0;
+Menu1_Data.staticHoverClass = 'Menu1_8';
+Menu1_Data.staticHoverHyperLinkClass = 'Menu1_7';
+Menu1_Data.iframeUrl = '/WebResource.axd?d=beToSAE3vdsL1QUQUxjWdRjfFO7F_0u7vc-Lv36X18k_piKD-MfC9lcDx5pBgap9UDOLLnD9wsRPBRSWLdokR9utsdPk39DF4KBqFD8RzHnBXwn--En1XMUiV8kB1Eiy0&t=638901392248157332';
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_FV1_VS');
+
+var Page_ValidationActive = false;
+if (typeof(ValidatorOnLoad) == "function") {
+    ValidatorOnLoad();
+}
+
+function ValidatorOnSubmit() {
+    if (Page_ValidationActive) {
+        return ValidatorCommonOnSubmit();
+    }
+    else {
+        return true;
+    }
+}
+        
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_FV2_VS');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_FV3_VS');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_pos_FV_VS');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_ssl_VS');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_pi1_billFV_VSbill');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_pi1_FVRen_VSren');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_pi1_FVPayto_VSpay');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_pi1_FVRef_VSpay');
+
+(function(id) {
+    var e = document.getElementById(id);
+    if (e) {
+        e.dispose = function() {
+            Array.remove(Page_ValidationSummaries, document.getElementById(id));
+        }
+        e = null;
+    }
+})('svw_pi1_FVFac_VSFac');
+WebForm_AutoFocus('hiddenDefaultButton');Sys.Application.add_init(function() {
+    $create(AjaxControlToolkit.ModalPopupBehavior, {"BackgroundCssClass":"modalBackground","CancelControlID":"btnWarningCancel","PopupControlID":"pnlDeleteDraft","dynamicServicePath":"/Editor/V5010/Professional/Main.aspx","id":"mpeDeleteDraft"}, null, null, $get("hdnDDModCon"));
+});
+
+document.getElementById('svw_FV1_lnameRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_lnameRV'));
+}
+
+document.getElementById('svw_FV1_sexRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_sexRV'));
+}
+
+document.getElementById('svw_FV1_add1RV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_add1RV'));
+}
+
+document.getElementById('svw_FV1_add1CV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_add1CV'));
+}
+
+document.getElementById('svw_FV1_cityCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_cityCV'));
+}
+
+document.getElementById('svw_FV1_stateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_stateCV'));
+}
+
+document.getElementById('svw_FV1_zipCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_zipCV'));
+}
+
+document.getElementById('svw_FV1_countrysubCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_countrysubCV'));
+}
+
+document.getElementById('svw_FV1_countrysub2CV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_countrysub2CV'));
+}
+
+document.getElementById('svw_FV1_cityRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_cityRV'));
+}
+
+document.getElementById('svw_FV1_stateRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_stateRV'));
+}
+
+document.getElementById('svw_FV1_zipRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_zipRV'));
+}
+
+document.getElementById('svw_FV1_birthdateRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_birthdateRV'));
+}
+
+document.getElementById('svw_FV1_birthdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_birthdateCV'));
+}
+
+document.getElementById('svw_FV1_deathdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV1_deathdateCV'));
+}
+
+document.getElementById('svw_FV2_birthdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV2_birthdateCV'));
+}
+
+document.getElementById('svw_FV3_lastseendateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV3_lastseendateCV'));
+}
+
+document.getElementById('svw_FV3_admissiondateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV3_admissiondateCV'));
+}
+
+document.getElementById('svw_FV3_dischargedateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV3_dischargedateCV'));
+}
+
+document.getElementById('svw_FV3_lastworkeddateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV3_lastworkeddateCV'));
+}
+
+document.getElementById('svw_FV3_returntoworkdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV3_returntoworkdateCV'));
+}
+
+document.getElementById('svw_FV3_illnessdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_FV3_illnessdateCV'));
+}
+
+document.getElementById('svw_pos_FV_posRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pos_FV_posRV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl02_servicefromdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl02_servicefromdateCV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl02_servicefromdateRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl02_servicefromdateRV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl02_servicetodateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl02_servicetodateCV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl03_servicefromdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl03_servicefromdateCV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl03_servicefromdateRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl03_servicefromdateRV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl03_servicetodateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl03_servicetodateCV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl04_servicefromdateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl04_servicefromdateCV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl04_servicefromdateRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl04_servicefromdateRV'));
+}
+
+document.getElementById('svw_ssl_FV_GV_ctl04_servicetodateCV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_ssl_FV_GV_ctl04_servicetodateCV'));
+}
+
+document.getElementById('svw_pi1_billFV_NpiValidator').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_billFV_NpiValidator'));
+}
+
+document.getElementById('svw_pi1_billFV_orgNameRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_billFV_orgNameRV'));
+}
+
+document.getElementById('svw_pi1_billFV_add1RV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_billFV_add1RV'));
+}
+
+document.getElementById('svw_pi1_billFV_cityRV').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_billFV_cityRV'));
+}
+
+document.getElementById('svw_pi1_FVRen_NpiValidator').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_FVRen_NpiValidator'));
+}
+
+document.getElementById('svw_pi1_FVRef_NpiValidator').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_FVRef_NpiValidator'));
+}
+
+document.getElementById('svw_pi1_FVFac_NpiValidator').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_FVFac_NpiValidator'));
+}
+
+document.getElementById('svw_pi1_FVFac_FacNameValidator').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_FVFac_FacNameValidator'));
+}
+
+document.getElementById('svw_pi1_FVFac_FacAddValidator').dispose = function() {
+    Array.remove(Page_Validators, document.getElementById('svw_pi1_FVFac_FacAddValidator'));
+}
+Sys.Application.add_init(function() {
+    $create(AjaxControlToolkit.ModalPopupBehavior, {"BackgroundCssClass":"modalBackground","CancelControlID":"CloseNotesButton","PopupControlID":"NotesPanel","dynamicServicePath":"/Editor/V5010/Professional/Main.aspx","id":"mpeClaimNotes"}, null, null, $get("LastNoteButton"));
+});
+Sys.Application.add_init(function() {
+    $create(AjaxControlToolkit.ModalPopupBehavior, {"BackgroundCssClass":"modalBackground","CancelControlID":"CancelAddNoteButton","PopupControlID":"AddNotePanel","dynamicServicePath":"/Editor/V5010/Professional/Main.aspx","id":"mpeAddNote"}, null, null, $get("AddNoteButton"));
+});
+//]]>
+</script>
+</form>
+    <form id="frmValidateCode" method="post" target="frmHidden" action="../../ValidateCode.aspx">
+    <input name="AppID" value="1" type="hidden" />
+    <input name="Code" id="ValidateCode" type="hidden" />
+    <input name="Type" id="ValidateType" type="hidden" />
+    </form>
+    <iframe name="frmHidden" src="blank.blank" id="frmHidden" style="display: none"></iframe>
+    
+     <script type="text/javascript">
+         document.trackingId = $("#GoogleAnalyticsTrackingId").val();
+    </script>
+    <script src="/Scripts/ClaimsGoogleAnalytics.js" type="text/javascript"></script>
+</body>
+</html>

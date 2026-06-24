@@ -1,0 +1,29 @@
+{
+  "run_id": "rejected_2024_2026",
+  "batches": [
+    {
+      "export_number": 1,
+      "export_type": "batch",
+      "start_page": 1,
+      "end_page": 5,
+      "claims_count": 139,
+      "exported_at": "2026-06-11T14:08:11.229410+00:00",
+      "batch_number": 1,
+      "csv": "batch_001.csv",
+      "json": "batch_001.json"
+    },
+    {
+      "export_number": 2,
+      "export_type": "batch",
+      "start_page": 6,
+      "end_page": 5,
+      "claims_count": 145,
+      "exported_at": "2026-06-17T18:07:36.750735+00:00",
+      "batch_number": 2,
+      "csv": "batch_002.csv",
+      "json": "batch_002.json"
+    }
+  ],
+  "checkpoints": [],
+  "total_claims": 284
+}

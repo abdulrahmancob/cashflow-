@@ -1,0 +1,107 @@
+{
+  "run_id": "rejected_2025_2026",
+  "batches": [],
+  "checkpoints": [
+    {
+      "export_number": 1,
+      "export_type": "checkpoint",
+      "start_page": 1,
+      "end_page": 1,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:25:39.683732+00:00",
+      "csv": "checkpoint_001.csv",
+      "json": "checkpoint_001.json"
+    },
+    {
+      "export_number": 2,
+      "export_type": "checkpoint",
+      "start_page": 2,
+      "end_page": 2,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:26:42.614274+00:00",
+      "csv": "checkpoint_002.csv",
+      "json": "checkpoint_002.json"
+    },
+    {
+      "export_number": 3,
+      "export_type": "checkpoint",
+      "start_page": 3,
+      "end_page": 3,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:27:46.406827+00:00",
+      "csv": "checkpoint_003.csv",
+      "json": "checkpoint_003.json"
+    },
+    {
+      "export_number": 4,
+      "export_type": "checkpoint",
+      "start_page": 4,
+      "end_page": 4,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:28:53.508473+00:00",
+      "csv": "checkpoint_004.csv",
+      "json": "checkpoint_004.json"
+    },
+    {
+      "export_number": 5,
+      "export_type": "checkpoint",
+      "start_page": 5,
+      "end_page": 5,
+      "claims_count": 7,
+      "exported_at": "2026-06-10T18:29:15.338334+00:00",
+      "csv": "checkpoint_005.csv",
+      "json": "checkpoint_005.json"
+    },
+    {
+      "export_number": 6,
+      "export_type": "checkpoint",
+      "start_page": 1,
+      "end_page": 1,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:32:05.094846+00:00",
+      "csv": "checkpoint_006.csv",
+      "json": "checkpoint_006.json"
+    },
+    {
+      "export_number": 7,
+      "export_type": "checkpoint",
+      "start_page": 2,
+      "end_page": 2,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:33:07.603407+00:00",
+      "csv": "checkpoint_007.csv",
+      "json": "checkpoint_007.json"
+    },
+    {
+      "export_number": 8,
+      "export_type": "checkpoint",
+      "start_page": 3,
+      "end_page": 3,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:34:09.874614+00:00",
+      "csv": "checkpoint_008.csv",
+      "json": "checkpoint_008.json"
+    },
+    {
+      "export_number": 9,
+      "export_type": "checkpoint",
+      "start_page": 4,
+      "end_page": 4,
+      "claims_count": 30,
+      "exported_at": "2026-06-10T18:35:13.516877+00:00",
+      "csv": "checkpoint_009.csv",
+      "json": "checkpoint_009.json"
+    },
+    {
+      "export_number": 10,
+      "export_type": "checkpoint",
+      "start_page": 5,
+      "end_page": 5,
+      "claims_count": 7,
+      "exported_at": "2026-06-10T18:35:29.305612+00:00",
+      "csv": "checkpoint_010.csv",
+      "json": "checkpoint_010.json"
+    }
+  ],
+  "total_claims": 254
+}

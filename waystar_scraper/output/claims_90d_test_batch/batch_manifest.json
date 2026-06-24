@@ -1,0 +1,24 @@
+{
+  "run_id": "test_batch",
+  "batches": [
+    {
+      "batch_number": 1,
+      "start_page": 1,
+      "end_page": 1,
+      "claims_count": 30,
+      "exported_at": "2026-06-09T11:54:46.435778+00:00",
+      "csv": "batch_001.csv",
+      "json": "batch_001.json"
+    },
+    {
+      "batch_number": 2,
+      "start_page": 2,
+      "end_page": 2,
+      "claims_count": 30,
+      "exported_at": "2026-06-09T11:55:00.161730+00:00",
+      "csv": "batch_002.csv",
+      "json": "batch_002.json"
+    }
+  ],
+  "total_claims": 60
+}

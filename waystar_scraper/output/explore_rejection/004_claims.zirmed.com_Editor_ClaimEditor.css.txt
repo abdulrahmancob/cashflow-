@@ -1,0 +1,266 @@
+URL: https://claims.zirmed.com/Editor/ClaimEditor.css
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/css
+POST: 
+================================================================================
+body {
+    background-color: White;
+    border: 0px;
+    color: black;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    margin: 0px;
+    overflow: visible;
+    padding: 0px;
+}
+
+a {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    text-decoration: underline;
+}
+
+a:hover { color: #ff0000; }
+
+.errorMessageBordered {
+    border-width: 1px;
+    border-style: solid;
+    font-weight: bold;
+    color: #CF0000;
+    padding: 4px 15px;
+    margin: 10px 0px 0px 0px;
+    background-color: #FFDFDF;
+}
+
+.errorMessage {
+    font-weight: bold;
+    color: #CF0000;
+    margin: 10px 0px 0px 0px;
+}
+
+input {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+}
+
+select {
+    background-color: white;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+}
+
+table {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 11px;
+}
+
+.alignRight { text-align: right; }
+
+.alignLeft { text-align: left; }
+
+.displayNone { display: none; }
+
+.displayNoneICD10 { display: none; }
+
+.headerCaption {
+    color: #005588;
+    text-align: right;
+}
+
+.modalBackground {
+    background-color: Gray;
+    filter: alpha(opacity=70);
+    opacity: 0.7;
+}
+
+.modalPopup {
+    background-color: #ffffdd;
+    border-color: Gray;
+    border-style: solid;
+    border-width: 3px;
+    padding: 3px;
+}
+
+.padLeftSm { padding-left: 2px; }
+
+.padLeftLg { padding-left: 7px; }
+
+.padRightSm { padding-right: 3px; }
+
+.padRightLg { padding-right: 10px; }
+
+.padBottomSm { padding-bottom: 6px; }
+
+.padTopSm { padding-top: 6px; }
+
+.repricingCaption { color: #006699; }
+
+.blueCaption { color: #006699; }
+
+.sectionTitle {
+    color: #005588;
+    font-size: small;
+    font-weight: bold;
+}
+
+.wizardSectionTitle {
+    color: Red;
+    font-size: larger;
+    font-weight: bold;
+    padding-bottom: 5px;
+    padding-top: 5px;
+}
+
+.ReorderAlert {
+    color: Red;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.CustomTab .ajax__tab_header {
+    background: url(Images/tab-line.gif) repeat-x bottom;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10px;
+}
+
+.CustomTab .ajax__tab_outer {
+    background: url(Images/tab-right.gif) no-repeat right;
+    height: 21px;
+}
+
+.CustomTab .ajax__tab_inner {
+    background: url(Images/tab-left.gif) no-repeat;
+    padding-left: 3px;
+}
+
+.CustomTab .ajax__tab_tab {
+    background: url(Images/tab.gif) repeat-x;
+    height: 13px;
+    margin: 0;
+    padding: 4px;
+}
+
+.CustomTab .ajax__tab_hover .ajax__tab_outer { background: url(Images/tab-hover-right.gif) no-repeat right; }
+
+.CustomTab .ajax__tab_hover .ajax__tab_inner { background: url(Images/tab-hover-left.gif) no-repeat; }
+
+.CustomTab .ajax__tab_hover .ajax__tab_tab { background: url(Images/tab-hover.gif) repeat-x; }
+
+.CustomTab .ajax__tab_active .ajax__tab_outer { background: url(Images/tab-active-right.gif) no-repeat right; }
+
+.CustomTab .ajax__tab_active .ajax__tab_inner { background: url(Images/tab-active-left.gif) no-repeat; }
+
+
+
+.CustomTab .ajax__tab_active .ajax__tab_tab { background: url(Images/tab-active.gif) repeat-x; }
+
+.CustomTab .ajax__tab_body {
+    background-color: #ffffff;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    padding: 8px;
+}
+
+.Len1 { width: 7px; }
+
+.Len2 { width: 14px; }
+
+.Len3 { width: 21px; }
+
+.Len5 { width: 38px; }
+
+.Len10 { width: 76px; }
+
+.LenDate { width: 66px; }
+
+.Menu td a { display: block; }
+
+.PLBigger { padding-left: 40px; }
+
+img.how-to-fix {
+    background-image:url('images/howtofix-btn-normal.png');
+    width:66px;
+    height:23px;
+    border:0;
+}
+
+img.how-to-fix:hover, img.how-to-fix-hover {
+    background-image: url('images/howtofix-btn-hover.png');
+}
+
+.tblSpacing0{
+    border-spacing:0;
+    padding:0;
+    margin:0;
+}
+
+.tblSpacing2 {
+    border-spacing: 2px;
+    padding:0;
+}
+
+.nobr {
+    white-space: nowrap;
+}
+
+.widthProviders {
+    width:795px;    
+}
+
+.hrProv {
+    width:795px;
+    text-align: left;
+    margin: 0;
+    margin-top: 10px;
+    margin-bottom:5px;
+}
+
+.padding0 {
+    padding: 0;
+    margin: 0;
+    border-spacing: 0;
+}
+
+.paddingTop2 {
+    padding-top:2px;
+}
+
+.paddingTop4 {
+    padding-top: 4px;
+}
+
+.paddingTop6 {
+    padding-top: 6px;
+}
+
+.paddingLeft20 {
+    padding-left: 20px;
+}
+
+.paddingRight20 {
+    padding-right: 20px;
+}
+
+.fillWidth {
+    width: 100%;
+}
+
+.mixedICDDiv {
+    width: 85px;
+}
+
+.resub5010P,
+.resub5010I,
+.resub4010P,
+.resub4010I {
+    visibility: hidden;
+}
+
+td.mixedICDDiv input[type="radio" i] {
+    margin: 3px 3px 0px 3px;
+}
+
+div.mixedICDDiv input[type="radio" i] {
+    margin: 3px 3px 0px 3px;
+}

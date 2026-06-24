@@ -1,0 +1,360 @@
+{
+  "combined_at": "2026-06-22T18:17:00.763734+00:00",
+  "source_dirs": [
+    "D:\\cashflow\\code\\waystar_scraper\\output\\claims_rejected_rejected_20260617",
+    "D:\\cashflow\\code\\waystar_scraper\\output\\claims_rejected_rejected_2024_2026",
+    "D:\\cashflow\\code\\waystar_scraper\\output\\claims_rejected_rejected_2025_2026"
+  ],
+  "per_source": {
+    "rejected_20260617": 183,
+    "rejected_2024_2026": 204,
+    "rejected_2025_2026": 127
+  },
+  "total_rows_read": 514,
+  "unique_claims": 308,
+  "duplicates_removed": 206,
+  "duplicate_rate_pct": 40.08,
+  "overlap_matrix": {
+    "rejected_20260617_vs_rejected_2024_2026": 95,
+    "rejected_20260617_vs_rejected_2025_2026": 63,
+    "rejected_2024_2026_vs_rejected_2025_2026": 111
+  },
+  "rejection_analysis": {
+    "total_charges": 97820.0,
+    "top_status_detail": [
+      {
+        "name": "Patient Eligibility not found based on submitted information. PAYER CLAIM NUMBER, DATE OF INJURY, LAST NAME AND DATE OF BIRTH MATCH PAYER CLAIM LIST BUT SSN AND FIRST NAME DO NOT. IN ADDITION, THE SSN ON THE BILL IS INVALID. [X12 INFO: 2010CA-NM1]",
+        "count": 34,
+        "charges": 9850.0
+      },
+      {
+        "name": "Claim has been Rejected as unprocessable. Cannot provide further status electronically. [X12 Info: 2300-CLM]CLAIM HAS BEEN REJECTED FOR MISSING OR INVALID INFORMATION. FURTHER INFORMATION MAY NOT HAVE BEEN PROVIDED BY THE PAYER. . [X12 Info: 2300-CLM]Claim Has Been Returned as Unprocessable. Refer to accompanying rejection message (if present) for details. [X12 INFO: 2300-CLM] [PATTERN 4087] PER CMS GUIDELINES, PAYMENT FOR PROCEDURE CODE 97010 IS ALWAYS BUNDLED INTO PAYMENT FOR OTHER SERVICES NOT SPECIFIED AND NO SEPARATE PAYMENT IS MADE.",
+        "count": 25,
+        "charges": 7790.0
+      },
+      {
+        "name": "CLAIM REJECTED FOR INVALID INFORMATION. CANNOT PROVIDE FURTHER STATUS ELECTRONICALLY THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. CAREIQ PROVIDER PAYMENT HAS BEEN ISSUED [X12 Info: 2300-CLM]",
+        "count": 25,
+        "charges": 7720.0
+      },
+      {
+        "name": "REJECTED FOR INVALID INFORMATION. RENDERING PROVIDER NOT ON FILE FOR THE BILLING PROVIDER ADDRESS SUBMITTED. PLEASE UTILIZE THE PROVIDER DATA MANAGEMENT AT WWW.AVAILITY.COM FOR NEW PROVIDER ADD OR CONTACT PROVIDER SERVICES. [X12 INFO: 2310B-NM1]ACKNOWLEDGEMENT/REJECTED FOR MISSING INFORMATION - THE CLAIM/ENCOUNTER IS MISSING THE INFORMATION SPECIFIED IN THE STATUS DETAILS AND HAS BEEN REJECTED. STATUS: ENTITY'S CREDENTIAL/ENROLLMENT INFORMATION. NOTE: THIS CODE REQUIRES USE OF AN ENTITY CODE. ENTITY: RENDERING PROVIDER. [X12 Info: Prof:2310B Inst:2310D]",
+        "count": 18,
+        "charges": 5730.0
+      },
+      {
+        "name": "Type of Accident Required When Accident Date Is Present. Acceptable values are AA = Auto Accident, EM = Employment, OA = Other Accident. [X12 Info: 2300-CLM11]",
+        "count": 14,
+        "charges": 4645.0
+      },
+      {
+        "name": "Duplicate of a previously processed claim or service line. [X12 Info: Prof:2400-SV1 Inst:2400-SV2]",
+        "count": 10,
+        "charges": 2750.0
+      },
+      {
+        "name": "Patient Name must be the same as Subscriber Name when Patient Relationship to Insured is \"Self.\" [X12 Info: 2010CA-NM1]",
+        "count": 9,
+        "charges": 2270.0
+      },
+      {
+        "name": "REJECTED FOR INVALID INFORMATION - NO FURTHER INFORMATION PROVIDED BY THE PAYER [X12 INFO: 2300-CLM]ACK/REJECT INVAL INFO - REQUESTS FOR RE-ADJUDICATION MUST REFERENCE THE NEWLY ASSIGNED PAYER CLAIM CONTROL NUMBER FOR THIS PREVIOUSLY ADJUSTED CLAIM. CORRECT THE PAYER CLAIM CONTROL NUMBER AND RE-SUBMIT. [X12 INFO: 2300-REF]ACKNOWLEDGE,REJECTED FOR INVALID INFO-CLAIM,ENCOUNTR HAS INVALID INFO AS SPECFIED IN STATUS DETAILS AND BEEN REJECTED.CORRECT THE PAYER CLAIM CONTROL NUMBER AND RE-SUBMIT. [X12 Info: 2300-REF]EDI INVALID PAYER CLAIM ID FOR VOID OR REPLACEMENT. [X12 INFO: 2010BB-NM109]",
+        "count": 9,
+        "charges": 2400.0
+      },
+      {
+        "name": "CLAIM REJECTED FOR MISSING OR INVALID INFORMATION. THIS MESSAGE SHOULD BE ACCOMPANIED BY ANOTHER MORE DESCRIPTIVE REJECTION MESSAGE. [X12 Info: 2300-CLM] A3 P4999NCCSD SMARTEDIT (NCCSD) THE FOLLOWING CODE 97140 IS NOT A COVERED SERVICE. A3 P4999INFO SMARTEDIT (INFO) [PATTERN 55018] FOR ADDITIONAL INFORMATION REGARDING THIS EDIT, REFER TO OUR SMART EDITS GUIDE AT UHCPROVIDER.COM/SMARTEDITS.",
+        "count": 7,
+        "charges": 2030.0
+      },
+      {
+        "name": "REJECTED FOR PRINT ON FORM [X12 INFO: 2300]",
+        "count": 7,
+        "charges": 2055.0
+      },
+      {
+        "name": "Original Reference Number or Payer Claim Control Number required when Claim Frequency Code is 7 (replacement) or 8 (void). [X12 Info: 2300-REF02]",
+        "count": 6,
+        "charges": 1530.0
+      },
+      {
+        "name": "PATIENT and/or SUBSCRIBER eligibility is not found with payer based on the submitted information. Verify that the patient information on the claim and electronic payer id matches the members ID card exactly. [X12 Info: 2010BA]",
+        "count": 6,
+        "charges": 1770.0
+      },
+      {
+        "name": "A3:21 CLAIM HAS BEEN REJECTED AS UNPROCESSABLE. MISSING OR INVALID INFORMATION. RESUBMIT TO ANTHEM. SERVICE PROVIDER METWALLY, SALMA (NPI : 1629877311 AND TIN : NULL), BILLING PROVIDER PHYSICAL THERAPY OF THE CITY (NPI : 1265940399 AND TIN : 823830674).",
+        "count": 6,
+        "charges": 1750.0
+      },
+      {
+        "name": "This Payer Requires A Subscriber Entity Type of Individual (1). Cannot Be Organization. [X12 Info: 2010BA-NM102]",
+        "count": 5,
+        "charges": 1510.0
+      },
+      {
+        "name": "A3:21 CLAIM HAS BEEN REJECTED AS UNPROCESSABLE. MISSING OR INVALID INFORMATION. ACKNOWLEDGEMENT REJECTED FOR INVALID INFORMATION-THE CLAIM ENCOUNTER IS HAS INVALID INFORMATION SPECIFIED IN THE STATUS DETAILS AND HAS BEEN REJECTED. STATUS DETAILS NOT FOUND. USAGE THIS CODE REQUIRES USE OF AN ENTIT..(REVIEW CLAIM DETAILS ONLINE)",
+        "count": 5,
+        "charges": 2050.0
+      }
+    ],
+    "top_categories": [
+      {
+        "name": "Eligibility / Member ID",
+        "count": 85,
+        "charges": 27305.0
+      },
+      {
+        "name": "Procedure code / modifier / frequency (SmartEdits)",
+        "count": 48,
+        "charges": 15560.0
+      },
+      {
+        "name": "Other / payer-specific",
+        "count": 41,
+        "charges": 13300.0
+      },
+      {
+        "name": "Patient demographics (zip/address/name/gender)",
+        "count": 29,
+        "charges": 9010.0
+      },
+      {
+        "name": "Provider enrollment / NPI",
+        "count": 27,
+        "charges": 8500.0
+      },
+      {
+        "name": "Resubmission / Original Reference Number",
+        "count": 27,
+        "charges": 7610.0
+      },
+      {
+        "name": "Accident / P&C info",
+        "count": 20,
+        "charges": 6785.0
+      },
+      {
+        "name": "Duplicate claim",
+        "count": 15,
+        "charges": 4730.0
+      },
+      {
+        "name": "Print on form / hold",
+        "count": 9,
+        "charges": 2850.0
+      },
+      {
+        "name": "Diagnosis codes",
+        "count": 6,
+        "charges": 1700.0
+      },
+      {
+        "name": "Payer ID / routing",
+        "count": 1,
+        "charges": 470.0
+      }
+    ],
+    "top_x12_segments": [
+      {
+        "name": "2300-CLM",
+        "count": 238
+      },
+      {
+        "name": "2010CA-NM1",
+        "count": 74
+      },
+      {
+        "name": "Prof:2400-SV1 Inst:2400-SV2",
+        "count": 37
+      },
+      {
+        "name": "2310B-NM1",
+        "count": 27
+      },
+      {
+        "name": "Prof:2310B Inst:2310D",
+        "count": 27
+      },
+      {
+        "name": "2300-REF02",
+        "count": 25
+      },
+      {
+        "name": "2010BA-NM109",
+        "count": 21
+      },
+      {
+        "name": "2300-REF",
+        "count": 18
+      },
+      {
+        "name": "2300-CLM11",
+        "count": 17
+      },
+      {
+        "name": "2010BA-NM1",
+        "count": 16
+      },
+      {
+        "name": "2010BA-N403",
+        "count": 14
+      },
+      {
+        "name": "2400-SV107",
+        "count": 13
+      },
+      {
+        "name": "2300",
+        "count": 12
+      },
+      {
+        "name": "2010BA",
+        "count": 11
+      },
+      {
+        "name": "2010BA-NM102",
+        "count": 10
+      }
+    ],
+    "top_payers": [
+      {
+        "name": "WELLCARE (11334)",
+        "count": 25,
+        "charges": 7790.0
+      },
+      {
+        "name": "CORVEL ENTERPRISE (J4110)",
+        "count": 24,
+        "charges": 7270.0
+      },
+      {
+        "name": "1199 (13162)",
+        "count": 19,
+        "charges": 6115.0
+      },
+      {
+        "name": "EMBLEMHIP (55247)",
+        "count": 16,
+        "charges": 5575.0
+      },
+      {
+        "name": "GEICO INSURANCE (J1747)",
+        "count": 15,
+        "charges": 5220.0
+      },
+      {
+        "name": "AMTRUST INSURANCE (J1868)",
+        "count": 15,
+        "charges": 4450.0
+      },
+      {
+        "name": "METROPLUS (13265)",
+        "count": 13,
+        "charges": 3660.0
+      },
+      {
+        "name": "UNITEDHEALTHCARE COMMUNITY PLAN (87726)",
+        "count": 12,
+        "charges": 3580.0
+      },
+      {
+        "name": "MEDICARE NEW YORK NGS (SMNY0)",
+        "count": 12,
+        "charges": 3220.0
+      },
+      {
+        "name": "LODESTAR CLAIMS T RISK SERVICES INC (J4797)",
+        "count": 12,
+        "charges": 3340.0
+      },
+      {
+        "name": "BCBSPPO (SB803)",
+        "count": 11,
+        "charges": 3630.0
+      },
+      {
+        "name": "MAGNACOMP (11303)",
+        "count": 8,
+        "charges": 2605.0
+      },
+      {
+        "name": "EMBLEM MEDICAID (55247)",
+        "count": 8,
+        "charges": 2340.0
+      },
+      {
+        "name": "CNATRANSCONTINENTAL INSURANCE CO (J20443)",
+        "count": 8,
+        "charges": 2330.0
+      },
+      {
+        "name": "NEW JERSEY MANUFACTURERS INSURANCE (12122W)",
+        "count": 7,
+        "charges": 1750.0
+      }
+    ],
+    "top_a3_codes": [
+      {
+        "name": "A3:21",
+        "count": 29
+      },
+      {
+        "name": "A7:97",
+        "count": 28
+      },
+      {
+        "name": "A7:0",
+        "count": 11
+      },
+      {
+        "name": "A3:187:82",
+        "count": 9
+      },
+      {
+        "name": "A3:743:82",
+        "count": 9
+      },
+      {
+        "name": "A3:21:41",
+        "count": 7
+      },
+      {
+        "name": "A3:78",
+        "count": 4
+      },
+      {
+        "name": "A6:629",
+        "count": 3
+      },
+      {
+        "name": "A7:21",
+        "count": 3
+      },
+      {
+        "name": "A7:454",
+        "count": 3
+      },
+      {
+        "name": "A7:453",
+        "count": 3
+      },
+      {
+        "name": "A7:732",
+        "count": 2
+      },
+      {
+        "name": "A3:153",
+        "count": 2
+      },
+      {
+        "name": "A7:101",
+        "count": 1
+      },
+      {
+        "name": "A8:562:85",
+        "count": 1
+      }
+    ]
+  }
+}
