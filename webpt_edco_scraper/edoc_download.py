@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
-from playwright.async_api import BrowserContext, Page
+from playwright.async_api import BrowserContext
 
 from config import BASE_URL, VIEW_EXT_DOC_URL, WebPTConfig
 from logging_config import get_logger
@@ -38,7 +38,7 @@ async def download_edoc_pdf(
     dest_dir: Path,
     config: WebPTConfig,
     skip_existing: bool = True,
-    page: Page | None = None,
+    parallel_pdfs: bool = False,
 ) -> dict[str, Any]:
     ext_doc_id = doc.get("ExtDocID")
     uri = doc.get("URI") or ""
@@ -74,49 +74,46 @@ async def download_edoc_pdf(
 
     url = build_view_url(ext_doc_id=int(ext_doc_id), patient_id=patient_id, uri=uri)
     timeout_ms = int(config.pdf_timeout_sec * 1000)
+    referer = f"{BASE_URL}/patientExtDoc.php?ID={patient_id}"
 
-    try:
-        referer = f"{BASE_URL}/patientExtDoc.php?ID={patient_id}"
-        async with pdf_download_slot():
-            if page is not None:
-                response = await page.goto(
-                    url,
-                    wait_until="commit",
-                    timeout=timeout_ms,
-                    referer=referer,
-                )
-            else:
-                response = await context.request.get(
-                    url,
-                    headers={
-                        "Referer": referer,
-                        "Accept": "application/pdf,*/*",
-                    },
-                    timeout=timeout_ms,
-                )
-        if response is None:
-            result["error"] = "no response from navigation"
-            return result
+    async def _fetch_and_save() -> None:
+        response = await context.request.get(
+            url,
+            headers={
+                "Referer": referer,
+                "Accept": "application/pdf,*/*",
+            },
+            timeout=timeout_ms,
+        )
         if not response.ok:
             result["error"] = f"HTTP {response.status}"
-            return result
+            return
 
         body = await response.body()
         content_type = (response.headers.get("content-type") or "").lower()
         if not body:
             result["error"] = "empty response"
-            return result
+            return
         if "pdf" not in content_type and not body.startswith(b"%PDF"):
             result["error"] = f"not a PDF (content-type={content_type})"
-            return result
+            return
 
         file_path.write_bytes(body)
         result["path"] = str(file_path)
         result["downloaded"] = True
         log.info("Downloaded %s (%d bytes)", filename, len(body))
+
+    try:
+        if parallel_pdfs:
+            async with pdf_download_slot():
+                await _fetch_and_save()
+        else:
+            await _fetch_and_save()
+            if config.pdf_delay_sec > 0:
+                await asyncio.sleep(config.pdf_delay_sec)
     except Exception as exc:
         result["error"] = str(exc)
-        log.warning("Failed to download %s: %s", filename, exc)
+        log.warning("Failed to download %s: %r", filename, exc)
 
     return result
 
@@ -129,9 +126,24 @@ async def download_patient_edocs(
     output_dir: Path,
     config: WebPTConfig,
     skip_existing: bool = True,
-    page: Page | None = None,
+    parallel_pdfs: bool = False,
 ) -> list[dict[str, Any]]:
     patient_dir = output_dir / str(patient_id)
+    if parallel_pdfs and docs:
+        tasks = [
+            download_edoc_pdf(
+                context,
+                doc=doc,
+                patient_id=patient_id,
+                dest_dir=patient_dir,
+                config=config,
+                skip_existing=skip_existing,
+                parallel_pdfs=True,
+            )
+            for doc in docs
+        ]
+        return list(await asyncio.gather(*tasks))
+
     results: list[dict[str, Any]] = []
     for doc in docs:
         row = await download_edoc_pdf(
@@ -141,9 +153,7 @@ async def download_patient_edocs(
             dest_dir=patient_dir,
             config=config,
             skip_existing=skip_existing,
-            page=page,
+            parallel_pdfs=False,
         )
         results.append(row)
-        if config.pdf_delay_sec > 0:
-            await asyncio.sleep(config.pdf_delay_sec)
     return results

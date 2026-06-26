@@ -1,22 +1,24 @@
-"""Parallel patient PDF download from export CSV (Phase 2)."""
+"""Parallel patient PDF download from export CSV (Phase 2, single browser)."""
 from __future__ import annotations
 
 import asyncio
 import csv
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from playwright.async_api import async_playwright
+from playwright.async_api import BrowserContext, Page, async_playwright
 
 from auth import (
     ClinicInfo,
-    bootstrap_shared_session,
+    SessionState,
     create_context,
     ensure_authenticated,
+    ensure_page_authenticated,
     refresh_csrf,
+    save_storage_state,
     switch_clinic,
 )
 from config import SCHEDULER_INDEX_URL, WebPTConfig
@@ -51,6 +53,21 @@ class ParallelPatientJob:
     facility_name: str
     chart_fields: dict[str, str]
     diagnosis: str
+
+
+@dataclass
+class SharedBrowserPool:
+    """One browser context + page shared by all worker coroutines."""
+
+    context: BrowserContext
+    page: Page
+    session: SessionState
+    config: WebPTConfig
+    current_facility: str | None = None
+    facility_refcount: int = 0
+    facility_cond: asyncio.Condition = field(default_factory=asyncio.Condition)
+    session_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    page_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 def _patient_key(facility_id: str | int, patient_id: int) -> str:
@@ -246,14 +263,53 @@ class ParallelDownloadState:
                 _write_csv_rows(export_path, rows, PATIENT_EXPORT_FIELDNAMES)
 
 
-_clinic_switch_lock = asyncio.Lock()
+async def acquire_facility(pool: SharedBrowserPool, facility_id: str) -> SessionState:
+    """Lease shared session for a facility; parallel workers may share the same facility."""
+    async with pool.facility_cond:
+        while (
+            pool.facility_refcount > 0
+            and pool.current_facility is not None
+            and pool.current_facility != facility_id
+        ):
+            await pool.facility_cond.wait()
+
+        if pool.current_facility != facility_id:
+            async with pool.session_lock:
+                pool.session = await ensure_authenticated(
+                    pool.page, pool.context, pool.config
+                )
+                await switch_clinic(
+                    pool.page,
+                    company_id=pool.config.company_id,
+                    facility_id=facility_id,
+                )
+                await pool.page.goto(
+                    SCHEDULER_INDEX_URL,
+                    wait_until="domcontentloaded",
+                    timeout=45000,
+                )
+                pool.session = await ensure_page_authenticated(
+                    pool.page, pool.context, pool.config
+                )
+            pool.current_facility = facility_id
+            log.info("Shared browser switched to facility %s", facility_id)
+
+        pool.facility_refcount += 1
+        return pool.session
+
+
+async def release_facility(pool: SharedBrowserPool, facility_id: str) -> None:
+    async with pool.facility_cond:
+        if pool.facility_refcount > 0:
+            pool.facility_refcount -= 1
+        pool.facility_cond.notify_all()
 
 
 async def _download_worker(
     worker_id: int,
     *,
     queue: asyncio.Queue[ParallelPatientJob | None],
-    config: WebPTConfig,
+    pool: SharedBrowserPool,
     output_dir: Path,
     state: ParallelDownloadState,
     skip_existing: bool,
@@ -262,88 +318,70 @@ async def _download_worker(
 ) -> None:
     from scraper import _process_patient_edocs
 
-    await asyncio.sleep(1.5 * worker_id)
-
-    async with async_playwright() as playwright:
-        context = await create_context(playwright, config)
-        page = await context.new_page()
-        current_facility: str | None = None
-        session = None
+    while True:
+        job = await queue.get()
         try:
-            while True:
-                job = await queue.get()
-                try:
-                    if job is None:
-                        break
-                    key = _patient_key(job.patient.facility_id, job.patient.patient_id)
-                    if key in state.processed:
-                        log.debug("Worker %d skip done %s", worker_id, key)
-                        continue
+            if job is None:
+                break
 
-                    fid = str(job.patient.facility_id)
-                    if fid != current_facility:
-                        async with _clinic_switch_lock:
-                            session = await ensure_authenticated(page, context, config)
-                            await switch_clinic(
-                                page,
-                                company_id=config.company_id,
-                                facility_id=fid,
-                            )
-                            await page.goto(
-                                SCHEDULER_INDEX_URL,
-                                wait_until="domcontentloaded",
-                                timeout=45000,
-                            )
-                        session = await refresh_csrf(context, page)
-                        current_facility = fid
+            key = _patient_key(job.patient.facility_id, job.patient.patient_id)
+            if key in state.processed:
+                log.debug("Worker %d skip done %s", worker_id, key)
+                continue
 
-                    clinic = ClinicInfo(
-                        company_id=config.company_id,
-                        facility_id=fid,
-                        name=job.facility_name,
+            fid = str(job.patient.facility_id)
+            session = await acquire_facility(pool, fid)
+            try:
+                clinic = ClinicInfo(
+                    company_id=pool.config.company_id,
+                    facility_id=fid,
+                    name=job.facility_name,
+                )
+                edocs_dir = output_dir / "edocs"
+                manifest_rows, edoc_summary, chart_notes_summary, _ = (
+                    await _process_patient_edocs(
+                        pool.context,
+                        clinic=clinic,
+                        patient=job.patient,
+                        config=pool.config,
+                        session=session,
+                        edocs_dir=edocs_dir,
+                        skip_existing=skip_existing,
+                        skip_edocs=skip_edocs,
+                        skip_chart_notes=skip_chart_notes,
+                        skip_ocr=True,
+                        expected_diagnosis=job.diagnosis,
+                        page=pool.page,
+                        parallel_pdfs=True,
+                        page_lock=pool.page_lock,
+                        chart_notes_debug_dir=output_dir / "debug",
                     )
-                    edocs_dir = output_dir / "edocs"
-                    manifest_rows, edoc_summary, chart_notes_summary, _ = (
-                        await _process_patient_edocs(
-                            context,
-                            clinic=clinic,
-                            patient=job.patient,
-                            config=config,
-                            session=session,
-                            edocs_dir=edocs_dir,
-                            skip_existing=skip_existing,
-                            skip_edocs=skip_edocs,
-                            skip_chart_notes=skip_chart_notes,
-                            skip_ocr=True,
-                            expected_diagnosis=job.diagnosis,
-                            page=page,
-                        )
-                    )
-                    await state.record_success(
-                        job,
-                        manifest_rows=manifest_rows,
-                        edoc_summary=edoc_summary,
-                        chart_notes_summary=chart_notes_summary,
-                    )
-                    log.info(
-                        "Worker %d done %s (%s) edoc=%s chart_notes=%s",
-                        worker_id,
-                        job.patient.patient_id,
-                        job.patient.patient_name,
-                        edoc_summary.get("edoc_status"),
-                        chart_notes_summary.get("chart_notes_status"),
-                    )
-                except Exception as exc:
-                    log.error(
-                        "Worker %d failed patient %s: %s",
-                        worker_id,
-                        job.patient.patient_id if job else "?",
-                        exc,
-                    )
-                finally:
-                    queue.task_done()
+                )
+                await state.record_success(
+                    job,
+                    manifest_rows=manifest_rows,
+                    edoc_summary=edoc_summary,
+                    chart_notes_summary=chart_notes_summary,
+                )
+                log.info(
+                    "Worker %d done %s (%s) edoc=%s chart_notes=%s",
+                    worker_id,
+                    job.patient.patient_id,
+                    job.patient.patient_name,
+                    edoc_summary.get("edoc_status"),
+                    chart_notes_summary.get("chart_notes_status"),
+                )
+            finally:
+                await release_facility(pool, fid)
+        except Exception as exc:
+            log.error(
+                "Worker %d failed patient %s: %r",
+                worker_id,
+                job.patient.patient_id if job else "?",
+                exc,
+            )
         finally:
-            await context.browser.close()
+            queue.task_done()
 
 
 async def run_parallel_download(
@@ -366,6 +404,7 @@ async def run_parallel_download(
     if not jobs:
         raise RuntimeError(f"No patients in {input_csv}")
 
+    output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = output_dir / "download_checkpoint.json"
     state = ParallelDownloadState(
         checkpoint_path=checkpoint_path,
@@ -382,16 +421,15 @@ async def run_parallel_download(
     ]
     if max_patients is not None:
         pending = pending[:max_patients]
+    pending.sort(key=lambda j: (j.patient.facility_id, j.patient.patient_id))
 
     log.info(
-        "Parallel download: %d pending / %d total, %d workers, pdf_sem=%d",
+        "Parallel download (single browser): %d pending / %d total, %d workers, pdf_sem=%d",
         len(pending),
         len(jobs),
         worker_count,
         config.max_concurrent_pdfs,
     )
-
-    await bootstrap_shared_session(config)
 
     set_pdf_semaphore(asyncio.Semaphore(config.max_concurrent_pdfs))
     queue: asyncio.Queue[ParallelPatientJob | None] = asyncio.Queue()
@@ -400,29 +438,44 @@ async def run_parallel_download(
     for _ in range(worker_count):
         queue.put_nowait(None)
 
-    tasks = [
-        asyncio.create_task(
-            _download_worker(
-                i + 1,
-                queue=queue,
+    async with async_playwright() as playwright:
+        context = await create_context(playwright, config)
+        page = await context.new_page()
+        try:
+            session = await ensure_authenticated(page, context, config)
+            pool = SharedBrowserPool(
+                context=context,
+                page=page,
+                session=session,
                 config=config,
-                output_dir=output_dir,
-                state=state,
-                skip_existing=skip_existing,
-                skip_edocs=skip_edocs,
-                skip_chart_notes=skip_chart_notes,
             )
-        )
-        for i in range(worker_count)
-    ]
-    await asyncio.gather(*tasks)
 
-    export_path = output_dir / "patients_export_10d.csv"
-    await state.finalize(export_path, jobs)
+            tasks = [
+                asyncio.create_task(
+                    _download_worker(
+                        i + 1,
+                        queue=queue,
+                        pool=pool,
+                        output_dir=output_dir,
+                        state=state,
+                        skip_existing=skip_existing,
+                        skip_edocs=skip_edocs,
+                        skip_chart_notes=skip_chart_notes,
+                    )
+                )
+                for i in range(worker_count)
+            ]
+            await asyncio.gather(*tasks)
+
+            export_path = output_dir / "patients_export_10d.csv"
+            await state.finalize(export_path, jobs)
+        finally:
+            await save_storage_state(context)
+            await context.browser.close()
+
     set_pdf_semaphore(None)
     log.info(
-        "Parallel download complete: %d patients, manifest=%s, export=%s",
+        "Parallel download complete: %d patients, manifest=%s",
         state.total_done,
         state.manifest_path,
-        export_path,
     )

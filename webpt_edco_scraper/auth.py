@@ -50,8 +50,88 @@ class ClinicInfo:
     name: str
 
 
+def _is_auth_redirect_url(url: str) -> bool:
+    u = (url or "").lower()
+    return (
+        "login.webpt.com" in u
+        or "auth.webpt.com" in u
+        or "auth0" in u
+    )
+
+
 def _is_login_url(url: str) -> bool:
-    return "login.webpt.com" in url.lower()
+    return _is_auth_redirect_url(url)
+
+
+def _oust_yes_button(page: Page):
+    return (
+        page.get_by_role("button", name=re.compile(r"yes.*oust", re.I))
+        .or_(page.locator('input[type="submit"][value*="oust" i]'))
+        .or_(page.get_by_text(re.compile(r"yes,\s*oust them", re.I)))
+        .or_(page.locator('button:has-text("oust them"), a:has-text("oust them")'))
+    ).first
+
+
+async def dismiss_already_signed_in_prompt(page: Page) -> bool:
+    """Click 'Yes, oust them!' if single-session conflict dialog is shown."""
+    try:
+        body_text = (await page.locator("body").inner_text(timeout=2000)).lower()
+    except Exception:
+        body_text = ""
+
+    btn = _oust_yes_button(page)
+    try:
+        visible = await btn.is_visible()
+    except Exception:
+        visible = False
+
+    if "already signed in" not in body_text and not visible:
+        return False
+
+    try:
+        if not visible:
+            await btn.wait_for(state="visible", timeout=3000)
+    except Exception:
+        if "already signed in" not in body_text:
+            return False
+
+    try:
+        log.info("WebPT: clicking 'Yes, oust them!' on single-session prompt")
+        await btn.click(timeout=5000)
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=30000)
+        except Exception:
+            pass
+        await asyncio.sleep(1)
+        log.info("Dismissed 'already signed in' prompt")
+        return True
+    except Exception as exc:
+        log.warning("Failed to dismiss 'already signed in' prompt: %s", exc)
+        return False
+
+
+async def _settle_app_page(page: Page) -> None:
+    await dismiss_already_signed_in_prompt(page)
+
+
+def _page_needs_auth(page: Page) -> bool:
+    return _is_auth_redirect_url(page.url)
+
+
+async def ensure_page_authenticated(
+    page: Page,
+    context: BrowserContext,
+    config: WebPTConfig,
+) -> SessionState:
+    """Re-auth if the visible page landed on SSO/login after navigation."""
+    if _page_needs_auth(page):
+        log.warning("Page on auth redirect (%s) — re-authenticating", page.url)
+        return await ensure_authenticated(page, context, config)
+    await _settle_app_page(page)
+    if _page_needs_auth(page):
+        log.warning("Auth redirect after oust prompt (%s) — re-authenticating", page.url)
+        return await ensure_authenticated(page, context, config)
+    return await refresh_csrf(context, page)
 
 
 async def create_context(
@@ -229,7 +309,7 @@ async def _probe_session(context: BrowserContext) -> bool:
 
 async def _session_ready(page: Page, context: BrowserContext) -> bool:
     """True only when off the login page and CSRF can be obtained."""
-    if _is_login_url(page.url) or "auth0" in page.url.lower():
+    if _is_auth_redirect_url(page.url):
         return False
     if "app.webpt.com" not in page.url.lower():
         return False
@@ -247,8 +327,9 @@ async def is_session_valid(page: Page, context: BrowserContext) -> bool:
             DASHBOARD_URL, wait_until="domcontentloaded", timeout=30000
         )
         final_url = response.url if response else page.url
-        if _is_login_url(final_url) or _is_login_url(page.url):
+        if _is_auth_redirect_url(final_url) or _is_auth_redirect_url(page.url):
             return False
+        await _settle_app_page(page)
         return await _probe_session(context)
     except Exception as exc:
         log.debug("Session check failed: %s", exc)
@@ -304,12 +385,13 @@ async def _auth0_complete_password_step(page: Page, config: WebPTConfig) -> bool
 
     deadline = time.monotonic() + 90
     while time.monotonic() < deadline:
-        if "app.webpt.com" in page.url and not _is_login_url(page.url):
+        if "app.webpt.com" in page.url and not _is_auth_redirect_url(page.url):
+            await _settle_app_page(page)
             log.info("Auth0: redirected to app (%s)", page.url)
             return True
         await asyncio.sleep(0.5)
 
-    if not _is_login_url(page.url):
+    if not _is_auth_redirect_url(page.url):
         return True
     log.warning("Auth0: login timed out (still on %s)", page.url)
     return False
@@ -317,7 +399,7 @@ async def _auth0_complete_password_step(page: Page, config: WebPTConfig) -> bool
 
 async def _try_automated_auth0_login(page: Page, config: WebPTConfig) -> bool:
     """Fill Auth0 login form (identifier + password, or password-only step)."""
-    if _is_login_url(page.url) is False and "auth0" not in page.url.lower():
+    if not _is_auth_redirect_url(page.url) and "auth0" not in page.url.lower():
         log.debug("Auth0: not on login page (%s)", page.url)
         return False
 
@@ -377,6 +459,7 @@ async def wait_for_manual_login(
     )
     deadline = time.monotonic() + timeout_sec
     while time.monotonic() < deadline:
+        await _settle_app_page(page)
         if await _session_ready(page, context):
             log.info("Manual login detected")
             return
@@ -403,7 +486,7 @@ async def login(
         log.info("Already authenticated")
         return
 
-    if _is_login_url(page.url) or "auth0" in page.url.lower():
+    if _is_auth_redirect_url(page.url):
         log.info("Auth0 login page detected (%s)", page.url)
     elif await _has_session_cookies(context):
         log.warning(
@@ -413,6 +496,7 @@ async def login(
 
     if await _try_automated_auth0_login(page, config):
         log.info("Automated Auth0 login succeeded")
+        await _settle_app_page(page)
         return
 
     if config.headless:
@@ -441,6 +525,7 @@ async def ensure_authenticated(
     log.info("Session invalid or missing — performing login")
     await login(page, context, config, fresh=fresh_login)
     await page.goto(DASHBOARD_URL, wait_until="networkidle", timeout=90000)
+    await _settle_app_page(page)
     try:
         await page.wait_for_function(
             "() => localStorage.getItem('vega_auth_csrf') || document.cookie.includes('vega_emr_auth')",
@@ -502,6 +587,7 @@ async def switch_clinic(
 ) -> None:
     """Switch active clinic via #ClinicChange dropdown."""
     await page.goto(DASHBOARD_URL, wait_until="domcontentloaded", timeout=30000)
+    await _settle_app_page(page)
 
     if user_id is None:
         user_id = await page.evaluate(

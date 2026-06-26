@@ -28,8 +28,10 @@ from edoc_ocr import (
     analyze_patient_file_contributions,
     build_edoc_inventory_row,
     collect_patient_pdf_paths,
+    run_ocr_all,
     run_patient_ocr_validation,
 )
+from chart_notes_parse import export_daily_notes, run_validate_extraction
 from export_utils import (
     EDOC_MANIFEST_FIELDNAMES,
     PATIENT_EXPORT_FIELDNAMES,
@@ -133,6 +135,9 @@ async def _process_patient_edocs(
     expected_diagnosis: str = "",
     force_ocr: bool = False,
     page=None,
+    parallel_pdfs: bool = False,
+    page_lock=None,
+    chart_notes_debug_dir: Path | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any], dict[str, Any], dict[str, Any]]:
     if skip_edocs and skip_chart_notes and not ocr_only:
         return (
@@ -179,15 +184,73 @@ async def _process_patient_edocs(
     )
 
     edoc_results: list[dict[str, Any]] = []
-    if not skip_edocs and not chart_notes_only:
-        docs = await list_patient_edocs(
-            context,
-            patient_id=patient.patient_id,
-            case_id=patient.case_id,
-            config=config,
-            session=session,
-            include_all_cases=True,
-        )
+    chart_note_results: list[dict[str, Any]] = []
+    notes: list = []
+
+    need_edocs = not skip_edocs and not chart_notes_only
+    need_chart_notes = not skip_chart_notes and patient.case_id is not None
+    case_id = patient.case_id
+
+    if parallel_pdfs and (need_edocs or need_chart_notes):
+        parallel_tasks: list[Any] = []
+        task_kinds: list[str] = []
+        if need_edocs:
+            parallel_tasks.append(
+                list_patient_edocs(
+                    context,
+                    patient_id=patient.patient_id,
+                    case_id=patient.case_id,
+                    config=config,
+                    session=session,
+                    include_all_cases=True,
+                )
+            )
+            task_kinds.append("edocs")
+        if need_chart_notes:
+            parallel_tasks.append(
+                fetch_patient_chart_notes(
+                    context,
+                    patient_id=patient.patient_id,
+                    case_id=case_id,
+                    page=page,
+                    config=config,
+                    page_lock=page_lock,
+                    debug_dir=chart_notes_debug_dir,
+                    timeout_ms=int(config.chart_timeout_sec * 1000),
+                )
+            )
+            task_kinds.append("notes")
+        parallel_results = await asyncio.gather(*parallel_tasks)
+        docs: list[dict[str, Any]] = []
+        for kind, res in zip(task_kinds, parallel_results):
+            if kind == "edocs":
+                docs = res
+            else:
+                notes = res
+    else:
+        docs = []
+        if need_edocs:
+            docs = await list_patient_edocs(
+                context,
+                patient_id=patient.patient_id,
+                case_id=patient.case_id,
+                config=config,
+                session=session,
+                include_all_cases=True,
+            )
+        if need_chart_notes and not parallel_pdfs:
+            notes = await fetch_patient_chart_notes(
+                context,
+                patient_id=patient.patient_id,
+                case_id=case_id,
+                page=page,
+                config=config,
+                page_lock=page_lock,
+                debug_dir=chart_notes_debug_dir,
+                timeout_ms=int(config.chart_timeout_sec * 1000),
+            )
+
+    if need_edocs:
         if not docs:
             manifest_rows.append(
                 edoc_manifest_row(
@@ -209,6 +272,7 @@ async def _process_patient_edocs(
                 output_dir=edocs_dir,
                 config=config,
                 skip_existing=skip_existing,
+                parallel_pdfs=parallel_pdfs,
             )
             for r in edoc_results:
                 st = "skipped" if r.get("skipped") else ("ok" if r.get("downloaded") else "error")
@@ -233,9 +297,7 @@ async def _process_patient_edocs(
             docs_count=0, results=None, processed=chart_notes_only
         )
 
-    chart_note_results: list[dict[str, Any]] = []
     if not skip_chart_notes:
-        case_id = patient.case_id
         if case_id is None:
             chart_notes_summary = summarize_chart_notes_downloads(
                 notes_count=0, results=None, processed=True, no_case=True
@@ -245,13 +307,17 @@ async def _process_patient_edocs(
                 patient.patient_id,
             )
         else:
-            notes = await fetch_patient_chart_notes(
-                context,
-                patient_id=patient.patient_id,
-                case_id=case_id,
-                page=page,
-                timeout_ms=int(config.chart_timeout_sec * 1000),
-            )
+            if not parallel_pdfs:
+                notes = await fetch_patient_chart_notes(
+                    context,
+                    patient_id=patient.patient_id,
+                    case_id=case_id,
+                    page=page,
+                    config=config,
+                    page_lock=page_lock,
+                    debug_dir=chart_notes_debug_dir,
+                    timeout_ms=int(config.chart_timeout_sec * 1000),
+                )
             log.info(
                 "Patient %s case %s: %d chart note(s) found",
                 patient.patient_id,
@@ -272,6 +338,7 @@ async def _process_patient_edocs(
                     config=config,
                     facility_id=clinic.facility_id,
                     skip_existing=skip_existing,
+                    parallel_pdfs=parallel_pdfs,
                 )
                 for r in chart_note_results:
                     st = "skipped" if r.get("skipped") else (
@@ -402,6 +469,8 @@ async def cmd_download_patient(
                 patient_id=patient_id,
                 case_id=case_id,
                 page=page,
+                config=cfg,
+                debug_dir=output_dir / "debug",
                 timeout_ms=int(cfg.chart_timeout_sec * 1000),
             )
             log.info(
@@ -1243,6 +1312,68 @@ def cmd_edocs_inventory(
     log.info("Wrote eDocs inventory: %s (%d patients)", output_csv, len(rows))
 
 
+def cmd_ocr_all(
+    config: WebPTConfig,
+    *,
+    edocs_dir: Path,
+    output_dir: Path,
+    force: bool = False,
+    force_ocr: bool = False,
+    max_patients: int | None = None,
+    extract_structured: bool = True,
+    include_referral_icd: bool = True,
+) -> None:
+    """OCR all eDocs + chart_notes PDFs; optionally export daily_notes/cpt CSVs."""
+    summary = run_ocr_all(
+        edocs_dir,
+        output_dir,
+        dpi=config.ocr_dpi,
+        tesseract_cmd=config.tesseract_cmd or None,
+        force=force,
+        force_ocr=force_ocr,
+        max_patients=max_patients,
+    )
+    log.info(
+        "ocr-all: %d patients, %d files -> %s",
+        summary["patients_processed"],
+        summary["files_processed"],
+        summary["ocr_all_files_path"],
+    )
+    if summary["errors"]:
+        log.warning("OCR errors (first 5): %s", " | ".join(summary["errors"][:5]))
+
+    if extract_structured:
+        dn_summary = export_daily_notes(
+            edocs_dir,
+            output_dir,
+            include_referral_icd=include_referral_icd,
+            tesseract_cmd=config.tesseract_cmd or None,
+            ocr_dpi=config.ocr_dpi,
+        )
+        log.info(
+            "Structured export: %d daily notes, %d CPT lines",
+            dn_summary["daily_notes_count"],
+            dn_summary["cpt_lines_count"],
+        )
+
+
+def cmd_validate_extraction(
+    *,
+    edocs_dir: Path,
+    extracted_dir: Path,
+) -> None:
+    summary = run_validate_extraction(edocs_dir, extracted_dir)
+    log.info(
+        "validate-extraction: disk %d files (%d patients), ocr csv %d -> %s",
+        summary["disk_files"],
+        summary["disk_patients"],
+        summary["ocr_csv_files"],
+        summary["validation_report_path"],
+    )
+    for status, count in sorted(summary["status_counts"].items()):
+        log.info("  status %s: %d", status, count)
+
+
 def cmd_ocr_batch_test(
     config: WebPTConfig,
     *,
@@ -1516,6 +1647,11 @@ async def cmd_enrich_patient_export(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="WebPT eDoc downloader")
     parser.add_argument("--headless", action="store_true", help="Run browser headless")
+    parser.add_argument(
+        "--no-headless",
+        action="store_true",
+        help="Show browser window (overrides WEBPT_HEADLESS)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_login = sub.add_parser("login", help="Log in and save storage_state.json")
@@ -1658,12 +1794,110 @@ def build_parser() -> argparse.ArgumentParser:
     p_enrich.add_argument("--skip-chart", action="store_true")
     p_enrich.add_argument("--max-patients", type=int, default=None)
 
+    p_parallel = sub.add_parser(
+        "parallel-download",
+        help="Phase 2: parallel PDF download from patients_recent CSV (single browser)",
+    )
+    p_parallel.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="patients_recent_10d.csv from discovery export",
+    )
+    p_parallel.add_argument("--output", type=Path, required=True)
+    p_parallel.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Concurrent patient workers (default: WEBPT_PARALLEL_WORKERS)",
+    )
+    p_parallel.add_argument("--skip-edocs", action="store_true")
+    p_parallel.add_argument("--skip-chart-notes", action="store_true")
+    p_parallel.add_argument("--max-patients", type=int, default=None)
+    p_parallel.add_argument("--checkpoint-every", type=int, default=25)
+    p_parallel.add_argument("--no-skip-existing", action="store_true")
+
+    p_extract_dn = sub.add_parser(
+        "extract-daily-notes",
+        help="Extract Daily Note billing headers and CPT lines from chart_notes PDFs",
+    )
+    p_extract_dn.add_argument(
+        "--input",
+        type=Path,
+        required=True,
+        help="edocs root (contains {patient_id}/chart_notes/)",
+    )
+    p_extract_dn.add_argument(
+        "--output-dir",
+        type=Path,
+        required=True,
+        help="Directory for daily_notes.csv and cpt_codes.csv",
+    )
+    p_extract_dn.add_argument(
+        "--include-referral-icd",
+        action="store_true",
+        help="OCR referral eDocs and write referral_icd.csv",
+    )
+
+    p_ocr_all = sub.add_parser(
+        "ocr-all",
+        help="OCR all PDFs (eDocs + chart_notes) and export structured daily note data",
+    )
+    p_ocr_all.add_argument(
+        "--edocs-dir",
+        type=Path,
+        default=Path("output/recent_10d_fast_chartnotes/edocs"),
+    )
+    p_ocr_all.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("output/recent_10d_fast_chartnotes/extracted"),
+    )
+    p_ocr_all.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-run OCR and overwrite per-patient .ocr_cache.txt",
+    )
+    p_ocr_all.add_argument(
+        "--force-ocr",
+        action="store_true",
+        help="Always OCR every page (skip native PDF text shortcut)",
+    )
+    p_ocr_all.add_argument("--max-patients", type=int, default=None)
+    p_ocr_all.add_argument(
+        "--skip-structured",
+        action="store_true",
+        help="Skip daily_notes.csv / cpt_codes.csv extraction",
+    )
+    p_ocr_all.add_argument(
+        "--skip-referral-icd",
+        action="store_true",
+        help="Skip referral_icd.csv during structured export",
+    )
+
+    p_validate = sub.add_parser(
+        "validate-extraction",
+        help="Compare on-disk PDFs with extraction CSVs and write validation_report.csv",
+    )
+    p_validate.add_argument(
+        "--edocs-dir",
+        type=Path,
+        default=Path("output/recent_10d_fast_chartnotes/edocs"),
+    )
+    p_validate.add_argument(
+        "--extracted-dir",
+        type=Path,
+        default=Path("output/recent_10d_fast_chartnotes/extracted"),
+    )
+
     return parser
 
 
 async def async_main(args: argparse.Namespace) -> None:
     config = WebPTConfig.from_env()
-    if args.headless:
+    if args.no_headless:
+        config.headless = False
+    elif args.headless:
         config.headless = True
 
     skip_existing = not getattr(args, "no_skip_existing", False)
@@ -1766,6 +2000,52 @@ async def async_main(args: argparse.Namespace) -> None:
             output_csv=args.output_csv,
             skip_chart=args.skip_chart,
             manifest_dir=args.manifest_dir,
+            max_patients=args.max_patients,
+        )
+    elif args.command == "extract-daily-notes":
+        summary = export_daily_notes(
+            args.input,
+            args.output_dir,
+            include_referral_icd=args.include_referral_icd,
+            tesseract_cmd=config.tesseract_cmd or None,
+            ocr_dpi=config.ocr_dpi,
+        )
+        log.info(
+            "extract-daily-notes: %d visits, %d CPT lines -> %s",
+            summary["daily_notes_count"],
+            summary["cpt_lines_count"],
+            args.output_dir,
+        )
+        if summary["errors"]:
+            log.warning("Errors: %s", " | ".join(summary["errors"][:5]))
+    elif args.command == "ocr-all":
+        cmd_ocr_all(
+            config,
+            edocs_dir=args.edocs_dir,
+            output_dir=args.output_dir,
+            force=args.force,
+            force_ocr=args.force_ocr,
+            max_patients=args.max_patients,
+            extract_structured=not args.skip_structured,
+            include_referral_icd=not args.skip_referral_icd,
+        )
+    elif args.command == "validate-extraction":
+        cmd_validate_extraction(
+            edocs_dir=args.edocs_dir,
+            extracted_dir=args.extracted_dir,
+        )
+    elif args.command == "parallel-download":
+        from parallel_download import run_parallel_download
+
+        await run_parallel_download(
+            config,
+            input_csv=args.input,
+            output_dir=args.output,
+            workers=args.workers,
+            skip_existing=skip_existing,
+            skip_edocs=args.skip_edocs,
+            skip_chart_notes=args.skip_chart_notes,
+            checkpoint_every=args.checkpoint_every,
             max_patients=args.max_patients,
         )
     else:

@@ -9,6 +9,7 @@ from chart_notes_api import ChartNoteRef, build_print_pdf_url, patient_chart_not
 from config import BASE_URL, WebPTConfig
 from edoc_download import sanitize_filename
 from logging_config import get_logger
+from pdf_throttle import pdf_download_slot
 
 log = get_logger("chart_notes_download")
 
@@ -58,6 +59,7 @@ async def download_chart_note_pdf(
     config: WebPTConfig,
     facility_id: str = "",
     skip_existing: bool = True,
+    parallel_pdfs: bool = False,
 ) -> dict[str, Any]:
     note_id = note.cnsid or note.uri or note.dedupe_key
     result: dict[str, Any] = {
@@ -95,7 +97,7 @@ async def download_chart_note_pdf(
     timeout_ms = int(config.pdf_timeout_sec * 1000)
     referer = patient_chart_note_url(patient_id, case_id)
 
-    try:
+    async def _fetch_and_save() -> None:
         response = await context.request.get(
             url,
             headers={
@@ -106,21 +108,30 @@ async def download_chart_note_pdf(
         )
         if not response.ok:
             result["error"] = f"HTTP {response.status}"
-            return result
+            return
 
         body = await response.body()
         content_type = (response.headers.get("content-type") or "").lower()
         if not body:
             result["error"] = "empty response"
-            return result
+            return
         if "pdf" not in content_type and not body.startswith(b"%PDF"):
             result["error"] = f"not a PDF (content-type={content_type})"
-            return result
+            return
 
         file_path.write_bytes(body)
         result["path"] = str(file_path)
         result["downloaded"] = True
         log.info("Downloaded chart note %s (%d bytes)", filename, len(body))
+
+    try:
+        if parallel_pdfs:
+            async with pdf_download_slot():
+                await _fetch_and_save()
+        else:
+            await _fetch_and_save()
+            if config.pdf_delay_sec > 0:
+                await asyncio.sleep(config.pdf_delay_sec)
     except Exception as exc:
         result["error"] = str(exc)
         log.warning("Failed to download chart note %s: %s", filename, exc)
@@ -138,8 +149,26 @@ async def download_patient_chart_notes(
     config: WebPTConfig,
     facility_id: str = "",
     skip_existing: bool = True,
+    parallel_pdfs: bool = False,
 ) -> list[dict[str, Any]]:
     dest_dir = chart_notes_dir(output_dir, patient_id)
+    if parallel_pdfs and notes:
+        tasks = [
+            download_chart_note_pdf(
+                context,
+                note=note,
+                patient_id=patient_id,
+                case_id=case_id,
+                dest_dir=dest_dir,
+                config=config,
+                facility_id=facility_id,
+                skip_existing=skip_existing,
+                parallel_pdfs=True,
+            )
+            for note in notes
+        ]
+        return list(await asyncio.gather(*tasks))
+
     results: list[dict[str, Any]] = []
     for note in notes:
         row = await download_chart_note_pdf(
@@ -151,8 +180,7 @@ async def download_patient_chart_notes(
             config=config,
             facility_id=facility_id,
             skip_existing=skip_existing,
+            parallel_pdfs=False,
         )
         results.append(row)
-        if config.pdf_delay_sec > 0:
-            await asyncio.sleep(config.pdf_delay_sec)
     return results

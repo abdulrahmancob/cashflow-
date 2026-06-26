@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 from pathlib import Path
 from typing import Any
 
@@ -100,46 +101,94 @@ def pdf_to_text(
     dpi: int = 200,
     tesseract_cmd: str | None = None,
     tessdata: str | None = None,
+    force_ocr: bool = False,
 ) -> str:
-    _configure_tesseract(tesseract_cmd, tessdata)
+    text, _ = extract_pdf_text(
+        path,
+        dpi=dpi,
+        tesseract_cmd=tesseract_cmd,
+        tessdata=tessdata,
+        force_ocr=force_ocr,
+    )
+    return text
+
+
+def extract_pdf_text(
+    path: Path,
+    *,
+    dpi: int = 200,
+    tesseract_cmd: str | None = None,
+    tessdata: str | None = None,
+    force_ocr: bool = False,
+) -> tuple[str, str]:
+    """Return (text, extraction_method) where method is native_text or ocr."""
+    exe, data_dir = resolve_tesseract_paths(tesseract_cmd)
+    if tessdata:
+        data_dir = tessdata
+    _configure_tesseract(exe, data_dir)
+
     doc = fitz.open(path)
     chunks: list[str] = []
+    used_native = False
+    used_ocr = False
     try:
         scale = dpi / 72.0
         matrix = fitz.Matrix(scale, scale)
         for page in doc:
-            text = (page.get_text() or "").strip()
-            if len(text) >= 50:
-                chunks.append(text)
+            native = (page.get_text() or "").strip()
+            if not force_ocr and len(native) >= 50:
+                chunks.append(native)
+                used_native = True
                 continue
+
+            page_text = ""
             try:
                 kwargs: dict[str, Any] = {"language": "eng"}
-                if tessdata:
-                    kwargs["tessdata"] = tessdata
+                if data_dir:
+                    kwargs["tessdata"] = data_dir
                 tp = page.get_textpage_ocr(**kwargs)
-                ocr_text = (tp.extractText() or "").strip()
-                if ocr_text:
-                    chunks.append(ocr_text)
-                    continue
+                page_text = (tp.extractText() or "").strip()
             except Exception as exc:
-                log.debug("PyMuPDF OCR failed on %s page %s: %s", path.name, page.number + 1, exc)
+                log.debug(
+                    "PyMuPDF OCR failed on %s page %s: %s",
+                    path.name,
+                    page.number + 1,
+                    exc,
+                )
 
-            pix = page.get_pixmap(matrix=matrix, alpha=False)
-            try:
-                import pytesseract
-                from PIL import Image
+            if not page_text:
+                pix = page.get_pixmap(matrix=matrix, alpha=False)
+                try:
+                    import pytesseract
+                    from PIL import Image
 
-                if tesseract_cmd:
-                    pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
-                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-                ocr_text = (pytesseract.image_to_string(img) or "").strip()
-                if ocr_text:
-                    chunks.append(ocr_text)
-            except Exception as exc:
-                log.warning("Fallback OCR failed on %s page %s: %s", path.name, page.number + 1, exc)
+                    if exe:
+                        pytesseract.pytesseract.tesseract_cmd = exe
+                    img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                    page_text = (pytesseract.image_to_string(img) or "").strip()
+                except Exception as exc:
+                    log.warning(
+                        "Fallback OCR failed on %s page %s: %s",
+                        path.name,
+                        page.number + 1,
+                        exc,
+                    )
+
+            if page_text:
+                chunks.append(page_text)
+                used_ocr = True
+            elif native:
+                chunks.append(native)
+                used_native = True
     finally:
         doc.close()
-    return "\n".join(chunks)
+
+    method = "ocr" if used_ocr and not used_native else ""
+    if not method:
+        method = "native_text" if used_native else "ocr" if used_ocr else ""
+    if force_ocr and used_ocr:
+        method = "ocr"
+    return "\n".join(chunks), method or "none"
 
 
 def ocr_patient_edocs(
@@ -148,6 +197,7 @@ def ocr_patient_edocs(
     dpi: int = 200,
     tesseract_cmd: str | None = None,
     tessdata: str | None = None,
+    force_ocr: bool = False,
 ) -> tuple[str, list[str], list[str]]:
     exe, data_dir = resolve_tesseract_paths(tesseract_cmd)
     if tessdata:
@@ -171,6 +221,7 @@ def ocr_patient_edocs(
                 dpi=dpi,
                 tesseract_cmd=exe,
                 tessdata=data_dir,
+                force_ocr=force_ocr,
             )
             used_files.append(path.name)
             if text:
@@ -204,6 +255,7 @@ def load_or_run_patient_ocr(
     dpi: int = 200,
     tesseract_cmd: str | None = None,
     force: bool = False,
+    force_ocr: bool = False,
 ) -> tuple[str, list[str], list[str]]:
     existing = [p for p in pdf_paths if p.exists() and p.is_file()]
     cache_file = _cache_path(patient_dir) if patient_dir else None
@@ -216,6 +268,7 @@ def load_or_run_patient_ocr(
         existing,
         dpi=dpi,
         tesseract_cmd=tesseract_cmd,
+        force_ocr=force_ocr,
     )
     if cache_file and text:
         cache_file.parent.mkdir(parents=True, exist_ok=True)
@@ -560,4 +613,170 @@ def run_patient_ocr_validation(
         "edoc_ocr_errors": " | ".join(ocr_errors[:3]),
         "_file_contributions": contributions,
     }
+    return summary
+
+
+OCR_ALL_FILES_FIELDNAMES = [
+    "patient_id",
+    "filename",
+    "rel_path",
+    "doc_category",
+    "extraction_method",
+    "text_chars",
+    "icd_codes",
+    "error",
+]
+
+
+def classify_pdf_path(pdf_path: Path) -> str:
+    """Classify PDF as daily_note, chart_note, referral, intake, mri, insurance, or edoc."""
+    name_lower = pdf_path.name.lower()
+    if "chart_notes" in {p.lower() for p in pdf_path.parts}:
+        if "dailynote" in name_lower:
+            return "daily_note"
+        return "chart_note"
+    flags = classify_edoc_filename(pdf_path.name)
+    if flags.get("has_referral"):
+        return "referral"
+    if flags.get("has_intake"):
+        return "intake"
+    if flags.get("has_mri"):
+        return "mri"
+    if flags.get("has_insurance_id"):
+        return "insurance_id"
+    if flags.get("has_chart_note"):
+        return "chart_note"
+    return "edoc"
+
+
+def ocr_single_pdf_row(
+    pdf_path: Path,
+    *,
+    patient_id: str,
+    dpi: int = 200,
+    tesseract_cmd: str | None = None,
+    force_ocr: bool = False,
+) -> tuple[dict[str, str], str]:
+    rel_path = pdf_path.name
+    if pdf_path.parent.name == "chart_notes":
+        rel_path = f"chart_notes/{pdf_path.name}"
+    row: dict[str, str] = {
+        "patient_id": patient_id,
+        "filename": pdf_path.name,
+        "rel_path": rel_path,
+        "doc_category": classify_pdf_path(pdf_path),
+        "extraction_method": "",
+        "text_chars": "0",
+        "icd_codes": "",
+        "error": "",
+    }
+    text = ""
+    if not pdf_path.exists():
+        row["error"] = "file missing"
+        return row, text
+
+    try:
+        text, method = extract_pdf_text(
+            pdf_path,
+            dpi=dpi,
+            tesseract_cmd=tesseract_cmd,
+            force_ocr=force_ocr,
+        )
+        row["extraction_method"] = method
+        row["text_chars"] = str(len(text))
+        row["icd_codes"] = "; ".join(parse_icd_codes(text))
+        if not text.strip():
+            row["error"] = "no text extracted"
+    except Exception as exc:
+        row["error"] = str(exc)
+        log.warning("OCR failed for %s: %s", pdf_path, exc)
+    return row, text
+
+
+def run_ocr_all(
+    edocs_dir: Path,
+    output_dir: Path,
+    *,
+    dpi: int = 200,
+    tesseract_cmd: str | None = None,
+    force: bool = False,
+    force_ocr: bool = False,
+    max_patients: int | None = None,
+) -> dict[str, Any]:
+    """OCR every PDF under edocs_dir (eDocs + chart_notes) and write per-file CSV + patient caches."""
+    if not edocs_dir.exists():
+        raise RuntimeError(f"eDocs directory not found: {edocs_dir}")
+
+    _, tessdata = resolve_tesseract_paths(tesseract_cmd)
+    if not tessdata:
+        raise RuntimeError(
+            "Tesseract tessdata not found. Install Tesseract OCR or set TESSDATA_PREFIX."
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    file_rows: list[dict[str, str]] = []
+    errors: list[str] = []
+    processed_patients = 0
+
+    for patient_dir in sorted(edocs_dir.iterdir()):
+        if not patient_dir.is_dir():
+            continue
+        if max_patients is not None and processed_patients >= max_patients:
+            break
+
+        pdf_paths = collect_patient_pdf_paths(patient_dir)
+        if not pdf_paths:
+            continue
+
+        pid = patient_dir.name
+        patient_file_rows: list[dict[str, str]] = []
+        merged_chunks: list[str] = []
+
+        log.info(
+            "OCR all patient %s (%d PDFs, force_ocr=%s)",
+            pid,
+            len(pdf_paths),
+            force_ocr,
+        )
+
+        for pdf_path in pdf_paths:
+            row, text = ocr_single_pdf_row(
+                pdf_path,
+                patient_id=pid,
+                dpi=dpi,
+                tesseract_cmd=tesseract_cmd,
+                force_ocr=force_ocr,
+            )
+            patient_file_rows.append(row)
+            if row.get("error") and row["error"] != "no text extracted":
+                errors.append(f"{pid}/{row['filename']}: {row['error']}")
+
+            if text.strip():
+                merged_chunks.append(f"--- {row['rel_path']} ---\n{text}")
+
+        cache_file = _cache_path(patient_dir)
+        if merged_chunks and (force or not _cache_valid(cache_file, pdf_paths)):
+            cache_file.write_text("\n\n".join(merged_chunks), encoding="utf-8")
+
+        file_rows.extend(patient_file_rows)
+        processed_patients += 1
+
+    files_csv = output_dir / "ocr_all_files.csv"
+    with files_csv.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=OCR_ALL_FILES_FIELDNAMES, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(file_rows)
+
+    summary = {
+        "patients_processed": processed_patients,
+        "files_processed": len(file_rows),
+        "ocr_all_files_path": str(files_csv),
+        "errors": errors,
+    }
+    log.info(
+        "OCR all complete: %d patients, %d files -> %s",
+        processed_patients,
+        len(file_rows),
+        files_csv,
+    )
     return summary

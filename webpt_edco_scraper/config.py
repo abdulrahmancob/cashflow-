@@ -39,6 +39,8 @@ DEFAULT_LOGIN_TIMEOUT_SEC = 120
 DEFAULT_COMPANY_ID = "13829"
 DEFAULT_OCR_ENABLED = True
 DEFAULT_OCR_DPI = 200
+DEFAULT_PARALLEL_WORKERS = 8
+DEFAULT_MAX_CONCURRENT_PDFS = 12
 
 
 def _float_env(name: str, default: float) -> float:
@@ -66,6 +68,8 @@ class WebPTConfig:
     ocr_enabled: bool = DEFAULT_OCR_ENABLED
     ocr_dpi: int = DEFAULT_OCR_DPI
     tesseract_cmd: str = ""
+    parallel_workers: int = DEFAULT_PARALLEL_WORKERS
+    max_concurrent_pdfs: int = DEFAULT_MAX_CONCURRENT_PDFS
 
     @classmethod
     def from_env(cls) -> "WebPTConfig":
@@ -93,4 +97,10 @@ class WebPTConfig:
             in ("1", "true", "yes"),
             ocr_dpi=_int_env("WEBPT_OCR_DPI", DEFAULT_OCR_DPI),
             tesseract_cmd=os.getenv("WEBPT_TESSERACT_CMD", "").strip(),
+            parallel_workers=_int_env(
+                "WEBPT_PARALLEL_WORKERS", DEFAULT_PARALLEL_WORKERS
+            ),
+            max_concurrent_pdfs=_int_env(
+                "WEBPT_MAX_CONCURRENT_PDFS", DEFAULT_MAX_CONCURRENT_PDFS
+            ),
         )

@@ -2,12 +2,13 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 from html import unescape
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlencode
 
 from playwright.async_api import BrowserContext
 
-from config import BASE_URL, PATIENT_CHART_NOTE_URL, PRINT_PDF_URL
+from config import BASE_URL, PATIENT_CHART_URL, PRINT_PDF_URL, WebPTConfig
 from http_utils import is_transient_network_error, retry_delay_sec
 from logging_config import get_logger
 
@@ -66,7 +67,17 @@ class ChartNoteRef:
 
 
 def patient_chart_note_url(patient_id: int, case_id: int) -> str:
-    return f"{PATIENT_CHART_NOTE_URL}?ID={patient_id}&CaseID={case_id}"
+    """Clinical chart records page (Daily Note / Eval PDF links live here)."""
+    return f"{PATIENT_CHART_URL}?ID={patient_id}&CaseID={case_id}"
+
+
+def patient_ext_doc_url(patient_id: int, case_id: int) -> str:
+    return f"{BASE_URL}/patientExtDoc.php?ID={patient_id}&CaseID={case_id}"
+
+
+def _page_is_auth_redirect(page: "Page") -> bool:
+    url = (page.url or "").lower()
+    return "login.webpt.com" in url or "/u/login" in url
 
 
 def _normalize_query(raw_query: str) -> dict[str, str]:
@@ -201,20 +212,165 @@ def parse_chart_notes_html(
     return notes
 
 
+def _maybe_save_debug_html(
+    html: str,
+    *,
+    patient_id: int,
+    case_id: int,
+    debug_dir: Path | None,
+) -> None:
+    if debug_dir is None or "printPDF.php" in html:
+        return
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    path = debug_dir / f"chart_notes_{patient_id}_{case_id}.html"
+    path.write_text(html, encoding="utf-8")
+    log.info("Saved chart notes debug HTML to %s", path)
+
+
+async def _load_chart_notes_html_via_page(
+    page: "Page",
+    context: BrowserContext,
+    url: str,
+    *,
+    patient_id: int,
+    case_id: int,
+    config: WebPTConfig | None,
+    timeout_ms: int,
+    page_lock: asyncio.Lock | None,
+) -> str:
+    async def _navigate() -> str:
+        from auth import ensure_page_authenticated
+
+        ext_doc_url = patient_ext_doc_url(patient_id, case_id)
+        await page.goto(ext_doc_url, wait_until="domcontentloaded", timeout=timeout_ms)
+        if config is not None:
+            await ensure_page_authenticated(page, context, config)
+
+        for attempt in range(2):
+            await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            if config is not None:
+                await ensure_page_authenticated(page, context, config)
+            if not _page_is_auth_redirect(page):
+                break
+            log.warning(
+                "Chart notes navigation auth redirect patient %s (attempt %d)",
+                patient_id,
+                attempt + 1,
+            )
+
+        try:
+            await page.wait_for_selector(
+                'a[href*="printPDF.php"]',
+                timeout=min(15000, timeout_ms),
+            )
+        except Exception:
+            pass
+        return await page.content()
+
+    if page_lock is not None:
+        async with page_lock:
+            return await _navigate()
+    return await _navigate()
+
+
+async def _fetch_chart_notes_via_page(
+    page: "Page",
+    context: BrowserContext,
+    *,
+    patient_id: int,
+    case_id: int,
+    url: str,
+    config: WebPTConfig | None,
+    timeout_ms: int,
+    retries: int,
+    page_lock: asyncio.Lock | None,
+    debug_dir: Path | None,
+) -> list[ChartNoteRef]:
+    last_error = ""
+    for attempt in range(retries):
+        try:
+            html = await _load_chart_notes_html_via_page(
+                page,
+                context,
+                url,
+                patient_id=patient_id,
+                case_id=case_id,
+                config=config,
+                timeout_ms=timeout_ms,
+                page_lock=page_lock,
+            )
+            notes = parse_chart_notes_html(html, case_id=case_id)
+            if not notes:
+                _maybe_save_debug_html(
+                    html,
+                    patient_id=patient_id,
+                    case_id=case_id,
+                    debug_dir=debug_dir,
+                )
+                if _page_is_auth_redirect(page):
+                    log.warning(
+                        "Chart notes page for patient %s looks like login redirect",
+                        patient_id,
+                    )
+            return notes
+        except Exception as exc:
+            last_error = str(exc)
+            if is_transient_network_error(exc) and attempt < retries - 1:
+                wait = int(retry_delay_sec(attempt))
+                log.warning(
+                    "Chart notes page error patient %s (attempt %d/%d): %s — retry in %ds",
+                    patient_id,
+                    attempt + 1,
+                    retries,
+                    exc,
+                    wait,
+                )
+                await asyncio.sleep(wait)
+                continue
+            log.warning("Chart notes fetch failed patient %s: %s", patient_id, exc)
+            return []
+    log.warning(
+        "Chart notes fetch failed patient %s case %s: %s",
+        patient_id,
+        case_id,
+        last_error,
+    )
+    return []
+
+
 async def fetch_patient_chart_notes(
     context: BrowserContext,
     *,
     patient_id: int,
     case_id: int,
     page: "Page | None" = None,
+    config: WebPTConfig | None = None,
+    page_lock: asyncio.Lock | None = None,
+    debug_dir: Path | None = None,
     timeout_ms: int = 90000,
     retries: int = 5,
     blocked_retries: int = 2,
 ) -> list[ChartNoteRef]:
     url = patient_chart_note_url(patient_id, case_id)
+
+    if page is not None:
+        return await _fetch_chart_notes_via_page(
+            page,
+            context,
+            patient_id=patient_id,
+            case_id=case_id,
+            url=url,
+            config=config,
+            timeout_ms=timeout_ms,
+            retries=retries,
+            page_lock=page_lock,
+            debug_dir=debug_dir,
+        )
+
+    referer = patient_chart_note_url(patient_id, case_id)
     headers = {
         "Accept": "text/html,application/xhtml+xml",
-        "Referer": f"{BASE_URL}/dashboard.php",
+        "Referer": referer,
     }
     last_error = ""
     blocked_attempt = 0
@@ -228,14 +384,18 @@ async def fetch_patient_chart_notes(
             )
             if response.ok:
                 html = await response.text()
-                return parse_chart_notes_html(html, case_id=case_id)
+                notes = parse_chart_notes_html(html, case_id=case_id)
+                if not notes:
+                    _maybe_save_debug_html(
+                        html,
+                        patient_id=patient_id,
+                        case_id=case_id,
+                        debug_dir=debug_dir,
+                    )
+                return notes
             last_error = f"HTTP {response.status}"
             if response.status in (403, 429):
                 if blocked_attempt < blocked_retries:
-                    if page is not None and blocked_attempt == 0:
-                        from auth import refresh_csrf
-
-                        await refresh_csrf(context, page)
                     wait = min(
                         _BLOCKED_MAX_WAIT_SEC,
                         int(retry_delay_sec(blocked_attempt, base=_BLOCKED_RETRY_BASE_SEC)),
