@@ -1,0 +1,11 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+output/
+keys/
+*.p8
+*.pem
+.passphrase
+snowflake_key*

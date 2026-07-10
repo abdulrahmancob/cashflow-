@@ -1,0 +1,130 @@
+URL: https://denials.zirmed.com/Content/denials-add-activity-modal.css
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/css
+POST: 
+================================================================================
+#addActivityModal {
+  height: 339px !important;
+}
+#addActivityModal .body {
+  font-family: Arial;
+  font-size: 12px;
+  color: #555;
+}
+#addActivityModal .title {
+  font-weight: bold;
+  float: left;
+  margin-right: 5px;
+  font-family: Arial;
+  font-size: 12px;
+  color: #555;
+}
+#addActivityModal .headings {
+  font-weight: bold;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  font-family: Arial;
+  font-size: 12px;
+  color: #555;
+}
+#addActivityModal .optional {
+  text-align: left;
+  font-family: Arial;
+  font-size: 12px;
+  color: #555;
+}
+#addActivityModal .addActivityNote {
+  margin-top: 10px;
+  text-align: left;
+  margin-bottom: 10px;
+  font-family: Arial;
+  font-size: 12px;
+  color: #555;
+}
+#addActivityModal .addActivityNote .NewNote {
+  width: 97%;
+}
+#addActivityModal #workgroupSelectList,
+#addActivityModal #closeTypeSelectList,
+#addActivityModal #reasonSelectListInternalHold,
+#addActivityModal #reasonSelectListAwaitingPayer {
+  display: none;
+  margin-top: 3px;
+  vertical-align: top;
+}
+#addActivityModal #workgroupSelectList .closeTypeSelect,
+#addActivityModal #closeTypeSelectList .closeTypeSelect,
+#addActivityModal #workgroupSelectList .workgroupSelect,
+#addActivityModal #closeTypeSelectList .workgroupSelect {
+  width: 130px;
+}
+#addActivityModal #editActivityReminder {
+  width: 8.4em;
+}
+#addActivityModal .editActivityInput.error {
+  border: 1px solid #cf0000;
+  outline: 0px;
+  background-color: #ffeeee;
+}
+#addActivityModal .editActivityInput.error:hover {
+  border-color: #cf0000;
+}
+#addActivityModal .editActivityInput.error::selection {
+  border-color: #cf0000;
+}
+#addActivityModal .editActivityInput.error:focus {
+  border-color: #cf0000;
+}
+#addActivityModal .errorText {
+  color: #cf0000 !important;
+}
+#addActivityModal .applyCancel {
+  text-align: center;
+  margin-top: 20px;
+}
+#addActivityModal .applyCancel .cancel {
+  margin-left: 5px;
+}
+#addActivityModal .activitiesContainer {
+  text-align: left;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  margin-left: 0px;
+  width: 101px;
+  margin-bottom: 20px;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown span {
+  margin-left: 0px;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown .downArrow {
+  float: right;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown > .mainDropMenu {
+  z-index: 10;
+  width: 114px;
+  margin-left: 0px;
+  font-family: Arial;
+  font-size: 12px;
+  color: #555;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown > .mainDropMenu > li {
+  padding: 0px 10px 0px 6px;
+  white-space: nowrap;
+  width: 85%;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown > .mainDropMenu > li:hover {
+  background-color: #f1f1f1;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown > .mainDropMenu > li > input {
+  display: inline-block;
+}
+#addActivityModal .activitiesContainer .actionButtonDropMenu.multiSelectDropDown > .mainDropMenu > li > a {
+  display: inline-block;
+  background-color: inherit;
+  padding: 0;
+}

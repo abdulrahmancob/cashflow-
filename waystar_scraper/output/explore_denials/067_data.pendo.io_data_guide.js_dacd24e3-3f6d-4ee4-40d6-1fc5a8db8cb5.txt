@@ -1,0 +1,7 @@
+URL: https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNkMtu8jAQhV_F8po6gVBuUtUipKrdIKTexAoN9pRYvy-R7fArrXh3xixCl-ysM9-cOT6__KijTj68Kr7gsFdoAtQWnKjBqu5J-n30pk3aOyG95QMOUvrWpQu_qbuoJRj2XmOApmP-m6Ua2Uqnjm3EShDfBkNknVITF0Wh0GkwUfzoYFFly-LLh38SXcLwCE2j1cN4SGveqM9rMtcaM-AWEyhIwBd97PzUt0Z3YJHQ5RVlLxmlkYwBG5o9UzjMqWO42A5n1Xha3pNiwB1aOGQDdLuPN37qu-hD3NKHpDeha_zPtvRzUmKClG3X2zxuY7p4jeaTSTUjRXkL2v3V6HIDgSpb9vdJomaySzkvymkxKkcT2j1iiPT_vCqqaijKXRO8utOen05nEVamRw&v=2.331.0_prod-io&ct=1783599640105
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+pendo.guidesPayload({"guides":[],"normalizedUrl":"http://denials.zirmed.com/Workcenter?appid=41","lastGuideStepSeen":{"isMultiStep":false,"state":""},"guideWidget":{"enabled":false,"hidePoweredBy":false},"guideCssUrl":"","throttling":{"count":1,"enabled":false,"interval":1,"unit":"Day"},"autoOrdering":[],"globalJsUrl":"","designerEnabled":false,"features":null,"id":"35","preventCodeInjection":false});

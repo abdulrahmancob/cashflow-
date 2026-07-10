@@ -1,0 +1,215 @@
+{
+  "run_id": "2026_all",
+  "batches": [
+    {
+      "export_label": "batch_001",
+      "start_page": 51,
+      "end_page": 100,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T14:40:19.722159+00:00",
+      "csv": "batch_001.csv",
+      "json": "batch_001.json"
+    },
+    {
+      "export_label": "batch_002",
+      "start_page": 151,
+      "end_page": 200,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T14:48:18.869449+00:00",
+      "csv": "batch_002.csv",
+      "json": "batch_002.json"
+    },
+    {
+      "export_label": "batch_003",
+      "start_page": 301,
+      "end_page": 302,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T14:56:15.824087+00:00",
+      "csv": "batch_003.csv",
+      "json": "batch_003.json"
+    },
+    {
+      "export_label": "batch_004",
+      "start_page": 401,
+      "end_page": 402,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T15:04:11.734161+00:00",
+      "csv": "batch_004.csv",
+      "json": "batch_004.json"
+    },
+    {
+      "export_label": "batch_005",
+      "start_page": 501,
+      "end_page": 503,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T15:12:26.755809+00:00",
+      "csv": "batch_005.csv",
+      "json": "batch_005.json"
+    },
+    {
+      "export_label": "batch_006",
+      "start_page": 601,
+      "end_page": 604,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T15:21:08.034368+00:00",
+      "csv": "batch_006.csv",
+      "json": "batch_006.json"
+    },
+    {
+      "export_label": "batch_007",
+      "start_page": 701,
+      "end_page": 704,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T15:29:17.007855+00:00",
+      "csv": "batch_007.csv",
+      "json": "batch_007.json"
+    },
+    {
+      "export_label": "batch_008",
+      "start_page": 801,
+      "end_page": 804,
+      "denials_count": 5000,
+      "exported_at": "2026-07-09T15:37:38.715836+00:00",
+      "csv": "batch_008.csv",
+      "json": "batch_008.json"
+    },
+    {
+      "export_label": "batch_009",
+      "start_page": 805,
+      "end_page": 828,
+      "denials_count": 1249,
+      "exported_at": "2026-07-09T15:39:36.831803+00:00",
+      "csv": "batch_009.csv",
+      "json": "batch_009.json"
+    }
+  ],
+  "checkpoints": [
+    {
+      "export_label": "checkpoint_001",
+      "start_page": 1,
+      "end_page": 50,
+      "denials_count": 2500,
+      "exported_at": "2026-07-09T14:36:23.803557+00:00",
+      "csv": "checkpoint_001.csv",
+      "json": "checkpoint_001.json"
+    },
+    {
+      "export_label": "checkpoint_002",
+      "start_page": 101,
+      "end_page": 150,
+      "denials_count": 2500,
+      "exported_at": "2026-07-09T14:44:18.186570+00:00",
+      "csv": "checkpoint_002.csv",
+      "json": "checkpoint_002.json"
+    },
+    {
+      "export_label": "checkpoint_003",
+      "start_page": 201,
+      "end_page": 250,
+      "denials_count": 2450,
+      "exported_at": "2026-07-09T14:52:21.291305+00:00",
+      "csv": "checkpoint_003.csv",
+      "json": "checkpoint_003.json"
+    },
+    {
+      "export_label": "checkpoint_004",
+      "start_page": 251,
+      "end_page": 300,
+      "denials_count": 4900,
+      "exported_at": "2026-07-09T14:56:08.090374+00:00",
+      "csv": "checkpoint_004.csv",
+      "json": "checkpoint_004.json"
+    },
+    {
+      "export_label": "checkpoint_005",
+      "start_page": 303,
+      "end_page": 350,
+      "denials_count": 2400,
+      "exported_at": "2026-07-09T15:00:07.094519+00:00",
+      "csv": "checkpoint_005.csv",
+      "json": "checkpoint_005.json"
+    },
+    {
+      "export_label": "checkpoint_006",
+      "start_page": 351,
+      "end_page": 400,
+      "denials_count": 4900,
+      "exported_at": "2026-07-09T15:04:02.814833+00:00",
+      "csv": "checkpoint_006.csv",
+      "json": "checkpoint_006.json"
+    },
+    {
+      "export_label": "checkpoint_007",
+      "start_page": 403,
+      "end_page": 450,
+      "denials_count": 2400,
+      "exported_at": "2026-07-09T15:08:04.109931+00:00",
+      "csv": "checkpoint_007.csv",
+      "json": "checkpoint_007.json"
+    },
+    {
+      "export_label": "checkpoint_008",
+      "start_page": 451,
+      "end_page": 500,
+      "denials_count": 4850,
+      "exported_at": "2026-07-09T15:12:08.553559+00:00",
+      "csv": "checkpoint_008.csv",
+      "json": "checkpoint_008.json"
+    },
+    {
+      "export_label": "checkpoint_009",
+      "start_page": 504,
+      "end_page": 550,
+      "denials_count": 2349,
+      "exported_at": "2026-07-09T15:16:31.878062+00:00",
+      "csv": "checkpoint_009.csv",
+      "json": "checkpoint_009.json"
+    },
+    {
+      "export_label": "checkpoint_010",
+      "start_page": 551,
+      "end_page": 600,
+      "denials_count": 4849,
+      "exported_at": "2026-07-09T15:20:49.501719+00:00",
+      "csv": "checkpoint_010.csv",
+      "json": "checkpoint_010.json"
+    },
+    {
+      "export_label": "checkpoint_011",
+      "start_page": 605,
+      "end_page": 650,
+      "denials_count": 2349,
+      "exported_at": "2026-07-09T15:25:12.187951+00:00",
+      "csv": "checkpoint_011.csv",
+      "json": "checkpoint_011.json"
+    },
+    {
+      "export_label": "checkpoint_012",
+      "start_page": 651,
+      "end_page": 700,
+      "denials_count": 4849,
+      "exported_at": "2026-07-09T15:29:00.727954+00:00",
+      "csv": "checkpoint_012.csv",
+      "json": "checkpoint_012.json"
+    },
+    {
+      "export_label": "checkpoint_013",
+      "start_page": 705,
+      "end_page": 750,
+      "denials_count": 2349,
+      "exported_at": "2026-07-09T15:33:03.791119+00:00",
+      "csv": "checkpoint_013.csv",
+      "json": "checkpoint_013.json"
+    },
+    {
+      "export_label": "checkpoint_014",
+      "start_page": 751,
+      "end_page": 800,
+      "denials_count": 4849,
+      "exported_at": "2026-07-09T15:37:19.230495+00:00",
+      "csv": "checkpoint_014.csv",
+      "json": "checkpoint_014.json"
+    }
+  ],
+  "total_denials": 89743
+}

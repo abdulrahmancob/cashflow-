@@ -1,0 +1,439 @@
+{
+  "denial_level": {
+    "denial_count": 41249,
+    "total_denied": 6957869.68,
+    "total_billed": 12477434.0,
+    "total_allowed": 8825083.15,
+    "avg_denied": 168.68,
+    "categories": [
+      {
+        "name": "Coding",
+        "count": 21985,
+        "amount": 3142896.61,
+        "pct_count": 53.3,
+        "pct_amount": 45.2,
+        "preventable": true
+      },
+      {
+        "name": "Benefits",
+        "count": 5516,
+        "amount": 1386901.32,
+        "pct_count": 13.4,
+        "pct_amount": 19.9,
+        "preventable": false
+      },
+      {
+        "name": "Missing or Invalid Data",
+        "count": 4070,
+        "amount": 421404.67,
+        "pct_count": 9.9,
+        "pct_amount": 6.1,
+        "preventable": false
+      },
+      {
+        "name": "Payer Guidelines",
+        "count": 2852,
+        "amount": 409607.12,
+        "pct_count": 6.9,
+        "pct_amount": 5.9,
+        "preventable": false
+      },
+      {
+        "name": "Authorization",
+        "count": 2772,
+        "amount": 631214.32,
+        "pct_count": 6.7,
+        "pct_amount": 9.1,
+        "preventable": true
+      },
+      {
+        "name": "Duplicate",
+        "count": 1279,
+        "amount": 311969.86,
+        "pct_count": 3.1,
+        "pct_amount": 4.5,
+        "preventable": true
+      },
+      {
+        "name": "Coordination of Benefits",
+        "count": 952,
+        "amount": 242664.68,
+        "pct_count": 2.3,
+        "pct_amount": 3.5,
+        "preventable": false
+      },
+      {
+        "name": "Eligibility",
+        "count": 589,
+        "amount": 174974.56,
+        "pct_count": 1.4,
+        "pct_amount": 2.5,
+        "preventable": false
+      },
+      {
+        "name": "Medical Necessity",
+        "count": 551,
+        "amount": 105225.11,
+        "pct_count": 1.3,
+        "pct_amount": 1.5,
+        "preventable": false
+      },
+      {
+        "name": "Property and Casualty",
+        "count": 542,
+        "amount": 91055.43,
+        "pct_count": 1.3,
+        "pct_amount": 1.3,
+        "preventable": false
+      },
+      {
+        "name": "Timely Filing",
+        "count": 101,
+        "amount": 29521.0,
+        "pct_count": 0.2,
+        "pct_amount": 0.4,
+        "preventable": true
+      },
+      {
+        "name": "Diagnosis",
+        "count": 40,
+        "amount": 10435.0,
+        "pct_count": 0.1,
+        "pct_amount": 0.1,
+        "preventable": false
+      }
+    ],
+    "payers": [
+      {
+        "name": "HealthFirst of New York",
+        "count": 10991,
+        "amount": 1897508.09,
+        "pct_count": 26.6,
+        "pct_amount": 27.3
+      },
+      {
+        "name": "MetroPlus Health Plan",
+        "count": 5370,
+        "amount": 1357276.23,
+        "pct_count": 13.0,
+        "pct_amount": 19.5
+      },
+      {
+        "name": "BCBS New York Empire",
+        "count": 4737,
+        "amount": 518053.67,
+        "pct_count": 11.5,
+        "pct_amount": 7.4
+      },
+      {
+        "name": "Health Insurance Plan of Greater NY HIP",
+        "count": 4262,
+        "amount": 831040.12,
+        "pct_count": 10.3,
+        "pct_amount": 11.9
+      },
+      {
+        "name": "UMR",
+        "count": 3724,
+        "amount": 462272.01,
+        "pct_count": 9.0,
+        "pct_amount": 6.6
+      },
+      {
+        "name": "Medicare B New York Empire",
+        "count": 2484,
+        "amount": 246177.14,
+        "pct_count": 6.0,
+        "pct_amount": 3.5
+      },
+      {
+        "name": "UnitedHealthcare Community Plan NYU (Remits Only)",
+        "count": 1870,
+        "amount": 357217.18,
+        "pct_count": 4.5,
+        "pct_amount": 5.1
+      },
+      {
+        "name": "New York Network Management",
+        "count": 1586,
+        "amount": 304024.7,
+        "pct_count": 3.8,
+        "pct_amount": 4.4
+      },
+      {
+        "name": "1199 National Benefit Fund",
+        "count": 985,
+        "amount": 58732.64,
+        "pct_count": 2.4,
+        "pct_amount": 0.8
+      },
+      {
+        "name": "Molina Healthcare of New York",
+        "count": 826,
+        "amount": 97295.21,
+        "pct_count": 2.0,
+        "pct_amount": 1.4
+      },
+      {
+        "name": "Medicare B New York Empire (SMNY0) Group Health Insurance (GHI) of NY",
+        "count": 464,
+        "amount": 36059.59,
+        "pct_count": 1.1,
+        "pct_amount": 0.5
+      },
+      {
+        "name": "Medicare B New York Empire (SMNY0) BCBS New York Empire",
+        "count": 291,
+        "amount": 45361.57,
+        "pct_count": 0.7,
+        "pct_amount": 0.7
+      },
+      {
+        "name": "Group Health Insurance (GHI) of NY",
+        "count": 266,
+        "amount": 77128.23,
+        "pct_count": 0.6,
+        "pct_amount": 1.1
+      },
+      {
+        "name": "Humana",
+        "count": 248,
+        "amount": 44946.15,
+        "pct_count": 0.6,
+        "pct_amount": 0.6
+      },
+      {
+        "name": "Medicare B New York Empire (SMNY0) AARP Medicare Supplement by UnitedHealthcare",
+        "count": 237,
+        "amount": 40976.72,
+        "pct_count": 0.6,
+        "pct_amount": 0.6
+      }
+    ],
+    "aging": [
+      {
+        "name": "0-30",
+        "count": 18654,
+        "amount": 3080824.19,
+        "pct_count": 45.2,
+        "pct_amount": 44.3
+      },
+      {
+        "name": "31-60",
+        "count": 17156,
+        "amount": 2939394.24,
+        "pct_count": 41.6,
+        "pct_amount": 42.2
+      },
+      {
+        "name": "61-90",
+        "count": 4020,
+        "amount": 715859.5,
+        "pct_count": 9.7,
+        "pct_amount": 10.3
+      },
+      {
+        "name": "90+",
+        "count": 1419,
+        "amount": 221791.75,
+        "pct_count": 3.4,
+        "pct_amount": 3.2
+      }
+    ],
+    "sla": [
+      {
+        "name": "On Track",
+        "count": 25964,
+        "amount": 4339553.08,
+        "pct_count": 62.9,
+        "pct_amount": 62.4
+      },
+      {
+        "name": "Breached",
+        "count": 11191,
+        "amount": 1889717.48,
+        "pct_count": 27.1,
+        "pct_amount": 27.2
+      },
+      {
+        "name": "At Risk",
+        "count": 4094,
+        "amount": 728599.12,
+        "pct_count": 9.9,
+        "pct_amount": 10.5
+      }
+    ],
+    "escalation": [
+      {
+        "name": "False",
+        "count": 28822,
+        "amount": 4885282.46,
+        "pct_count": 69.9,
+        "pct_amount": 70.2
+      },
+      {
+        "name": "True",
+        "count": 12427,
+        "amount": 2072587.22,
+        "pct_count": 30.1,
+        "pct_amount": 29.8
+      }
+    ],
+    "claim_type": [
+      {
+        "name": "Professional",
+        "count": 36040,
+        "amount": 6181763.11,
+        "pct_count": 87.4,
+        "pct_amount": 88.8
+      },
+      {
+        "name": "Unknown",
+        "count": 5209,
+        "amount": 776106.57,
+        "pct_count": 12.6,
+        "pct_amount": 11.2
+      }
+    ],
+    "months": [
+      {
+        "name": "2026-01",
+        "count": 225,
+        "amount": 44281.25,
+        "pct_count": 0.5,
+        "pct_amount": 0.6
+      },
+      {
+        "name": "2026-02",
+        "count": 208,
+        "amount": 43367.65,
+        "pct_count": 0.5,
+        "pct_amount": 0.6
+      },
+      {
+        "name": "2026-03",
+        "count": 668,
+        "amount": 90568.81,
+        "pct_count": 1.6,
+        "pct_amount": 1.3
+      },
+      {
+        "name": "2026-04",
+        "count": 1189,
+        "amount": 191146.34,
+        "pct_count": 2.9,
+        "pct_amount": 2.7
+      },
+      {
+        "name": "2026-05",
+        "count": 15866,
+        "amount": 2729345.29,
+        "pct_count": 38.5,
+        "pct_amount": 39.2
+      },
+      {
+        "name": "2026-06",
+        "count": 18270,
+        "amount": 3043605.31,
+        "pct_count": 44.3,
+        "pct_amount": 43.7
+      },
+      {
+        "name": "2026-07",
+        "count": 4823,
+        "amount": 815555.03,
+        "pct_count": 11.7,
+        "pct_amount": 11.7
+      }
+    ],
+    "preventable": {
+      "preventable": {
+        "count": 26137,
+        "amount": 4115601.79
+      },
+      "not_preventable": {
+        "count": 15112,
+        "amount": 2842267.89
+      },
+      "pct_count": 63.4,
+      "pct_amount": 59.2
+    },
+    "crosstab": {
+      "payers": [
+        "HealthFirst of New York",
+        "MetroPlus Health Plan",
+        "BCBS New York Empire",
+        "Health Insurance Plan of Greater NY HIP",
+        "UMR",
+        "Medicare B New York Empire"
+      ],
+      "categories": [
+        "Coding",
+        "Benefits",
+        "Missing or Invalid Data",
+        "Payer Guidelines",
+        "Authorization",
+        "Duplicate"
+      ],
+      "payer_totals": {
+        "HealthFirst of New York": 10991,
+        "MetroPlus Health Plan": 5370,
+        "BCBS New York Empire": 4737,
+        "Health Insurance Plan of Greater NY HIP": 4262,
+        "UMR": 3724,
+        "Medicare B New York Empire": 2484
+      },
+      "matrix": [
+        [
+          8529,
+          0,
+          162,
+          85,
+          1243,
+          702
+        ],
+        [
+          0,
+          5056,
+          0,
+          83,
+          32,
+          7
+        ],
+        [
+          395,
+          40,
+          3349,
+          25,
+          426,
+          118
+        ],
+        [
+          3786,
+          0,
+          46,
+          163,
+          13,
+          9
+        ],
+        [
+          2134,
+          0,
+          32,
+          1375,
+          0,
+          129
+        ],
+        [
+          1981,
+          171,
+          97,
+          1,
+          50,
+          8
+        ]
+      ]
+    }
+  },
+  "line_level": null
+}

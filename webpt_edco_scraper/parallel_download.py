@@ -18,6 +18,7 @@ from auth import (
     ensure_authenticated,
     ensure_page_authenticated,
     refresh_csrf,
+    safe_close_context,
     save_storage_state,
     switch_clinic,
 )
@@ -471,7 +472,7 @@ async def run_parallel_download(
             await state.finalize(export_path, jobs)
         finally:
             await save_storage_state(context)
-            await context.browser.close()
+            await safe_close_context(context)
 
     set_pdf_semaphore(None)
     log.info(

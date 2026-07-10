@@ -18,6 +18,10 @@ class HumanSettings:
     screenshot_every_page: bool = False
     screenshot_dir: Path | None = None
     _step_counter: int = field(default=0, repr=False)
+    _idle_requests: int = field(default=0, repr=False)
+    _next_idle_at: int = field(default=0, repr=False)
+    _extend_counter: int = field(default=0, repr=False)
+    _next_extend_at: int = field(default=0, repr=False)
 
     async def delay(self) -> None:
         pause = random.uniform(self.action_delay_min, self.action_delay_max)
@@ -35,6 +39,16 @@ class HumanSettings:
         await page.screenshot(path=str(path), full_page=True)
         log.info("Screenshot saved: %s", path)
         return path
+
+
+async def human_pause(settings: HumanSettings, base_sec: float = 0.0) -> None:
+    """Randomized pause — uses base_sec jitter when provided, else settings.delay()."""
+    if base_sec > 0:
+        pause = random.uniform(base_sec * 0.7, base_sec * 1.5)
+        log.debug("Human pause %.2fs (base=%.2fs)", pause, base_sec)
+        await asyncio.sleep(pause)
+    else:
+        await settings.delay()
 
 
 async def human_type(
@@ -71,3 +85,27 @@ async def human_scroll(page: Page, settings: HumanSettings) -> None:
     delta = random.randint(150, 350)
     await page.mouse.wheel(0, delta)
     log.debug("Human scroll %spx", delta)
+
+
+async def maybe_idle_action(page: Page, settings: HumanSettings) -> None:
+    """Occasionally scroll the page to mimic idle browsing."""
+    settings._idle_requests += 1
+    if settings._next_idle_at <= 0:
+        settings._next_idle_at = random.randint(3, 7)
+    if settings._idle_requests < settings._next_idle_at:
+        return
+    settings._idle_requests = 0
+    settings._next_idle_at = random.randint(3, 7)
+    await human_scroll(page, settings)
+
+
+def should_extend_session(settings: HumanSettings, base_every: int = 10) -> bool:
+    """Return True when it's time to extend session (randomized interval)."""
+    settings._extend_counter += 1
+    if settings._next_extend_at <= 0:
+        settings._next_extend_at = random.randint(max(3, base_every - 2), base_every + 2)
+    if settings._extend_counter < settings._next_extend_at:
+        return False
+    settings._extend_counter = 0
+    settings._next_extend_at = random.randint(max(3, base_every - 2), base_every + 2)
+    return True

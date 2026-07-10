@@ -1,0 +1,1993 @@
+{
+  "workcenter": {
+    "url": "https://denials.zirmed.com/Workcenter?appid=41",
+    "analysis": {
+      "html_size": 69673,
+      "has_denialid": true,
+      "has_remit": true,
+      "has_historyremitlink": false,
+      "has_grid_table": true,
+      "denial_id_patterns": [
+        "class=[\"\\'][^\"\\']*denial[^\"\\']*[\"\\']",
+        "data-denialid",
+        "Workcenter",
+        "pageSize"
+      ],
+      "review_link_count": 0,
+      "data_denialid_count": 3,
+      "denial_ids_sample": [
+        "3793709968"
+      ],
+      "review_denial_ids_sample": []
+    },
+    "responses": [
+      {
+        "index": 1,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=dgwajVxe5bfkfDPC&kf=1&ns=1&ct=1783599634295",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 2,
+        "url": "https://claims.zirmed.com/WorkCenter/WorkCenterMessage.aspx?TabAppID=40&Error=1",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "workcenter"
+        ],
+        "saved_as": "002_claims.zirmed.com_WorkCenter_WorkCenterMessage.aspx.txt"
+      },
+      {
+        "index": 3,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/jquery-ui.css",
+        "status": 200,
+        "content_type": "text/css; charset=UTF-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 4,
+        "url": "https://fonts.googleapis.com/css?family=Titillium+Web:400,700",
+        "status": 200,
+        "content_type": "text/css; charset=utf-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 5,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "005_www.zirmed.com_Static_WaystarHeader_1.0_CSS_WaystarHeader.min.css.txt"
+      },
+      {
+        "index": 6,
+        "url": "https://www.zirmed.com/Static/CSS/body.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "006_www.zirmed.com_Static_CSS_body.css.txt"
+      },
+      {
+        "index": 7,
+        "url": "https://www.zirmed.com/Static/Images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 8,
+        "url": "https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 9,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "009_ajax.googleapis.com_ajax_libs_jqueryui_1.9.0_jquery-ui.min.js.txt"
+      },
+      {
+        "index": 10,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "010_www.zirmed.com_Static_WaystarHeader_1.0_Javascript_WaystarHeader.min.js.txt"
+      },
+      {
+        "index": 11,
+        "url": "https://www.zirmed.com/Static/JavaScript/SmartSearch.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 12,
+        "url": "https://claims.zirmed.com/WorkCenter/WorkcenterMessage.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 13,
+        "url": "https://fonts.gstatic.com/s/titilliumweb/v19/NaPecZTIAOhVxoMyOr9n_E7fdMPmDQ.woff2",
+        "status": 200,
+        "content_type": "font/woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 14,
+        "url": "https://fonts.gstatic.com/s/titilliumweb/v19/NaPDcZTIAOhVxoMyOr9n_E7ffHjDGItzYw.woff2",
+        "status": 200,
+        "content_type": "font/woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 15,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Images/Orange-White-Header.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 16,
+        "url": "https://cdn.pendo.io/agent/static/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5/pendo.js",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "016_cdn.pendo.io_agent_static_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5_pendo.js.txt"
+      },
+      {
+        "index": 17,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Fonts/icomoon.ttf?12k03r",
+        "status": 200,
+        "content_type": "application/octet-stream",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 18,
+        "url": "https://data.pendo.io/data/recordingconf/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?jzb=eJyNUF1v2kAQ_CvWPeSJng0mfEkoRTRVeShCClHEE1rsDT7V96G9M42L-O_sIUR5S972ZmdnbuYoGqrFRFQhOD9J06IGpb38p0hjKQur0zdLf-ZoAtLd-Bu9hz1K8O7jaQ27mXOLH9N-9vBMZGnaFR2hMUAJAcTkKA7Kq2ApjqpkN9iVWBNUGoysQJft98LuvK2boKyJrnxvQCNTZ_-pya9I5VXhCR3vfkLtkd-Np4tsd5T3h9kjIzWYfcMfZBDN9vVFnDoCisI2Jtw-saparwqok3WFBK5N7HsSKkzmKrTJSs5ldOKZqUv8m2w4PCM-QIiyy01cNz5ctHrjwSAfMVJaDcrcY-zsgLi12c2fIW4mqmTjNBumvaw34NsDkuf88VTmeVdmW0e2_KZs1LhWuPhqfde0F_7nSU9nwQ6qtQ&ct=1783599635338&v=2.331.0_prod-io",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 19,
+        "url": "blob:https://claims.zirmed.com/2a369c63-66b0-409c-963e-9f9ddaabdf1b",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 20,
+        "url": "https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNkM1u6jAQhV8l8qIr6gTC5U9CLeK2KosipHJ7xQoNtkus-k-2Q5tWvDtjFoElu9GZz8dzzi85yCCj9QtOJgR2XCgPlQZDK9C8eWR2F6yqo7SGMqtJhwBjtjbxzK-qJkgGKltXwoNrMvuRxUpkcxmbbEXnFPnaKySrGF2Y5DlTIHWgP9JrwZNj_t_6z7kwUfir8VWEAHtBIbjvhzXsZs4t_k77xd2T99ZPu-hrFX-_nG5qpTpEiwgcIpBJmyuN8tZsBrRAdHZBs5eE4ooFLxzunkEFkWIFf7btjsr-sPiDigKzr_FoFIXZ_nsjx7as9ohbCmM4I7oUX9kGC0ElRIjJdrlJ6zrEs1dvPBiUI1S41SDNtYY_O_DY5Kz9HyVsJrkU47wY5r2iN8C3B-ED5k9PaVl2abF13vJ7acnxeAIJhbH2&v=2.331.0_prod-io&ct=1783599635347",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter"
+        ],
+        "saved_as": "020_data.pendo.io_data_guide.js_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5.txt"
+      },
+      {
+        "index": 21,
+        "url": "https://data.pendo.io/data/ptm.gif/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&ct=1783599635529&jzb=eJxNUW1vm0wQ_CvoPvSThU3A9YsUtQ1upciNHjeN7KRVFS2wmLPvhe4dwSTKf89CHlW-T8vOzjCz-_tF-K5GsRTKQiFGIiPbOqRHLzV3o9k8ni4WH-NpHC9G4kk66S09yoIJkBWoCCoNJqxAF93n3GbOqsZLa8LcalaDPLeN8e-ETdU5mYMK7iokqLvAloGvMEil74JNmIZMaEjxZOV97Zbjca5Aahc-S9JY9JLjnaVjisYjnZU36BzsMQRXnz7dQfalrq9Xl8nkw1ciS5cR69ZkayeWL0PM_8PNZtPwYjI8zjmPkleeA2JJ1rhmx6ZRaiT8-4eAtafT-mn7LU6uHu4zZNWSQOMAXnWzQ_qwu3Gla227bhl07Io3McDfYZWq-DBNf90fn7fxjz6p172fvAJjsA99iyUSgWKMhhKJu3qv_dkCBHt0-LdBk3OCCd-r88jBkmTW03JLhTT74Z-7ixJu54vWRJHa6f_6c_wb-Hnmrdi3cNiecJqVx3K1ScXrnzfT5LIR",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 22,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=W2faR89wn11lWmOm&kf=1&ct=1783599635551",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 23,
+        "url": "https://denials.zirmed.com/Workcenter?appid=41",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "adjustment",
+          "carc",
+          "grid"
+        ],
+        "saved_as": "023_denials.zirmed.com_Workcenter.txt"
+      },
+      {
+        "index": 24,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/jquery-ui.css",
+        "status": 200,
+        "content_type": "text/css; charset=UTF-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 25,
+        "url": "https://fonts.googleapis.com/css?family=Titillium+Web:400,700",
+        "status": 200,
+        "content_type": "text/css; charset=utf-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 26,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "026_www.zirmed.com_Static_WaystarHeader_1.0_CSS_WaystarHeader.min.css.txt"
+      },
+      {
+        "index": 27,
+        "url": "https://www.zirmed.com/Static/CSS/body.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "027_www.zirmed.com_Static_CSS_body.css.txt"
+      },
+      {
+        "index": 28,
+        "url": "https://www.zirmed.com/Static/Images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 29,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "029_www.zirmed.com_Static_WaystarHeader_1.0_Javascript_WaystarHeader.min.js.txt"
+      },
+      {
+        "index": 30,
+        "url": "https://www.zirmed.com/Static/JavaScript/SmartSearch.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 31,
+        "url": "https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 32,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "032_ajax.googleapis.com_ajax_libs_jqueryui_1.9.0_jquery-ui.min.js.txt"
+      },
+      {
+        "index": 33,
+        "url": "https://denials.zirmed.com/Content/denials-common.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "033_denials.zirmed.com_Content_denials-common.css.txt"
+      },
+      {
+        "index": 34,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/CSS/WebControls.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "034_www.zirmed.com_Static_WebControls_2.0_CSS_WebControls.css.txt"
+      },
+      {
+        "index": 35,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "grid"
+        ],
+        "saved_as": "035_www.zirmed.com_Static_WebControls_2.0_Javascript_WebControls.js.txt"
+      },
+      {
+        "index": 36,
+        "url": "https://denials.zirmed.com/Content/workcenter.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "036_denials.zirmed.com_Content_workcenter.min.css.txt"
+      },
+      {
+        "index": 37,
+        "url": "https://denials.zirmed.com/Content/denials-add-activity-modal.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "037_denials.zirmed.com_Content_denials-add-activity-modal.css.txt"
+      },
+      {
+        "index": 38,
+        "url": "https://denials.zirmed.com/Content/pager.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "038_denials.zirmed.com_Content_pager.min.css.txt"
+      },
+      {
+        "index": 39,
+        "url": "https://denials.zirmed.com/Content/header-setup.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "039_denials.zirmed.com_Content_header-setup.css.txt"
+      },
+      {
+        "index": 40,
+        "url": "https://denials.zirmed.com/Content/font-awesome.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "040_denials.zirmed.com_Content_font-awesome.min.css.txt"
+      },
+      {
+        "index": 41,
+        "url": "https://denials.zirmed.com/Content/denials-modal-denialunderuseraction.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "041_denials.zirmed.com_Content_denials-modal-denialunderuseraction.min.css.txt"
+      },
+      {
+        "index": 42,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Images/Orange-White-Header.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 43,
+        "url": "https://fonts.gstatic.com/s/titilliumweb/v19/NaPDcZTIAOhVxoMyOr9n_E7ffHjDGItzYw.woff2",
+        "status": 200,
+        "content_type": "font/woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 44,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/fonts/icomoon.ttf?b18by8",
+        "status": 200,
+        "content_type": "application/octet-stream",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 45,
+        "url": "https://fonts.gstatic.com/s/titilliumweb/v19/NaPecZTIAOhVxoMyOr9n_E7fdMPmDQ.woff2",
+        "status": 200,
+        "content_type": "font/woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 46,
+        "url": "https://cdn.pendo.io/agent/static/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5/pendo.js",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "046_cdn.pendo.io_agent_static_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5_pendo.js.txt"
+      },
+      {
+        "index": 47,
+        "url": "https://denials.zirmed.com/Content/images/loading.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 48,
+        "url": "https://denials.zirmed.com/Scripts/header-setup.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "048_denials.zirmed.com_Scripts_header-setup.js.txt"
+      },
+      {
+        "index": 49,
+        "url": "https://denials.zirmed.com/Scripts/denials-add-activity-modal.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "adjustment"
+        ],
+        "saved_as": "049_denials.zirmed.com_Scripts_denials-add-activity-modal.js.txt"
+      },
+      {
+        "index": 50,
+        "url": "https://denials.zirmed.com/Images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 51,
+        "url": "https://denials.zirmed.com/Scripts/jquery.iframe-transport.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "051_denials.zirmed.com_Scripts_jquery.iframe-transport.js.txt"
+      },
+      {
+        "index": 52,
+        "url": "https://denials.zirmed.com/Content/Images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 53,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/images/WorkCenterSpriteSheet.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 54,
+        "url": "https://denials.zirmed.com/Scripts/jquery.watermark.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "054_denials.zirmed.com_Scripts_jquery.watermark.min.js.txt"
+      },
+      {
+        "index": 55,
+        "url": "https://denials.zirmed.com/Scripts/denials-modal-denialunderuseraction.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid"
+        ],
+        "saved_as": "055_denials.zirmed.com_Scripts_denials-modal-denialunderuseraction.js.txt"
+      },
+      {
+        "index": 56,
+        "url": "https://denials.zirmed.com/Scripts/denials-common.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit"
+        ],
+        "saved_as": "056_denials.zirmed.com_Scripts_denials-common.js.txt"
+      },
+      {
+        "index": 57,
+        "url": "https://denials.zirmed.com/Scripts/denials-grid-actionbar.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "057_denials.zirmed.com_Scripts_denials-grid-actionbar.js.txt"
+      },
+      {
+        "index": 58,
+        "url": "https://denials.zirmed.com/Scripts/joyridetour.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "058_denials.zirmed.com_Scripts_joyridetour.js.txt"
+      },
+      {
+        "index": 59,
+        "url": "https://denials.zirmed.com/Scripts/workcenter.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter",
+          "carc",
+          "grid"
+        ],
+        "saved_as": "059_denials.zirmed.com_Scripts_workcenter.js.txt"
+      },
+      {
+        "index": 60,
+        "url": "https://denials.zirmed.com/fonts/fontawesome-webfont.woff2?v=4.7.0",
+        "status": 200,
+        "content_type": "application/font-woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 61,
+        "url": "https://denials.zirmed.com/Content/images/dropmenu-arrow.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 62,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/images/ui-bg_flat_75_ffffff_40x100.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 63,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Images/spinner.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 64,
+        "url": "https://denials.zirmed.com/Workcenter/ReloadWorkcenterGrid",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "POST",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "064_denials.zirmed.com_Workcenter_ReloadWorkcenterGrid.txt"
+      },
+      {
+        "index": 65,
+        "url": "https://data.pendo.io/data/guide.gif/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?jzb=eJwFwIEIAAAAwDDQd3-N1QABFQC5&ct=1783599640106&v=2.331.0_prod-io",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 66,
+        "url": "https://data.pendo.io/data/recordingconf/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?jzb=eJyNkE9LAzEQxb9KyLlmt93afyBaCqKXUlCRnso0GbvBzR-SbGUt_e6dlFK96W3y5s1vMu_A29DwGa9T8nFWFAqthiaKbx0MKiGdKd5d-JRoE4Z78F6ru2Gf97jBBAoS8NmB73XUyYVcakUw2CpsAtQGrKjBqO5Bum10TZu0s5lJ8xYMknX-Y2VP2UotGQN66j3SR5DebQxnbH9SDcflLSkN2F0LuwxAu3l74cceBylda9P1E6u6i1pCw15rDOA75j5YqpEtdOrYSixE3kQ1WZf4xdZ0JSkxQcrY5Tq325jOrMF0NKompChnQNvfGm32ECie-XU_SZRMppTTohwXg3Iwotk9hkj351FRVX1Rbnxw6ka7zLhE-Pzf-C7Xnv1_X3o8AaWznwY&ct=1783599640098&v=2.331.0_prod-io",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 67,
+        "url": "https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNkMtu8jAQhV_F8po6gVBuUtUipKrdIKTexAoN9pRYvy-R7fArrXh3xixCl-ysM9-cOT6__KijTj68Kr7gsFdoAtQWnKjBqu5J-n30pk3aOyG95QMOUvrWpQu_qbuoJRj2XmOApmP-m6Ua2Uqnjm3EShDfBkNknVITF0Wh0GkwUfzoYFFly-LLh38SXcLwCE2j1cN4SGveqM9rMtcaM-AWEyhIwBd97PzUt0Z3YJHQ5RVlLxmlkYwBG5o9UzjMqWO42A5n1Xha3pNiwB1aOGQDdLuPN37qu-hD3NKHpDeha_zPtvRzUmKClG3X2zxuY7p4jeaTSTUjRXkL2v3V6HIDgSpb9vdJomaySzkvymkxKkcT2j1iiPT_vCqqaijKXRO8utOen05nEVamRw&v=2.331.0_prod-io&ct=1783599640105",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter"
+        ],
+        "saved_as": "067_data.pendo.io_data_guide.js_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5.txt"
+      },
+      {
+        "index": 68,
+        "url": "blob:https://denials.zirmed.com/8534ee40-c5a8-4cc2-b9bb-30b1447a85c7",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "068_denials.zirmed.com_8534ee40-c5a8-4cc2-b9bb-30b1447a85c7.txt"
+      },
+      {
+        "index": 69,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Images/shadow-lg.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 70,
+        "url": "https://denials.zirmed.com/Workcenter/SessionDataForFrontEnd",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "POST",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter",
+          "carc",
+          "grid"
+        ],
+        "saved_as": "070_denials.zirmed.com_Workcenter_SessionDataForFrontEnd.txt"
+      },
+      {
+        "index": 71,
+        "url": "https://denials.zirmed.com/Content/images/eligibility-disabled-icon.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 72,
+        "url": "https://denials.zirmed.com/Workcenter/ReloadWorkcenterGridCount",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "POST",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "072_denials.zirmed.com_Workcenter_ReloadWorkcenterGridCount.txt"
+      },
+      {
+        "index": 73,
+        "url": "https://data.pendo.io/data/ptm.gif/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&ct=1783599640335&jzb=eJzVUu9v2jAQ_VeifGYhv5oQpGmj0K1VO4oErO2mCRnbEA_HTm2HLq36v_ccugxpUsWHVVr5FO7ePb-7974_uKYuqdt3GaHCsFXtdtylkneaqoVhBXSCtBcdZVkS-34Wd9wt08xItWAEhtCSUK5QXiDh5agg9Ucsl1ryyjApPCwLYEMYy0qY3cAkrzXDiDuznCpU1o5cOSanzpCZ2pl4Qw8GKsUBmRtT6n63C7IY4tq7Z6qgxHJ2r6TaYFBL1QdUloy8jwMYK5Ustdt_cCUni_1HRcX56-t-BAVIgaoZWp61r5rdH_d-Or_aDEeb2BTj7Mv8HPhXChW0aV6vj1eDbaa_1Zfq5JgLaGqqNUhp2gxtYlL9PP8VqdHJsvxqT2QKuynOkRDUXmvEFMXGitD0tqICg3E-OFkbCjeJ0_Sx0zpdUINedDl5Cy4_K7SfB4sUcHGADv5AnVMLhRbWipbQ-wQqqJWnVUMb9KI49Y-gwpFYV2htCahYzKf22M9btyIOWRzDN0DH9M65gRWt2QYZSzu-se1Km4YrzJIk6kGFyAIxsV9rszZo34cS2bH4WddPu6EfJjC7pcrmyI56URR4_gIOSN4x-Yp5vcahvFjNNmfqZBCOZXZoXoM2r0l61HEBIBVhYt2Q3o5jPf1s8OXFRNRnpymQtoDp3uN_4faCzyUiLwY_ewvBt1v81t4LEy_xm18Y9eIg-_9cDVtXQeC_c_XHE6zWORQ",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 74,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?ct=1783599640356&v=2.331.0_prod-io&recordingId=qN4sSGtcOLPnyIH7",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 75,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=qN4sSGtcOLPnyIH7&kf=1&ns=1&ct=1783599640411",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 76,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=qN4sSGtcOLPnyIH7&ct=1783599645301",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 77,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=qN4sSGtcOLPnyIH7&ct=1783599650297",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      }
+    ],
+    "hits": [
+      {
+        "index": 2,
+        "url": "https://claims.zirmed.com/WorkCenter/WorkCenterMessage.aspx?TabAppID=40&Error=1",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "workcenter"
+        ],
+        "saved_as": "002_claims.zirmed.com_WorkCenter_WorkCenterMessage.aspx.txt"
+      },
+      {
+        "index": 5,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "005_www.zirmed.com_Static_WaystarHeader_1.0_CSS_WaystarHeader.min.css.txt"
+      },
+      {
+        "index": 6,
+        "url": "https://www.zirmed.com/Static/CSS/body.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "006_www.zirmed.com_Static_CSS_body.css.txt"
+      },
+      {
+        "index": 9,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "009_ajax.googleapis.com_ajax_libs_jqueryui_1.9.0_jquery-ui.min.js.txt"
+      },
+      {
+        "index": 10,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "010_www.zirmed.com_Static_WaystarHeader_1.0_Javascript_WaystarHeader.min.js.txt"
+      },
+      {
+        "index": 16,
+        "url": "https://cdn.pendo.io/agent/static/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5/pendo.js",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "016_cdn.pendo.io_agent_static_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5_pendo.js.txt"
+      },
+      {
+        "index": 20,
+        "url": "https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNkM1u6jAQhV8l8qIr6gTC5U9CLeK2KosipHJ7xQoNtkus-k-2Q5tWvDtjFoElu9GZz8dzzi85yCCj9QtOJgR2XCgPlQZDK9C8eWR2F6yqo7SGMqtJhwBjtjbxzK-qJkgGKltXwoNrMvuRxUpkcxmbbEXnFPnaKySrGF2Y5DlTIHWgP9JrwZNj_t_6z7kwUfir8VWEAHtBIbjvhzXsZs4t_k77xd2T99ZPu-hrFX-_nG5qpTpEiwgcIpBJmyuN8tZsBrRAdHZBs5eE4ooFLxzunkEFkWIFf7btjsr-sPiDigKzr_FoFIXZ_nsjx7as9ohbCmM4I7oUX9kGC0ElRIjJdrlJ6zrEs1dvPBiUI1S41SDNtYY_O_DY5Kz9HyVsJrkU47wY5r2iN8C3B-ED5k9PaVl2abF13vJ7acnxeAIJhbH2&v=2.331.0_prod-io&ct=1783599635347",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter"
+        ],
+        "saved_as": "020_data.pendo.io_data_guide.js_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5.txt"
+      },
+      {
+        "index": 23,
+        "url": "https://denials.zirmed.com/Workcenter?appid=41",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "adjustment",
+          "carc",
+          "grid"
+        ],
+        "saved_as": "023_denials.zirmed.com_Workcenter.txt"
+      },
+      {
+        "index": 26,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "026_www.zirmed.com_Static_WaystarHeader_1.0_CSS_WaystarHeader.min.css.txt"
+      },
+      {
+        "index": 27,
+        "url": "https://www.zirmed.com/Static/CSS/body.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "027_www.zirmed.com_Static_CSS_body.css.txt"
+      },
+      {
+        "index": 29,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "029_www.zirmed.com_Static_WaystarHeader_1.0_Javascript_WaystarHeader.min.js.txt"
+      },
+      {
+        "index": 32,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "032_ajax.googleapis.com_ajax_libs_jqueryui_1.9.0_jquery-ui.min.js.txt"
+      },
+      {
+        "index": 33,
+        "url": "https://denials.zirmed.com/Content/denials-common.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "033_denials.zirmed.com_Content_denials-common.css.txt"
+      },
+      {
+        "index": 34,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/CSS/WebControls.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "034_www.zirmed.com_Static_WebControls_2.0_CSS_WebControls.css.txt"
+      },
+      {
+        "index": 35,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "grid"
+        ],
+        "saved_as": "035_www.zirmed.com_Static_WebControls_2.0_Javascript_WebControls.js.txt"
+      },
+      {
+        "index": 36,
+        "url": "https://denials.zirmed.com/Content/workcenter.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "036_denials.zirmed.com_Content_workcenter.min.css.txt"
+      },
+      {
+        "index": 37,
+        "url": "https://denials.zirmed.com/Content/denials-add-activity-modal.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "037_denials.zirmed.com_Content_denials-add-activity-modal.css.txt"
+      },
+      {
+        "index": 38,
+        "url": "https://denials.zirmed.com/Content/pager.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "038_denials.zirmed.com_Content_pager.min.css.txt"
+      },
+      {
+        "index": 39,
+        "url": "https://denials.zirmed.com/Content/header-setup.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "039_denials.zirmed.com_Content_header-setup.css.txt"
+      },
+      {
+        "index": 41,
+        "url": "https://denials.zirmed.com/Content/denials-modal-denialunderuseraction.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "041_denials.zirmed.com_Content_denials-modal-denialunderuseraction.min.css.txt"
+      },
+      {
+        "index": 40,
+        "url": "https://denials.zirmed.com/Content/font-awesome.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "040_denials.zirmed.com_Content_font-awesome.min.css.txt"
+      },
+      {
+        "index": 46,
+        "url": "https://cdn.pendo.io/agent/static/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5/pendo.js",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "046_cdn.pendo.io_agent_static_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5_pendo.js.txt"
+      },
+      {
+        "index": 48,
+        "url": "https://denials.zirmed.com/Scripts/header-setup.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "048_denials.zirmed.com_Scripts_header-setup.js.txt"
+      },
+      {
+        "index": 49,
+        "url": "https://denials.zirmed.com/Scripts/denials-add-activity-modal.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "adjustment"
+        ],
+        "saved_as": "049_denials.zirmed.com_Scripts_denials-add-activity-modal.js.txt"
+      },
+      {
+        "index": 51,
+        "url": "https://denials.zirmed.com/Scripts/jquery.iframe-transport.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "051_denials.zirmed.com_Scripts_jquery.iframe-transport.js.txt"
+      },
+      {
+        "index": 54,
+        "url": "https://denials.zirmed.com/Scripts/jquery.watermark.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "054_denials.zirmed.com_Scripts_jquery.watermark.min.js.txt"
+      },
+      {
+        "index": 55,
+        "url": "https://denials.zirmed.com/Scripts/denials-modal-denialunderuseraction.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid"
+        ],
+        "saved_as": "055_denials.zirmed.com_Scripts_denials-modal-denialunderuseraction.js.txt"
+      },
+      {
+        "index": 56,
+        "url": "https://denials.zirmed.com/Scripts/denials-common.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit"
+        ],
+        "saved_as": "056_denials.zirmed.com_Scripts_denials-common.js.txt"
+      },
+      {
+        "index": 57,
+        "url": "https://denials.zirmed.com/Scripts/denials-grid-actionbar.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "057_denials.zirmed.com_Scripts_denials-grid-actionbar.js.txt"
+      },
+      {
+        "index": 58,
+        "url": "https://denials.zirmed.com/Scripts/joyridetour.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "058_denials.zirmed.com_Scripts_joyridetour.js.txt"
+      },
+      {
+        "index": 59,
+        "url": "https://denials.zirmed.com/Scripts/workcenter.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter",
+          "carc",
+          "grid"
+        ],
+        "saved_as": "059_denials.zirmed.com_Scripts_workcenter.js.txt"
+      },
+      {
+        "index": 64,
+        "url": "https://denials.zirmed.com/Workcenter/ReloadWorkcenterGrid",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "POST",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "064_denials.zirmed.com_Workcenter_ReloadWorkcenterGrid.txt"
+      },
+      {
+        "index": 67,
+        "url": "https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNkMtu8jAQhV_F8po6gVBuUtUipKrdIKTexAoN9pRYvy-R7fArrXh3xixCl-ysM9-cOT6__KijTj68Kr7gsFdoAtQWnKjBqu5J-n30pk3aOyG95QMOUvrWpQu_qbuoJRj2XmOApmP-m6Ua2Uqnjm3EShDfBkNknVITF0Wh0GkwUfzoYFFly-LLh38SXcLwCE2j1cN4SGveqM9rMtcaM-AWEyhIwBd97PzUt0Z3YJHQ5RVlLxmlkYwBG5o9UzjMqWO42A5n1Xha3pNiwB1aOGQDdLuPN37qu-hD3NKHpDeha_zPtvRzUmKClG3X2zxuY7p4jeaTSTUjRXkL2v3V6HIDgSpb9vdJomaySzkvymkxKkcT2j1iiPT_vCqqaijKXRO8utOen05nEVamRw&v=2.331.0_prod-io&ct=1783599640105",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter"
+        ],
+        "saved_as": "067_data.pendo.io_data_guide.js_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5.txt"
+      },
+      {
+        "index": 68,
+        "url": "blob:https://denials.zirmed.com/8534ee40-c5a8-4cc2-b9bb-30b1447a85c7",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "068_denials.zirmed.com_8534ee40-c5a8-4cc2-b9bb-30b1447a85c7.txt"
+      },
+      {
+        "index": 70,
+        "url": "https://denials.zirmed.com/Workcenter/SessionDataForFrontEnd",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "POST",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter",
+          "carc",
+          "grid"
+        ],
+        "saved_as": "070_denials.zirmed.com_Workcenter_SessionDataForFrontEnd.txt"
+      },
+      {
+        "index": 72,
+        "url": "https://denials.zirmed.com/Workcenter/ReloadWorkcenterGridCount",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "POST",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "072_denials.zirmed.com_Workcenter_ReloadWorkcenterGridCount.txt"
+      }
+    ]
+  },
+  "review": {
+    "url": "https://denials.zirmed.com/Review?denialID=3652667586&appId=41&tabAppId=40&returnToWorkCenter=True",
+    "denial_id": "3652667586",
+    "analysis": {
+      "html_size": 122542,
+      "has_remits_container": true,
+      "history_remit_links": 4,
+      "remit_tables": 4,
+      "remit_instance_ids": [
+        "4820714323",
+        "4820714324",
+        "4549850977"
+      ],
+      "carc_codes_sample": [
+        "CO-45",
+        "CO-97",
+        "PI-94",
+        "PR-242",
+        "PI-151"
+      ],
+      "remark_codes_sample": [
+        "M15"
+      ],
+      "adjustment_statuses": [
+        "Closed",
+        "Active",
+        "Inactive"
+      ]
+    },
+    "frames": [
+      {
+        "index": 0,
+        "url": "https://denials.zirmed.com/Review?denialID=3652667586&appId=41&tabAppId=40&returnToWorkCenter=True",
+        "size": 122812
+      },
+      {
+        "index": 1,
+        "url": "about:blank",
+        "size": 39
+      },
+      {
+        "index": 2,
+        "url": "about:blank",
+        "size": 39
+      }
+    ],
+    "responses": [
+      {
+        "index": 1,
+        "url": "https://denials.zirmed.com/Review?denialID=3652667586&appId=41&tabAppId=40&returnToWorkCenter=True",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "adjustment",
+          "carc",
+          "grid",
+          "historyremitlink"
+        ],
+        "saved_as": "001_denials.zirmed.com_Review.txt"
+      },
+      {
+        "index": 2,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/jquery-ui.css",
+        "status": 200,
+        "content_type": "text/css; charset=UTF-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 3,
+        "url": "https://fonts.googleapis.com/css?family=Titillium+Web:400,700",
+        "status": 200,
+        "content_type": "text/css; charset=utf-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 4,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "004_www.zirmed.com_Static_WaystarHeader_1.0_CSS_WaystarHeader.min.css.txt"
+      },
+      {
+        "index": 5,
+        "url": "https://www.zirmed.com/Static/CSS/body.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "005_www.zirmed.com_Static_CSS_body.css.txt"
+      },
+      {
+        "index": 6,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/CSS/WebControls.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "006_www.zirmed.com_Static_WebControls_2.0_CSS_WebControls.css.txt"
+      },
+      {
+        "index": 7,
+        "url": "https://denials.zirmed.com/Content/denials-common.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "007_denials.zirmed.com_Content_denials-common.css.txt"
+      },
+      {
+        "index": 8,
+        "url": "https://denials.zirmed.com/Content/header-setup.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "008_denials.zirmed.com_Content_header-setup.css.txt"
+      },
+      {
+        "index": 9,
+        "url": "https://www.zirmed.com/Static/Images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 10,
+        "url": "https://denials.zirmed.com/Content/font-awesome.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "010_denials.zirmed.com_Content_font-awesome.min.css.txt"
+      },
+      {
+        "index": 11,
+        "url": "https://www.zirmed.com/Static/JavaScript/SmartSearch.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 12,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "012_www.zirmed.com_Static_WaystarHeader_1.0_Javascript_WaystarHeader.min.js.txt"
+      },
+      {
+        "index": 13,
+        "url": "https://denials.zirmed.com/Scripts/jquery.iframe-transport.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "013_denials.zirmed.com_Scripts_jquery.iframe-transport.js.txt"
+      },
+      {
+        "index": 14,
+        "url": "https://denials.zirmed.com/Scripts/header-setup.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "014_denials.zirmed.com_Scripts_header-setup.js.txt"
+      },
+      {
+        "index": 15,
+        "url": "https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 16,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "grid"
+        ],
+        "saved_as": "016_www.zirmed.com_Static_WebControls_2.0_Javascript_WebControls.js.txt"
+      },
+      {
+        "index": 17,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "017_ajax.googleapis.com_ajax_libs_jqueryui_1.9.0_jquery-ui.min.js.txt"
+      },
+      {
+        "index": 18,
+        "url": "https://denials.zirmed.com/Content/denials-add-activity-modal.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "018_denials.zirmed.com_Content_denials-add-activity-modal.min.css.txt"
+      },
+      {
+        "index": 19,
+        "url": "https://denials.zirmed.com/Content/denials-listing.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "019_denials.zirmed.com_Content_denials-listing.min.css.txt"
+      },
+      {
+        "index": 20,
+        "url": "https://denials.zirmed.com/Content/denial-review.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "grid",
+          "historyremitlink"
+        ],
+        "saved_as": "020_denials.zirmed.com_Content_denial-review.min.css.txt"
+      },
+      {
+        "index": 21,
+        "url": "https://denials.zirmed.com/Content/images/hint-drop-arrow.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 22,
+        "url": "https://denials.zirmed.com/Scripts/denials-add-activity-modal.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "adjustment"
+        ],
+        "saved_as": "022_denials.zirmed.com_Scripts_denials-add-activity-modal.js.txt"
+      },
+      {
+        "index": 23,
+        "url": "https://denials.zirmed.com/Scripts/jquery.watermark.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "023_denials.zirmed.com_Scripts_jquery.watermark.min.js.txt"
+      },
+      {
+        "index": 24,
+        "url": "https://denials.zirmed.com/Scripts/denials-common.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit"
+        ],
+        "saved_as": "024_denials.zirmed.com_Scripts_denials-common.js.txt"
+      },
+      {
+        "index": 25,
+        "url": "https://denials.zirmed.com/Scripts/joyridetour.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "025_denials.zirmed.com_Scripts_joyridetour.js.txt"
+      },
+      {
+        "index": 26,
+        "url": "https://denials.zirmed.com/Content/Images/notes.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 27,
+        "url": "https://denials.zirmed.com/Content/images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 28,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Images/Orange-White-Header.png",
+        "status": 200,
+        "content_type": "image/png",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 29,
+        "url": "https://fonts.gstatic.com/s/titilliumweb/v19/NaPDcZTIAOhVxoMyOr9n_E7ffHjDGItzYw.woff2",
+        "status": 200,
+        "content_type": "font/woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 30,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/fonts/icomoon.ttf?b18by8",
+        "status": 200,
+        "content_type": "application/octet-stream",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 31,
+        "url": "https://fonts.gstatic.com/s/titilliumweb/v19/NaPecZTIAOhVxoMyOr9n_E7fdMPmDQ.woff2",
+        "status": 200,
+        "content_type": "font/woff2",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 32,
+        "url": "https://denials.zirmed.com/Images/transparent.gif",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 33,
+        "url": "https://cdn.pendo.io/agent/static/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5/pendo.js",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "033_cdn.pendo.io_agent_static_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5_pendo.js.txt"
+      },
+      {
+        "index": 34,
+        "url": "https://denials.zirmed.com/Scripts/jquery.unobtrusive-ajax.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "034_denials.zirmed.com_Scripts_jquery.unobtrusive-ajax.min.js.txt"
+      },
+      {
+        "index": 35,
+        "url": "https://denials.zirmed.com/Scripts/denials-review.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "grid",
+          "historyremitlink"
+        ],
+        "saved_as": "035_denials.zirmed.com_Scripts_denials-review.js.txt"
+      },
+      {
+        "index": 36,
+        "url": "https://data.pendo.io/data/recordingconf/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?jzb=eJyNUMuu2jAQ_ZXIC1Y0CQmEh4R6EVVVNgi1VBUrNMRTYjWxI3sMykX8O2NA9O7a3ejMmfOYi_C2FjNREbVuliQStYLaxe_KNijj0jTJdzwpPH9-bFZf5nkxyopiPJoUPWjblZwPBz2Cw-Ixpz2L5K3eml_G_lmiJrTzrfUo-qJBAgkEYnYRJ-UUGRtGJTkAHCTWFqoGdFxBI7u30hycqT0po0MOvtfQIFMXf6nRt0DlVekstrz7yuGDlXf2LjuY5MNxOmKkBn30cAwCqPc_f4hrX0BZGq_pFWJTdU6VUEfbCi20XWR-R1RhtFTURZt4GQcnnpm6xnO044aMOAIKsutdWHtHd61sWhT5hBFpGlD6I8bOLVh-zeLlzxB_Jqik0yQdJ1maFXx7Quu4fziN83wQp_vWGvlJmaDxfOHqf9_3bHvn_7vp9Qaavq_d&ct=1783599649605&v=2.331.0_prod-io",
+        "status": 200,
+        "content_type": "application/json; charset=utf-8",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 37,
+        "url": "https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNUE2L4kAU_CuhD57cJCYaP0B2xWEYLyIz7g6e5Jl-Y5rpdIf-ULKL_93XCnGP3h5V1VVd9Y-dhBVOmxVnMwYHjtJAVYOKK6h5-6vUB6uld0KruNQ16zMoS-2Vu-k3VWtFCTLaVmigaSP9FbkKo6VwbbSJlzHpvZGkrJxr7CxJOCoB0sZ_hamRB8vkHU8Czz_vzOplnhejrCjGo0nRg6ZZ8flw0HNwWNzvtGfQeaO2-lOb7yUqh2a-NR4pSkv-59FGeSn7rEYHHBywWVc1nOLZugpqJOniIY3egpSo0hpsiHulQiHeW3OzHUzy4TgdESJBHT0cgwGq_e8Pdun26z7xzIYl3SRd4znaUWtCrAMXbNe7QHvrbl7ZtCjyCSFc1yDU_xglN2BorkWXTxAtE1zSaZKOkyzNCnp7QmOpf3ga5_kgTveN0fyH0OxyuQLZsLce&v=2.331.0_prod-io&ct=1783599649614",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter"
+        ],
+        "saved_as": "037_data.pendo.io_data_guide.js_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5.txt"
+      },
+      {
+        "index": 38,
+        "url": "blob:https://denials.zirmed.com/ebb0e0fb-f6d3-4352-a214-93e577af44a4",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "038_denials.zirmed.com_ebb0e0fb-f6d3-4352-a214-93e577af44a4.txt"
+      },
+      {
+        "index": 39,
+        "url": "https://data.pendo.io/data/ptm.gif/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&ct=1783599649967&jzb=eJxlUd-Lm0AQ_ldkH_IUjCbRaCC0IblehLakd0IDpRyrOzmX6I43u97VHve_32hoKdQn9fsx3zfz41W4vgWxFjVKJaaiIHyxQA9ON_w3XCWLKE3jZRoH8VQ8a6sd0oNWLJCFgppk1UjjV7JR_ccSC4t15zQav8SG3WRZYmfcVXCseqtLWXt5BSTb3sOz5yrwdtr13tHf-SzoqGZm5Vxr17OZAqNlbf3fmhpQg-fsDp41vHy4Itl-s4ijeRyvoiSeyLbN1GYZTpwsttf3YELgOjI5fke67MA4oE1OHfColrC1Yv06Nv_TNwoDf5GOzyoOoyR8Y6IkFuayyLiF6ep6KnjC8CFwdXF3B31s8-xs48OSbc8kGxjB9lniKbiNtl-Sp0RhwKAFa3k7I3wq5_j5nF8yutnOv2I6tHfNEKispDEwLGKvCUonOISFpw5MyRkDPlLvgKMvF3wTJiApbR5H08f7G7e__XRQv-jUNd-ITf8S7v8Z_h_v7ec7ElKsNQ",
+        "status": 200,
+        "content_type": "image/gif",
+        "method": "GET",
+        "post_data": ""
+      },
+      {
+        "index": 40,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?ct=1783599649995&v=2.331.0_prod-io&recordingId=gSEtDGFHdxrXumQr",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 41,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=gSEtDGFHdxrXumQr&kf=1&ns=1&ct=1783599650082",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      },
+      {
+        "index": 42,
+        "url": "https://data.pendo.io/data/rec/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?v=2.331.0_prod-io&recordingId=gSEtDGFHdxrXumQr&ct=1783599654898",
+        "status": 200,
+        "content_type": "",
+        "method": "POST",
+        "post_data": "(binary)"
+      }
+    ],
+    "hits": [
+      {
+        "index": 1,
+        "url": "https://denials.zirmed.com/Review?denialID=3652667586&appId=41&tabAppId=40&returnToWorkCenter=True",
+        "status": 200,
+        "content_type": "text/html; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "adjustment",
+          "carc",
+          "grid",
+          "historyremitlink"
+        ],
+        "saved_as": "001_denials.zirmed.com_Review.txt"
+      },
+      {
+        "index": 4,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "004_www.zirmed.com_Static_WaystarHeader_1.0_CSS_WaystarHeader.min.css.txt"
+      },
+      {
+        "index": 5,
+        "url": "https://www.zirmed.com/Static/CSS/body.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "005_www.zirmed.com_Static_CSS_body.css.txt"
+      },
+      {
+        "index": 6,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/CSS/WebControls.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "workcenter",
+          "grid"
+        ],
+        "saved_as": "006_www.zirmed.com_Static_WebControls_2.0_CSS_WebControls.css.txt"
+      },
+      {
+        "index": 7,
+        "url": "https://denials.zirmed.com/Content/denials-common.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "007_denials.zirmed.com_Content_denials-common.css.txt"
+      },
+      {
+        "index": 8,
+        "url": "https://denials.zirmed.com/Content/header-setup.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "008_denials.zirmed.com_Content_header-setup.css.txt"
+      },
+      {
+        "index": 10,
+        "url": "https://denials.zirmed.com/Content/font-awesome.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "010_denials.zirmed.com_Content_font-awesome.min.css.txt"
+      },
+      {
+        "index": 12,
+        "url": "https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "012_www.zirmed.com_Static_WaystarHeader_1.0_Javascript_WaystarHeader.min.js.txt"
+      },
+      {
+        "index": 13,
+        "url": "https://denials.zirmed.com/Scripts/jquery.iframe-transport.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "013_denials.zirmed.com_Scripts_jquery.iframe-transport.js.txt"
+      },
+      {
+        "index": 14,
+        "url": "https://denials.zirmed.com/Scripts/header-setup.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "014_denials.zirmed.com_Scripts_header-setup.js.txt"
+      },
+      {
+        "index": 16,
+        "url": "https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "grid"
+        ],
+        "saved_as": "016_www.zirmed.com_Static_WebControls_2.0_Javascript_WebControls.js.txt"
+      },
+      {
+        "index": 17,
+        "url": "https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js",
+        "status": 200,
+        "content_type": "text/javascript; charset=UTF-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "017_ajax.googleapis.com_ajax_libs_jqueryui_1.9.0_jquery-ui.min.js.txt"
+      },
+      {
+        "index": 18,
+        "url": "https://denials.zirmed.com/Content/denials-add-activity-modal.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "018_denials.zirmed.com_Content_denials-add-activity-modal.min.css.txt"
+      },
+      {
+        "index": 19,
+        "url": "https://denials.zirmed.com/Content/denials-listing.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "019_denials.zirmed.com_Content_denials-listing.min.css.txt"
+      },
+      {
+        "index": 20,
+        "url": "https://denials.zirmed.com/Content/denial-review.min.css",
+        "status": 200,
+        "content_type": "text/css",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "remit",
+          "grid",
+          "historyremitlink"
+        ],
+        "saved_as": "020_denials.zirmed.com_Content_denial-review.min.css.txt"
+      },
+      {
+        "index": 22,
+        "url": "https://denials.zirmed.com/Scripts/denials-add-activity-modal.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "adjustment"
+        ],
+        "saved_as": "022_denials.zirmed.com_Scripts_denials-add-activity-modal.js.txt"
+      },
+      {
+        "index": 23,
+        "url": "https://denials.zirmed.com/Scripts/jquery.watermark.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "023_denials.zirmed.com_Scripts_jquery.watermark.min.js.txt"
+      },
+      {
+        "index": 24,
+        "url": "https://denials.zirmed.com/Scripts/denials-common.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit"
+        ],
+        "saved_as": "024_denials.zirmed.com_Scripts_denials-common.js.txt"
+      },
+      {
+        "index": 25,
+        "url": "https://denials.zirmed.com/Scripts/joyridetour.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "025_denials.zirmed.com_Scripts_joyridetour.js.txt"
+      },
+      {
+        "index": 33,
+        "url": "https://cdn.pendo.io/agent/static/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5/pendo.js",
+        "status": 200,
+        "content_type": "application/javascript; charset=utf-8",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "grid"
+        ],
+        "saved_as": "033_cdn.pendo.io_agent_static_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5_pendo.js.txt"
+      },
+      {
+        "index": 34,
+        "url": "https://denials.zirmed.com/Scripts/jquery.unobtrusive-ajax.min.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "034_denials.zirmed.com_Scripts_jquery.unobtrusive-ajax.min.js.txt"
+      },
+      {
+        "index": 35,
+        "url": "https://denials.zirmed.com/Scripts/denials-review.js",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "remit",
+          "workcenter",
+          "grid",
+          "historyremitlink"
+        ],
+        "saved_as": "035_denials.zirmed.com_Scripts_denials-review.js.txt"
+      },
+      {
+        "index": 37,
+        "url": "https://data.pendo.io/data/guide.js/dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5?id=35&jzb=eJyNUE2L4kAU_CuhD57cJCYaP0B2xWEYLyIz7g6e5Jl-Y5rpdIf-ULKL_93XCnGP3h5V1VVd9Y-dhBVOmxVnMwYHjtJAVYOKK6h5-6vUB6uld0KruNQ16zMoS-2Vu-k3VWtFCTLaVmigaSP9FbkKo6VwbbSJlzHpvZGkrJxr7CxJOCoB0sZ_hamRB8vkHU8Czz_vzOplnhejrCjGo0nRg6ZZ8flw0HNwWNzvtGfQeaO2-lOb7yUqh2a-NR4pSkv-59FGeSn7rEYHHBywWVc1nOLZugpqJOniIY3egpSo0hpsiHulQiHeW3OzHUzy4TgdESJBHT0cgwGq_e8Pdun26z7xzIYl3SRd4znaUWtCrAMXbNe7QHvrbl7ZtCjyCSFc1yDU_xglN2BorkWXTxAtE1zSaZKOkyzNCnp7QmOpf3ga5_kgTveN0fyH0OxyuQLZsLce&v=2.331.0_prod-io&ct=1783599649614",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [
+          "denialid",
+          "workcenter"
+        ],
+        "saved_as": "037_data.pendo.io_data_guide.js_dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5.txt"
+      },
+      {
+        "index": 38,
+        "url": "blob:https://denials.zirmed.com/ebb0e0fb-f6d3-4352-a214-93e577af44a4",
+        "status": 200,
+        "content_type": "application/javascript",
+        "method": "GET",
+        "post_data": "",
+        "matched_keywords": [],
+        "saved_as": "038_denials.zirmed.com_ebb0e0fb-f6d3-4352-a214-93e577af44a4.txt"
+      }
+    ]
+  }
+}

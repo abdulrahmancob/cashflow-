@@ -1,0 +1,7 @@
+URL: https://denials.zirmed.com/Workcenter/ReloadWorkcenterGridCount
+METHOD: POST
+STATUS: 200
+CONTENT-TYPE: application/json; charset=utf-8
+POST: 
+================================================================================
+{"PageCount":1,"RecordCount":1}

@@ -1,0 +1,7 @@
+URL: https://denials.zirmed.com/Content/denials-modal-denialunderuseraction.min.css
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/css
+POST: 
+================================================================================
+#denialUnderActionModal{padding:0;}#denialUnderActionModal .modalContainer{display:flex;flex-direction:column;min-height:90px;font-weight:bold;}#denialUnderActionModal .modalContainer .modalSpacer{flex:1;height:10px;}#denialUnderActionModal .modalContainer #denialUnderActionModalText{flex:1;}#denialUnderActionModal .modalContainer .denialUnderActionModalBtnContainer{flex:1;}#denialUnderActionModal .modalContainer .denialUnderActionModalBtnContainer .btnContainerSpacer{width:5px;}

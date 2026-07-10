@@ -1,0 +1,270 @@
+URL: https://claims.zirmed.com/WorkCenter/WorkCenterMessage.aspx?TabAppID=40&Error=1
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/html; charset=utf-8
+POST: 
+================================================================================
+
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head><meta http-equiv="X-UA-Compatible" content="IE=edge" /><title>
+	Waystar - MyWork
+</title>
+
+    <link type="text/css" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/jquery-ui.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:400,700" rel="stylesheet">
+    <link type="text/css" href="https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css" rel="stylesheet">
+        <link type="text/css" href="https://www.zirmed.com/Static/CSS/body.css" rel="stylesheet">
+
+<link rel="stylesheet" type="text/css" href="WorkcenterMessage.css" /></head>
+<body>
+
+
+
+<div id='waystarHeader' class="">
+    
+
+<div id='headerTop'>
+    <div id='headerTopLeft'>
+        <input type="hidden" id="waystarHeaderCustId" value="296638" />
+                    <img id='headerLogo' src='https://www.zirmed.com/Static/Images/transparent.gif' height='1' width='1' />
+                <div id="headerAccount" class="">
+                    
+<div class="header-account-search-container">
+    <input type="hidden" class="header-account-search-usr" value="1834705" />
+            <div class="header-account-no-child-account">
+            <label>Account</label>
+            <span title="Physical Therapy of the City P.C. (296638)">Physical Therapy of the City P.C. (296638)</span>
+        </div>
+    <div class="clearfix"></div>
+    </div>
+
+                </div>
+
+    </div>
+
+    <div id='headerTopRight'>
+        <div>
+            <span id='headerWelcome'>Welcome, Abdelrahman Hamdy</span>
+            <a href='https://general.zirmed.com//Accounts/NotificationBrowser.aspx' id='headerNotification'>
+                <span class="icon-envelope"></span>
+                    <span id='headerNotificationCount'>17</span>
+            </a>
+                <span class='notification separator'></span>
+                <a href='https://general.zirmed.com//logout2.aspx'>Log off</a>
+        </div>
+        <div>
+            <span id='headerWhatsNew' class="">
+                What's New
+                <span id="whatsNewFlyout" data-whats-new-flyout-url="https://mgmt.zirmed.com/ExternalUserManagement/WhatsNew/Flyout"></span>
+            </span>
+                <span class='separator waystar-support-spacer'></span>
+                <a class="waystar-support-link" href='#' onclick="return waystarHeader.LaunchSupportCenter('https://general.zirmed.com//Help/LaunchCustomerSupportCenter.aspx');">Support and Training</a>
+            <span class='separator waystar-system-status-spacer'></span>
+            <a href='#' class="waystar-system-status" data-popup-position="bottom" data-popup-title="Check System Status" data-popup-content-text="Waystar has added a way to check for system-level issues. You can click here to check Waystar's system status, and you may also subscribe to system issue alerts as they are posted." onclick="return waystarHeader.OpenSystemStatus();">System Status</a>
+        </div>
+    </div>
+    <div class='clear-fix'></div>
+</div>
+
+    <div id="headerTabsContainer">
+        
+<div id='headerTabs'>
+                <div>
+                    <a class="selected-tab" href="https://claims.zirmed.com/WorkCenter/MyWork.aspx?appid=0">My Work</a>
+                </div>
+                <div class="header-menu">
+                    <a class="" href="#">Claims Processing</a>
+                    <div class="header-flyout hidden">
+                        <ul>
+                                    <li>
+                                        <a href="#">Professional Claims</a>
+                                        <div class="hidden">
+                                            <span>Professional Claims</span>
+                                                    <a href="https://claims.zirmed.com/Dashboard/Overview/Index?appid=1">Dashboard</a>
+                                                    <a href="https://claims.zirmed.com/AutomationCenter/AutomationCenter/Index?appid=1">Automation Center</a>
+                                                    <a href="https://claims.zirmed.com/Claims/Listing/Index?appid=1">Claims</a>
+                                                    <a href="https://claims.zirmed.com/Batches/Listing/Index?appid=1">Batches</a>
+                                                    <a href="https://www.zirmed.com/Shared/Matching/matching.aspx?appid=1">Name Matching</a>
+                                                    <a href="https://www.zirmed.com/Shared/Providers/Prov.aspx?appid=1">Providers</a>
+                                                    <a href="https://claims.zirmed.com/Reports/Listing/Index?appid=1">Reports</a>
+                                                    <a href="https://claims.zirmed.com/Exports/Index?appid=1">Exports</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/PayerSearch.aspx?appid=1">Payers</a>
+                                                    <a href="https://claims.zirmed.com/CodingTools/CodeSearch?appid=1">Coding Tools</a>
+                                                    <a href="https://claims.zirmed.com/Settings/settings.aspx?appid=1">Settings</a>
+                                                    <a href="https://claims.zirmed.com/ClaimAttachments/ViewAttachments.aspx?appid=1">Attachments (40)</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Institutional Claims</a>
+                                        <div class="hidden">
+                                            <span>Institutional Claims</span>
+                                                    <a href="https://claims.zirmed.com/Dashboard/Overview/Index?appid=14">Dashboard</a>
+                                                    <a href="https://claims.zirmed.com/AutomationCenter/AutomationCenter/Index?appid=14">Automation Center</a>
+                                                    <a href="https://claims.zirmed.com/Claims/Listing/Index?appid=14">Claims</a>
+                                                    <a href="https://claims.zirmed.com/Batches/Listing/Index?appid=14">Batches</a>
+                                                    <a href="https://www.zirmed.com/Shared/Matching/matching.aspx?appid=14">Name Matching</a>
+                                                    <a href="https://www.zirmed.com/Shared/Providers/Prov.aspx?appid=14">Providers</a>
+                                                    <a href="https://claims.zirmed.com/Reports/Listing/Index?appid=14">Reports</a>
+                                                    <a href="https://claims.zirmed.com/Exports/Index?appid=14">Exports</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/payersearch.aspx?appid=14">Payers</a>
+                                                    <a href="https://claims.zirmed.com/CodingTools/CodeSearch?appid=14">Coding Tools</a>
+                                                    <a href="https://claims.zirmed.com/Settings/settings.aspx?appid=14">Settings</a>
+                                                    <a href="https://claims.zirmed.com/ClaimAttachments/ViewAttachments.aspx?appid=14">Attachments (40)</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Remits</a>
+                                        <div class="hidden">
+                                            <span>Remits</span>
+                                                    <a href="https://remits.zirmed.com/Dashboard?appid=13">Dashboard</a>
+                                                    <a href="https://remits.zirmed.com/PayerDownloads_NoDX.aspx?appid=13">Downloads</a>
+                                                    <a href="https://remits.zirmed.com/Payments?appid=13">Payments</a>
+                                                    <a href="https://remits.zirmed.com/Remittances_NoDX.aspx?appid=13">Remits</a>
+                                                    <a href="https://remits.zirmed.com/Reports/Dashboard?appid=13">Reports</a>
+                                                    <a href="https://remits.zirmed.com/Exports/Index?appid=13">Exports</a>
+                                                    <a href="https://remits.zirmed.com/Uploads_NoDX.aspx?appid=13">Uploads</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/payersearch.aspx?appid=13">Payers</a>
+                                                    <a href="https://remits.zirmed.com/Settings/Notification?appid=13">Settings</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Denial Management</a>
+                                        <div class="hidden">
+                                            <span>Denial Management</span>
+                                                    <a href="https://denials.zirmed.com/?appid=41">Dashboard</a>
+                                                    <a href="https://denials.zirmed.com/Denials?appid=41">Denial Listing</a>
+                                                    <a href="https://denials.zirmed.com/Appeals/Listing?appid=41">Appeals</a>
+                                                    <a href="https://denials.zirmed.com/Reports/PayerSummary?appid=41">Reports</a>
+                                                    <a href="https://denials.zirmed.com/Exports?appid=41">Exports</a>
+                                                    <a href="https://denials.zirmed.com/DataSync/BatchClose?appid=41">Data Sync</a>
+                                                    <a href="https://denials.zirmed.com/Settings/Workgroups?appid=41">Settings</a>
+
+                                        </div>
+                                    </li>
+
+                        </ul><div class='link-panel hidden'></div>
+                    </div>
+                </div>
+                <div>
+                    <a class="" href="https://general.zirmed.com/Accounts/AccountSummaryCheck.aspx?ScreenVersion=AccountSummary">Account</a>
+                </div>
+
+    <div class='clear-fix'></div>
+</div>
+    </div>
+</div>
+
+
+<div id="waystarSubnav">
+    <div id="waystarSubnavHeader">
+
+        <h1>
+            My Work
+        </h1>
+                <a id="headerSearchLink" class="header-right-link" href="https://claims.zirmed.com/Claims/ClaimSearch/Index?AppID=1" >
+                    <i class="icon-search"></i>
+                    Claim Search
+                </a>
+                <div class='clear-fix'></div>
+
+    </div>
+    <ul>
+                    <li class="selected">
+                        <a href="https://claims.zirmed.com/WorkCenter/MyWork.aspx?appid=0">Rejected Claims</a>
+                    </li>
+                    <li class="">
+                        <a href="https://denials.zirmed.com/Workcenter?appid=41">Denied Claims</a>
+                    </li>
+
+    </ul>
+        <div class="subnav-line"></div>
+</div>
+
+
+    <script>
+var _gaq = _gaq || [];
+_gaq.push(['_setCustomVar', '1', 'App', '']);
+    </script>
+
+   
+    <form name="form1" method="post" action="./WorkCenterMessage.aspx?TabAppID=40&amp;Error=1" id="form1">
+<div>
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="cjHBmumlPQ+EUR0IFZBl+/ABy519wxfhfKg6pUcSgKiIbb8ErnlU8RdyRbsRMU6aFt0CxhaUt7bh+5HGvwVm8cFH1+nG+rH9l5I8JsDqKcXUp+Iw2XRIFJFOyuIsrRI/WYOV/3A5UY3Qt2bJ3x4NfLcL4P+osCPsPozVJ+kfTw6FASvaX+frOX6XGYUy6jJaoKrFkvwSUlGGth4Piz/hQn7CTU9BppiuNJlrBcHHS23eNmsA5znHUlQBBjZkViWxqUZ5c/sWHkE316iqd2Rz3dnc5WtCa+oxixYjc5/KsOlDdoJYLUG1yA8RLDvkohVb8VCiUe7wesAm5Cc8q06alQ==" />
+</div>
+
+<div>
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="25D60AD6" />
+	<input type="hidden" name="__VIEWSTATEENCRYPTED" id="__VIEWSTATEENCRYPTED" value="" />
+</div>
+        
+                <div class="notification warning">
+                    <b><span class="warningtitle">
+                        You aren't a member of any Workgroups
+                    </span></b>
+                    <span class="warningsubtitle">
+                        Please contact your Domain Administrator to be added to a Workgroup
+                    </span>
+                </div>
+            
+    </form>
+		
+<div class="clear-fix"></div>
+<div id="waystarFooter" class="">
+    <div>
+                <a href="#" class="waystar-support-link" onclick="return waystarHeader.LaunchSupportCenter('https://general.zirmed.com//Help/LaunchCustomerSupportCenter.aspx');">Support &amp; Training</a>
+                <span class='separator waystar-support-spacer'></span>
+                <a href="https://general.zirmed.com//logout2.aspx">Logoff</a>
+
+    </div>
+            <div>
+                &copy; 1999 - 2026 Waystar&trade; All rights reserved
+            </div>
+
+</div>
+        <script>var TitleSelector = '.pagetitle';</script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/JavaScript/SmartSearch.js"></script>
+
+
+    <script>
+        (function(apiKey){
+            (function (p, e, n, d, o) {
+                var v, w, x, y, z; o = p[d] = p[d] || {}; o._q = o._q || [];
+                v = ['initialize', 'identify', 'updateOptions', 'pageLoad', 'track']; for (w = 0, x = v.length; w < x; ++w)(function (m) {
+                    o[m] = o[m] || function () { o._q[m === v[0] ? 'unshift' : 'push']([m].concat([].slice.call(arguments, 0))); };
+                })(v[w]);
+                y = e.createElement(n); y.async = !0; y.src = 'https://cdn.pendo.io/agent/static/' + apiKey + '/pendo.js';
+                z = e.getElementsByTagName(n)[0]; z.parentNode.insertBefore(y, z);
+            })(window, document, 'script', 'pendo');
+            pendo.initialize({
+                visitor: {
+                    id: 'abdelrahman.hamdy@cobsolution.com',
+                    name: 'Abdelrahman Hamdy',
+                    csrep: 'False',
+                    usrid: '1834705'
+                    },
+                account: {
+                    id: 'Physical Therapy of the City P.C.',
+                    city: 'New York',
+                    state: 'NY',
+                    custid: '296638',
+                    domainid: '296638'
+                    }
+             });
+        })('dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5');
+    </script>
+
+
+
+</body>
+</html>

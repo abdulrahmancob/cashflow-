@@ -1,0 +1,11 @@
+{
+  "linked_at": "2026-07-09T12:22:06.586734+00:00",
+  "denial_rows": 48,
+  "claims_rows": 308,
+  "match_methods": {
+    "unmatched": 48
+  },
+  "matched": 0,
+  "unmatched": 48,
+  "both_rejection_and_denial": 0
+}

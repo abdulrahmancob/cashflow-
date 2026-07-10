@@ -1,0 +1,2613 @@
+URL: https://denials.zirmed.com/Review?denialID=3652667586&appId=41&tabAppId=40&returnToWorkCenter=True
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/html; charset=utf-8
+POST: 
+================================================================================
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Denied Claims - Denial Management</title>
+    
+
+    <link type="text/css" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/jquery-ui.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:400,700" rel="stylesheet">
+    <link type="text/css" href="https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css" rel="stylesheet">
+        <link type="text/css" href="https://www.zirmed.com/Static/CSS/body.css" rel="stylesheet">
+
+
+    
+    <link type="text/css" href="https://www.zirmed.com/Static/WebControls/2.0/CSS/WebControls.css" rel="stylesheet" />
+
+    
+    <link type="text/css" href="/Content/denials-listing.min.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/denial-review.min.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/denials-common.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/denials-add-activity-modal.min.css" rel="stylesheet" />
+
+
+    <link type="text/css" href="/Content/header-setup.css" rel="stylesheet" />
+
+</head>
+<body>
+
+
+
+<div id='waystarHeader' class="">
+    
+
+<div id='headerTop'>
+    <div id='headerTopLeft'>
+        <input type="hidden" id="waystarHeaderCustId" value="296638" />
+                    <img id='headerLogo' src='https://www.zirmed.com/Static/Images/transparent.gif' height='1' width='1' />
+                <div id="headerAccount" class="">
+                    
+<div class="header-account-search-container">
+    <input type="hidden" class="header-account-search-usr" value="1834705" />
+            <div class="header-account-no-child-account">
+            <label>Account</label>
+            <span title="Physical Therapy of the City P.C. (296638)">Physical Therapy of the City P.C. (296638)</span>
+        </div>
+    <div class="clearfix"></div>
+    </div>
+
+                </div>
+
+    </div>
+
+    <div id='headerTopRight'>
+        <div>
+            <span id='headerWelcome'>Welcome, Abdelrahman Hamdy</span>
+            <a href='https://general.zirmed.com//Accounts/NotificationBrowser.aspx' id='headerNotification'>
+                <span class="icon-envelope"></span>
+                    <span id='headerNotificationCount'>17</span>
+            </a>
+                <span class='notification separator'></span>
+                <a href='https://general.zirmed.com//logout2.aspx'>Log off</a>
+        </div>
+        <div>
+            <span id='headerWhatsNew' class="">
+                What's New
+                <span id="whatsNewFlyout" data-whats-new-flyout-url="https://mgmt.zirmed.com/ExternalUserManagement/WhatsNew/Flyout"></span>
+            </span>
+                <span class='separator waystar-support-spacer'></span>
+                <a class="waystar-support-link" href='#' onclick="return waystarHeader.LaunchSupportCenter('https://general.zirmed.com//Help/LaunchCustomerSupportCenter.aspx');">Support and Training</a>
+            <span class='separator waystar-system-status-spacer'></span>
+            <a href='#' class="waystar-system-status" data-popup-position="bottom" data-popup-title="Check System Status" data-popup-content-text="Waystar has added a way to check for system-level issues. You can click here to check Waystar's system status, and you may also subscribe to system issue alerts as they are posted." onclick="return waystarHeader.OpenSystemStatus();">System Status</a>
+        </div>
+    </div>
+    <div class='clear-fix'></div>
+</div>
+
+    <div id="headerTabsContainer">
+        
+<div id='headerTabs'>
+                <div>
+                    <a class="selected-tab" href="https://claims.zirmed.com/WorkCenter/MyWork.aspx?appid=0">My Work</a>
+                </div>
+                <div class="header-menu">
+                    <a class="" href="#">Claims Processing</a>
+                    <div class="header-flyout hidden">
+                        <ul>
+                                    <li>
+                                        <a href="#">Professional Claims</a>
+                                        <div class="hidden">
+                                            <span>Professional Claims</span>
+                                                    <a href="https://claims.zirmed.com/Dashboard/Overview/Index?appid=1">Dashboard</a>
+                                                    <a href="https://claims.zirmed.com/AutomationCenter/AutomationCenter/Index?appid=1">Automation Center</a>
+                                                    <a href="https://claims.zirmed.com/Claims/Listing/Index?appid=1">Claims</a>
+                                                    <a href="https://claims.zirmed.com/Batches/Listing/Index?appid=1">Batches</a>
+                                                    <a href="https://www.zirmed.com/Shared/Matching/matching.aspx?appid=1">Name Matching</a>
+                                                    <a href="https://www.zirmed.com/Shared/Providers/Prov.aspx?appid=1">Providers</a>
+                                                    <a href="https://claims.zirmed.com/Reports/Listing/Index?appid=1">Reports</a>
+                                                    <a href="https://claims.zirmed.com/Exports/Index?appid=1">Exports</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/PayerSearch.aspx?appid=1">Payers</a>
+                                                    <a href="https://claims.zirmed.com/CodingTools/CodeSearch?appid=1">Coding Tools</a>
+                                                    <a href="https://claims.zirmed.com/Settings/settings.aspx?appid=1">Settings</a>
+                                                    <a href="https://claims.zirmed.com/ClaimAttachments/ViewAttachments.aspx?appid=1">Attachments (40)</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Institutional Claims</a>
+                                        <div class="hidden">
+                                            <span>Institutional Claims</span>
+                                                    <a href="https://claims.zirmed.com/Dashboard/Overview/Index?appid=14">Dashboard</a>
+                                                    <a href="https://claims.zirmed.com/AutomationCenter/AutomationCenter/Index?appid=14">Automation Center</a>
+                                                    <a href="https://claims.zirmed.com/Claims/Listing/Index?appid=14">Claims</a>
+                                                    <a href="https://claims.zirmed.com/Batches/Listing/Index?appid=14">Batches</a>
+                                                    <a href="https://www.zirmed.com/Shared/Matching/matching.aspx?appid=14">Name Matching</a>
+                                                    <a href="https://www.zirmed.com/Shared/Providers/Prov.aspx?appid=14">Providers</a>
+                                                    <a href="https://claims.zirmed.com/Reports/Listing/Index?appid=14">Reports</a>
+                                                    <a href="https://claims.zirmed.com/Exports/Index?appid=14">Exports</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/payersearch.aspx?appid=14">Payers</a>
+                                                    <a href="https://claims.zirmed.com/CodingTools/CodeSearch?appid=14">Coding Tools</a>
+                                                    <a href="https://claims.zirmed.com/Settings/settings.aspx?appid=14">Settings</a>
+                                                    <a href="https://claims.zirmed.com/ClaimAttachments/ViewAttachments.aspx?appid=14">Attachments (40)</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Remits</a>
+                                        <div class="hidden">
+                                            <span>Remits</span>
+                                                    <a href="https://remits.zirmed.com/Dashboard?appid=13">Dashboard</a>
+                                                    <a href="https://remits.zirmed.com/PayerDownloads_NoDX.aspx?appid=13">Downloads</a>
+                                                    <a href="https://remits.zirmed.com/Payments?appid=13">Payments</a>
+                                                    <a href="https://remits.zirmed.com/Remittances_NoDX.aspx?appid=13">Remits</a>
+                                                    <a href="https://remits.zirmed.com/Reports/Dashboard?appid=13">Reports</a>
+                                                    <a href="https://remits.zirmed.com/Exports/Index?appid=13">Exports</a>
+                                                    <a href="https://remits.zirmed.com/Uploads_NoDX.aspx?appid=13">Uploads</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/payersearch.aspx?appid=13">Payers</a>
+                                                    <a href="https://remits.zirmed.com/Settings/Notification?appid=13">Settings</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Denial Management</a>
+                                        <div class="hidden">
+                                            <span>Denial Management</span>
+                                                    <a href="https://denials.zirmed.com/?appid=41">Dashboard</a>
+                                                    <a href="https://denials.zirmed.com/Denials?appid=41">Denial Listing</a>
+                                                    <a href="https://denials.zirmed.com/Appeals/Listing?appid=41">Appeals</a>
+                                                    <a href="https://denials.zirmed.com/Reports/PayerSummary?appid=41">Reports</a>
+                                                    <a href="https://denials.zirmed.com/Exports?appid=41">Exports</a>
+                                                    <a href="https://denials.zirmed.com/DataSync/BatchClose?appid=41">Data Sync</a>
+                                                    <a href="https://denials.zirmed.com/Settings/Workgroups?appid=41">Settings</a>
+
+                                        </div>
+                                    </li>
+
+                        </ul><div class='link-panel hidden'></div>
+                    </div>
+                </div>
+                <div>
+                    <a class="" href="https://general.zirmed.com/Accounts/AccountSummaryCheck.aspx?ScreenVersion=AccountSummary">Account</a>
+                </div>
+
+    <div class='clear-fix'></div>
+</div>
+    </div>
+</div>
+
+
+<div id="waystarSubnav">
+    <div id="waystarSubnavHeader">
+
+        <h1>
+            Work Centers
+        </h1>
+                <a id="headerSearchLink" class="header-right-link" href="/DenialSearch" target=&quot;_blank&quot;>
+                    <i class="icon-search"></i>
+                    Denial Search
+                </a>
+                <div class='clear-fix'></div>
+
+    </div>
+    <ul>
+                    <li class="">
+                        <a href="https://claims.zirmed.com/WorkCenter/MyWork.aspx?appid=0">Rejected Claims</a>
+                    </li>
+                    <li class="selected">
+                        <a href="https://denials.zirmed.com/Workcenter?appid=41">Denied Claims</a>
+                    </li>
+
+    </ul>
+        <div class="subnav-line"></div>
+</div>
+
+
+    <script>
+var _gaq = _gaq || [];
+_gaq.push(['_setCustomVar', '1', 'App', '']);
+    </script>
+
+    
+
+
+
+
+<div class="controlContainer">
+    <div>
+        <a id="returnToLink" href="/Workcenter?appId=41&tabAppId=40&jumpToPage=true">&lt; Return to Worklist</a>
+        <a href="#" id="learnMore" style="padding-right:199px;padding-top:2px;float:right;color:#631d76;"><span id="helpQuestionMark" style="margin-right:5px;color:#fff;background-color:#631d76;padding:2px 5px;border-radius:25px;font-weight:bold;">?</span>Learn more about this page</a>
+    </div>
+    <h2 id="reviewDenialTitle">Review Denial</h2>
+        <div class="actionButtonContainer">
+                <button id="resubmitBtn" class="smallDefaultButton" data-claimid="10832871351" data-claimtype="Professional" data-claimscustid="296638" data-custid="296638">Resubmit</button>
+
+            <button class="smallDefaultButton stageInAppeal">Appeal</button>
+                <button id="reassignBtn" class="smallDefaultButton" data-workgroupID="41435">Reassign</button>
+            <button id="activityModalBtn" class="smallDefaultButton" data-stage="Updated" data-instanceid="4820714323" data-custid="296638">Take Action / Notes</button>
+            <button id="closeDenialBtn" class="smallDefaultButton">Close Denial</button>
+        </div>
+    <div>
+        <div id="sidebarContainer">
+            <h4 id="sidebarOverview">overview</h4>
+
+<table id="sidebarTable">
+    <tbody>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    Patient
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    Cuadrado, Aaron justin
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    DOB
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    8/10/2001
+                </div>
+            </td>
+        </tr>
+        
+        
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    Service Date
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    12/19/25
+                </div>
+            </td>
+        </tr>
+        
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    Denied Amount
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    $276.00
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    Denial Age
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    189 Days
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    Account
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    Physical Therapy of the City P.C.
+                    <span></span>
+                    (296638)
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLastLabel">
+                    Claim Control #
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+<a class='historyViewLink' data-claiminstance = 11147351388 data-denialid = 3652667586 data-claimcustid='296638'>PV410000241</a>                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    Denial ID
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    3652667586
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLabel">
+                    POP Score
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    2
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+            <hr>
+            <h4>Coding</h4>
+
+<table id="sidebarTable">
+    <tbody>
+        <tr>
+            <td class="labels">
+                <div class="sidebarLastLabel">
+                    Proc. Codes
+                </div>
+            </td>
+            <td class="data">
+                <div class="sidebarDataLabel">
+                    29540, 97112, 97530, 97110, 97124, 97014, 97010
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+            <hr>
+            <h4>Insurance</h4>
+    <table id="sidebarInsuranceTable">
+        <tbody>
+            <tr class="insuranceTable">
+                <td class="sidebarInsuranceLabel">
+                    <div class="insuranceNameLabel" title="Group Health Insurance (GHI) of NY">
+Group Health Insurance (GHI) of NY                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table id="sidebarTable">
+        <tbody>
+            <tr>
+                <td class="labels">
+                    <div class="sidebarLabel">
+                        Member ID
+                    </div>
+                </td>
+                <td class="data">
+                    K9057886603
+                </td>
+            </tr>
+            <tr>
+                <td class="labels">
+                    <div class="sidebarLabel">
+                        Group #
+                    </div>
+                </td>
+                <td class="data">
+                    N/A
+                </td>
+            </tr>
+            <tr>
+                <td class="labels">
+                    <div class="sidebarLastLabel">
+                        Phone
+                    </div>
+                </td>
+                <td class="data">
+                    <div class="sidebarDataLabel">
+                        (800) 447-8255
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+        </div>
+        <div class="tabsContainer">
+            <a href="#" id="overviewTab" data-id="#overview" class="reviewTabs tabs selectedTab">
+    <span>Denial Overview</span>
+</a>
+<a href="#" id="activityTab" data-id="#activity" class="reviewTabs tabs">
+    <span>Activity History</span>
+</a>
+<a href="#" id="relatedTab" data-id="#related" class="reviewTabs tabs">
+    <span>Related Denials</span>
+</a>
+
+
+        </div>
+        <div class="tabDataContainer">
+            <div id="overview">
+                
+<input id="currentReminder" name="currentReminder" type="hidden" value="" />
+
+<h3 id="workflowSection">Workflow</h3>
+<div class="topTables">
+    <ul class="overviewLeftTable">
+        <li class="overviewLabels liClass">Root Cause</li>
+        <li class="overviewData liClass">
+            
+
+<input id="rootcauseNoteHdn" name="rootcauseNoteHdn" type="hidden" value="" />
+<input id="rootcauseIDHdn" name="rootcauseIDHdn" type="hidden" value="0" />
+
+<div id="editRootCause" class="overviewAssignRootCause" style="display:none;">
+    <select id="rootCauseSelect">
+        <option disabled selected value="0">Select a root cause</option>
+            <optgroup label="Authorization Issue">
+                        <option value="398496">Auth (Invalid denial) </option>
+                        <option value="399083">auth absent (case got denied)</option>
+                        <option value="406694">Auth delay (medical doctor)</option>
+                        <option value="399418">Auth denied (provider changed)</option>
+                        <option value="398497">Authorization ( Auth Delay )</option>
+                        <option value="398500">Authorization ( Consent / Referral )</option>
+                        <option value="398499">Authorization ( CPTs update )</option>
+                        <option value="398495">Authorization ( Delay Documentation ) </option>
+                        <option value="398503">Authorization ( insurance update )</option>
+                        <option value="400753">Authorization (submission error)</option>
+            </optgroup>
+            <optgroup label="Benefits issue">
+                        <option value="398494">Chart not updated </option>
+                        <option value="398506">COB ( Patient Action required )</option>
+                        <option value="398492">Patient withheld information </option>
+                        <option value="398493">Submission error ( incorrect payer )</option>
+            </optgroup>
+            <optgroup label="Billing">
+                        <option value="398221">Duplicate Claim</option>
+                        <option value="406619">Pending</option>
+                        <option value="406657">Referral Absent ( medicare )</option>
+                        <option value="398222">Refund</option>
+                        <option value="402018">Submission Error (wrong patient info)</option>
+                        <option value="398220">Timely Filing</option>
+            </optgroup>
+            <optgroup label="Coding">
+                        <option value="398217">Incorrect Diagnosis</option>
+                        <option value="398216">Incorrect/Missing Modifier</option>
+                        <option value="398219">Insurance Fee Schedule Mismatch</option>
+                        <option value="398218">Invalid Prodedure</option>
+            </optgroup>
+            <optgroup label="Credentialing ">
+                        <option value="399419">Provider not Contracted</option>
+            </optgroup>
+            <optgroup label="Documentation">
+                        <option value="398224">Pending Medical Records</option>
+            </optgroup>
+            <optgroup label="Medically Necessary">
+                        <option value="398212">Not Medically Necessary</option>
+                        <option value="398213">Service Not Covered</option>
+            </optgroup>
+            <optgroup label="Payer">
+                        <option value="400791">Coverage terminated </option>
+                        <option value="398491">Subscriber Not Found</option>
+            </optgroup>
+            <optgroup label="Registration">
+                        <option value="398209">Benefits Exhausted</option>
+                        <option value="398206">Out of Network</option>
+            </optgroup>
+    </select>
+        <div class="rootCauseNote">
+            <a class="editRootCauseNote">+ Additional Notes</a>
+        </div>
+        <div class="rootCauseNoteText" style="display:none;">
+            <input name="hdnNotesId" id="hdnNotesId" type="hidden" value="0" />
+            <textarea rows="10" cols="25" id="rootCauseNoteText" class="NewNote" name="rootCauseNoteText"></textarea>
+        </div>
+    <div>
+        <button id="editRootCauseBtn" data-custid="296638" class="smallPrimaryButton">Save Root Cause</button>
+        <span>
+            <a id="rootCauseCancel">Cancel</a>
+        </span>
+    </div>
+</div>
+    <a class="overviewRootCauseLink displayRootCause">Edit Root Cause</a>
+    <div id="rootCauseAssigned" style="display:none;">
+        <a id="displayRootCause" class="displayRootCause" style="float:right;">Edit</a>
+        <div id="rootCauseName"></div>
+        <div class="icon-info-circle hoverToolTip rootCauseToolTip">
+            <div class='toolTipContainer'>
+                <div id="rootCauseDescription" class='toolTipInner shadow'>
+                </div>
+                <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+            </div>
+        </div>
+        <div class="activityHistoryNoteFooterContainer rootCauseNoteContainer" style="display:none;">
+            <div class="activityHistoryNoteFooterIcon">
+                <img src="/Content/Images/notes.png" />
+            </div>
+            <span class="noteFooter">
+                <span id="upperFooterNote"></span>
+                <span id="lowerFooterNote"></span>
+            </span>
+        </div>
+    </div>
+
+
+
+
+
+        </li>
+        <li class="overviewLabels liClass">Category</li>
+        <li class="overviewData liClass">Coding</li>
+        <li class="overviewLabels liClass">Tags</li>
+        <li id="overviewDenialTags" class="overviewData tagSizing liClass">
+            
+
+    <div class="adjCode hoverToolTip reviewAdminTags">
+            CARC - 151
+        <div class="toolTipContainer">
+            <div class="toolTipInner shadow">
+                Payment adjusted because the payer deems the information submitted does not support this many/frequency of services.
+            </div>
+            <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+        </div>
+    </div>
+    <div class="adjCode hoverToolTip reviewAdminTags">
+            CARC - 242
+        <div class="toolTipContainer">
+            <div class="toolTipInner shadow">
+                Services not provided by network/primary care providers.
+            </div>
+            <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+        </div>
+    </div>
+    <div class="adjCode hoverToolTip reviewAdminTags">
+            CARC - 45
+        <div class="toolTipContainer">
+            <div class="toolTipInner shadow">
+                Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.
+            </div>
+            <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+        </div>
+    </div>
+    <div class="adjCode hoverToolTip reviewAdminTags">
+            CARC - 94
+        <div class="toolTipContainer">
+            <div class="toolTipInner shadow">
+                Processed in Excess of charges.
+            </div>
+            <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+        </div>
+    </div>
+    <div class="adjCode hoverToolTip reviewAdminTags">
+            CARC - 97
+        <div class="toolTipContainer">
+            <div class="toolTipInner shadow">
+                The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.
+            </div>
+            <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+        </div>
+    </div>
+<div id="tagModal" class="modalDiv ui-dialog-content ui-widget-content"></div>
+        </li>
+
+    </ul>
+    <ul class="overviewRightTable">
+        <li id="reminderLabel" class="overviewLabels canError">Reminder Date</li>
+        <li class="overviewData">
+
+            <div id="displayReminder" style=display:none;>
+                <span class="icon-flag"></span>
+                <span id="reminderDateData"></span>
+                    <span><a class="displayReminder editReminderLink">  Edit</a></span>
+            </div>
+                <div id="displayReminderNoDate" class="reminderDateLink" >
+                    <span class="icon-flag"></span>
+
+                    <a id="reminderNoDateLink" class="displayReminder"> Set Reminder Date</a>
+                    <span><a class="displayReminder editReminderLink"></a></span>
+                </div>
+            <div id="editReminder" style="display:none;">
+                <div class="datePicker">
+                    <input id="editReminderText" class="editReminderTextbox" type="text" value="" data-maxdate="01/01/2100" data-mindate="01/01/1900" data-hinttext="mm/dd/yyyy">
+                </div>
+                <div id="reminderError" class="errorText" style="display:none;"></div>
+                <br />
+                <button id="editReminderBtn" class="smallPrimaryButton">Assign Reminder Date</button>
+                <span>
+                    <a id="reminderDateCancel">Cancel</a>
+                </span>
+            </div>
+        </li>
+        <li class="overviewLabels">Workgroup</li>
+        <li class="overviewData">Catch-All</li>
+        <li class="overviewLabels">Current Stage</li>
+        <li class="overviewData">
+Updated        </li>
+
+        <li class="overviewLabels">Days in Stage</li>
+        <li class="overviewData">62 Days</li>
+
+    </ul>
+</div>
+<h3 id="overviewSummaryTitle">
+    Summary
+    
+</h3>
+<table class="overviewSummaryTable">
+    <thead>
+        <tr class="summaryHeaders">
+            <th class="fistHeader">Value</th>
+            <th>Billed Amount</th>
+            <th>Allowed Amount</th>
+            <th>Patient Resp.</th>
+            <th>Workable Adjust.</th>
+            <th>Paid</th>
+            <th class="lastHeaders">Additional Payment</th>
+            <th class="lastHeaders">Denied Amount</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr class="summaryData">
+            <td class="summaryLabels">Original</td>
+            <td>$395.00</td>
+            <td>$346.00</td>
+            <td>$0.00</td>
+            <td>$44.00</td>
+            <td>$62.00</td>
+            <td class="addPaymentCol" rowspan="2">+ $8.00</td>
+            <td class="deniedAmountCol" rowspan="2">$276.00</td>
+        </tr>
+        <tr class="summaryData">
+            <td class="summaryLabels">Current</td>
+                    <td>$395.00</td>
+                    <td>$346.00</td>
+                    <td>$0.00</td>
+                    <td>$0.00</td>
+                    <td>$70.00</td>
+
+        </tr>
+    </tbody>
+</table>
+<div id="remitsContainer">
+            <h2 id="overviewRemits">1 Remit with Active Adjustments</h2>
+                <a class='historyRemitLink' data-remitidkey='1216418012.68' data-remitcustid='296638' data-denialid='3652667586'>Remit 25D564084001</a>
+received from Group Health Insurance (GHI) of NY, on 5/7/2026
+
+<div data-instanceid="4820714323" class="remitOverviewTableContainer overviewTable4820714323" style="display: ;">
+    <table class="remitTable">
+        <thead>
+            <tr>
+                <th class="numberColumn">#</th>
+                <th>Proc Code</th>
+                <th class="modColumn">Mod</th>
+                <th class="remarkCol">Line-level Remarks</th>
+                <th class="rightAlignCol">Billed Amount</th>
+                <th class="rightAlignCol">Allowed Amount</th>
+                <th class="rightAlignCol">Paid</th>
+                <th>Adjustment Codes</th>
+                <th>Adjustment Amount</th>
+                <th>Adjustment Status </th>
+            </tr>
+        </thead>
+        <tbody>
+                                        <tr class="remitLeftTableStart remitRowBlocked4820714323 remitRowBlocked">
+                                <td class="numberColumn">1</td>
+                                <td>29540</td>
+                                <td class="modColumn">GP,LT</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">$85.00</td>
+                                <td class="rightAlignCol">$36.00</td>
+                                <td class="rightAlignCol">$36.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-45
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-45: </span>
+            Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$49.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 45</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart remitRowBlocked4820714323 remitRowBlocked">
+                                <td class="numberColumn">2</td>
+                                <td>97112</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$70.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart remitRowBlocked4820714323 remitRowBlocked">
+                                <td class="numberColumn">3</td>
+                                <td>97530</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$70.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart remitRowBlocked4820714323 remitRowBlocked">
+                                <td class="numberColumn">4</td>
+                                <td>97110</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$60.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart remitRowBlocked4820714323 remitRowBlocked">
+                                <td class="numberColumn">5</td>
+                                <td>97124</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$60.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">6</td>
+                                <td>97014</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">$30.00</td>
+                                <td class="rightAlignCol">$30.00</td>
+                                <td class="rightAlignCol">$34.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    PI-94
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">PI-94: </span>
+            Processed in Excess of charges.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($4.00)</td>
+                                <td class="remitRightTableEnd">
+                                                                        <div>
+                                        Active
+                                    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart remitRowBlocked4820714323 remitRowBlocked">
+                                <td class="numberColumn">7</td>
+                                <td>97010</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$20.00</td>
+                                <td class="rightAlignCol">$20.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$20.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                    </tbody>
+    </table>
+</div>                <hr class="line4820714323" />
+                <div class="overviewRemitLineLink">
+                    <a href="#" class="overviewRemitTables" data-instanceid="4820714323" data-lines="7">Show All 7 Lines</a>
+                </div>
+            <h2 class="allRemits">
+            All Remits
+            <span style="float:right;">
+                <a class="showAllOverviewRemits">Expand All Remits</a>
+            </span>
+        </h2>
+                <a class='historyRemitLink' data-remitidkey='1216418012.67' data-remitcustid='296638' data-denialid='3652667586'>Remit 25D564084000</a>
+received from Group Health Insurance (GHI) of NY, on 5/7/2026
+
+<div data-instanceid="4820714324" class="remitOverviewTableContainer inactiveInstance4820714324" style="display: none;">
+    <table class="remitTable">
+        <thead>
+            <tr>
+                <th class="numberColumn">#</th>
+                <th>Proc Code</th>
+                <th class="modColumn">Mod</th>
+                <th class="remarkCol">Line-level Remarks</th>
+                <th class="rightAlignCol">Billed Amount</th>
+                <th class="rightAlignCol">Allowed Amount</th>
+                <th class="rightAlignCol">Paid</th>
+                <th>Adjustment Codes</th>
+                <th>Adjustment Amount</th>
+                <th>Adjustment Status </th>
+            </tr>
+        </thead>
+        <tbody>
+                                        <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">1</td>
+                                <td>29540</td>
+                                <td class="modColumn">GP,LT</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">($85.00)</td>
+                                <td class="rightAlignCol">($36.00)</td>
+                                <td class="rightAlignCol">($36.00)</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-45
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-45: </span>
+            Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($49.00)</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 45</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">2</td>
+                                <td>97112</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">($70.00)</td>
+                                <td class="rightAlignCol">($70.00)</td>
+                                <td class="rightAlignCol">($26.00)</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    PR-242
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">PR-242: </span>
+            Services not provided by network/primary care providers.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($44.00)</td>
+                                <td class="remitRightTableEnd">
+                                                                        <div>
+                                        Inactive
+                                    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">3</td>
+                                <td>97530</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">($70.00)</td>
+                                <td class="rightAlignCol">($70.00)</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($70.00)</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">4</td>
+                                <td>97110</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">($60.00)</td>
+                                <td class="rightAlignCol">($60.00)</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($60.00)</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">5</td>
+                                <td>97124</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">($60.00)</td>
+                                <td class="rightAlignCol">($60.00)</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($60.00)</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">6</td>
+                                <td>97014</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    N362
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">N362: </span>
+            The number of Days or Units of Service exceeds our acceptable maximum.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">($30.00)</td>
+                                <td class="rightAlignCol">($30.00)</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    PI-151
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">PI-151: </span>
+            Payment adjusted because the payer deems the information submitted does not support this many/frequency of services.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($30.00)</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 151</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">7</td>
+                                <td>97010</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">($20.00)</td>
+                                <td class="rightAlignCol">($20.00)</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($20.00)</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                    </tbody>
+    </table>
+</div>                <hr class="line4820714324" />
+                <div class="overviewRemitLineLink">
+                    <a href="#" class="overviewInactiveRemitTables inactiveTableShow4820714324" data-instanceid="4820714324">Show All 7 Lines</a>
+                    <a href="#" class="overviewInactiveRemitTables inactiveTableHide4820714324" data-instanceid="4820714324" style="display:none;">Collapse Lines</a>
+                </div>
+                <a class='historyRemitLink' data-remitidkey='1216418012.68' data-remitcustid='296638' data-denialid='3652667586'>Remit 25D564084001</a>
+received from Group Health Insurance (GHI) of NY, on 5/7/2026
+
+<div data-instanceid="4820714323" class="remitOverviewTableContainer inactiveInstance4820714323" style="display: none;">
+    <table class="remitTable">
+        <thead>
+            <tr>
+                <th class="numberColumn">#</th>
+                <th>Proc Code</th>
+                <th class="modColumn">Mod</th>
+                <th class="remarkCol">Line-level Remarks</th>
+                <th class="rightAlignCol">Billed Amount</th>
+                <th class="rightAlignCol">Allowed Amount</th>
+                <th class="rightAlignCol">Paid</th>
+                <th>Adjustment Codes</th>
+                <th>Adjustment Amount</th>
+                <th>Adjustment Status </th>
+            </tr>
+        </thead>
+        <tbody>
+                                        <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">1</td>
+                                <td>29540</td>
+                                <td class="modColumn">GP,LT</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">$85.00</td>
+                                <td class="rightAlignCol">$36.00</td>
+                                <td class="rightAlignCol">$36.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-45
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-45: </span>
+            Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$49.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 45</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">2</td>
+                                <td>97112</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$70.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">3</td>
+                                <td>97530</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$70.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">4</td>
+                                <td>97110</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$60.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">5</td>
+                                <td>97124</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$60.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">6</td>
+                                <td>97014</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">$30.00</td>
+                                <td class="rightAlignCol">$30.00</td>
+                                <td class="rightAlignCol">$34.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    PI-94
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">PI-94: </span>
+            Processed in Excess of charges.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">($4.00)</td>
+                                <td class="remitRightTableEnd">
+                                                                        <div>
+                                        Active
+                                    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">7</td>
+                                <td>97010</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$20.00</td>
+                                <td class="rightAlignCol">$20.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$20.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+5/7/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                    </tbody>
+    </table>
+</div>                <hr class="line4820714323" />
+                <div class="overviewRemitLineLink">
+                    <a href="#" class="overviewInactiveRemitTables inactiveTableShow4820714323" data-instanceid="4820714323">Show All 7 Lines</a>
+                    <a href="#" class="overviewInactiveRemitTables inactiveTableHide4820714323" data-instanceid="4820714323" style="display:none;">Collapse Lines</a>
+                </div>
+                <a class='historyRemitLink' data-remitidkey='1137559838.51' data-remitcustid='296638' data-denialid='3652667586'>Remit 25D564084000</a>
+received from Group Health Insurance (GHI) of NY, on 1/1/2026
+
+<div data-instanceid="4549850977" class="remitOverviewTableContainer inactiveInstance4549850977" style="display: none;">
+    <table class="remitTable">
+        <thead>
+            <tr>
+                <th class="numberColumn">#</th>
+                <th>Proc Code</th>
+                <th class="modColumn">Mod</th>
+                <th class="remarkCol">Line-level Remarks</th>
+                <th class="rightAlignCol">Billed Amount</th>
+                <th class="rightAlignCol">Allowed Amount</th>
+                <th class="rightAlignCol">Paid</th>
+                <th>Adjustment Codes</th>
+                <th>Adjustment Amount</th>
+                <th>Adjustment Status </th>
+            </tr>
+        </thead>
+        <tbody>
+                                        <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">1</td>
+                                <td>29540</td>
+                                <td class="modColumn">GP,LT</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">$85.00</td>
+                                <td class="rightAlignCol">$36.00</td>
+                                <td class="rightAlignCol">$36.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-45
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-45: </span>
+            Charge exceeds fee schedule/maximum allowable or contracted/legislated fee arrangement.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$49.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+2/12/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 45</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">2</td>
+                                <td>97112</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+                                </td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$26.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    PR-242
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">PR-242: </span>
+            Services not provided by network/primary care providers.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$44.00</td>
+                                <td class="remitRightTableEnd">
+                                                                        <div>
+                                        Inactive
+                                    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">3</td>
+                                <td>97530</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$70.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$70.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+2/12/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">4</td>
+                                <td>97110</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$60.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+2/12/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">5</td>
+                                <td>97124</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$60.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$60.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+2/12/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">6</td>
+                                <td>97014</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    N362
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">N362: </span>
+            The number of Days or Units of Service exceeds our acceptable maximum.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$30.00</td>
+                                <td class="rightAlignCol">$30.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    PI-151
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">PI-151: </span>
+            Payment adjusted because the payer deems the information submitted does not support this many/frequency of services.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$30.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+Paid
+                    </span><br />
+2/19/2026<br />
+                                                        <br />
+                                <span class="label">Manual:</span><br />
+1687487<br />                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                            <tr class="remitLeftTableStart ">
+                                <td class="numberColumn">7</td>
+                                <td>97010</td>
+                                <td class="modColumn">GP</td>
+                                <td class="remarkCol">
+ <div><div class="adjCode hoverToolTip">
+    M15
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">M15: </span>
+            Separately billed services/tests have been bundled as they are considered components of the same procedure. Separate payment is not allowed.
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+</div>                                 </td>
+                                <td class="rightAlignCol">$20.00</td>
+                                <td class="rightAlignCol">$20.00</td>
+                                <td class="rightAlignCol">$0.00</td>
+                                <td class="remitRightTableStart"><div class="adjCode hoverToolTip">
+    CO-97
+    <div class='toolTipContainer'>
+        <div class='toolTipInner shadow'>
+            <span class="label">CO-97: </span>
+            The benefit for this service is included in the payment/allowance for another service/procedure that has already been adjudicated. Note: Refer to the 835 Healthcare Policy Identification Segment (loop 2110 Service Payment Information REF), if present.           
+        </div>
+        <img class='arrowImg' src='/Content/images/hint-drop-arrow.png'>
+    </div>
+</div>
+ </td>
+                                <td class="remitRightTable">$20.00</td>
+                                <td class="remitRightTableEnd">
+                                        <div class="adjCode hoverToolTip">
+        Closed
+        <div class='toolTipContainer'>
+            <div class='toolTipInner shadow'>
+                    <span class="label">
+WriteOff
+                    </span><br />
+2/12/2026<br />
+                                                        <br />
+                                <span class="label">Automatic Rule:</span><br />
+                                <span>Code: 97</span><br />
+                    <span>Payer: Group Health Insurance (GHI) of NY</span><br />
+                            <br />
+            </div>
+        </div>
+    </div>
+
+                                </td>
+                            </tr>
+                    </tbody>
+    </table>
+</div>                <hr class="line4549850977" />
+                <div class="overviewRemitLineLink">
+                    <a href="#" class="overviewInactiveRemitTables inactiveTableShow4549850977" data-instanceid="4549850977">Show All 7 Lines</a>
+                    <a href="#" class="overviewInactiveRemitTables inactiveTableHide4549850977" data-instanceid="4549850977" style="display:none;">Collapse Lines</a>
+                </div>
+</div>
+            </div>
+            <div id="activity" style="display:none;">
+                <input id="showRemitsHdn" name="showRemitsHdn" type="hidden" value="False" /><input id="oldToNewHdn" name="oldToNewHdn" type="hidden" value="False" /><input id="activityCount" name="activityCount" type="hidden" value="0" />
+
+
+<h3>Activity History</h3>
+
+<select class="activityDropDown">
+    <option value="new" selected>Newest on Top</option>
+    <option value="old" >Oldest on Top</option>
+</select>
+
+<a class="showAllActivityRemits">Expand All Remits</a>
+
+<div id="activityList" class="activityHistoryData">
+    <div id="activityToday">
+    </div>
+    <div id="activityThisWeek">
+    </div>
+    <div id="activityOlder">
+    </div>
+</div>
+            </div>
+            <div id="related" style="display:none;">
+                
+<input id="mergeDenialIdOne" name="mergeDenialIdOne" type="hidden" value="3652667586" />
+
+
+<div id="mergeDenialInfoBox" >
+    <span class="title">Merging Denials</span>
+    <div>
+        Denials marked with the <strong>'Possible Merge'</strong> label match the current denial on some but not all key data fields.  
+        Key data fields include service start date, claim number, billed amount, patient name and date of birth.  
+        We recommend carefully reviewing these denials and merging any that should be combined with this denial.
+    </div>
+</div>
+
+
+<div class="stage">
+    <div class="searchBoxTitle">SEARCH</div>
+    <table class="searchTable">
+        <tr>
+            <td class="reportHeader">Denial Date</td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="spacer"></td>
+            <td class="reportHeader">Denial Status</td>
+            <td rowspan="2" class="stageSearch">
+                <button id="stageSearchBtn" class="mediumDefaultButton">Search</button>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <select id="reportingperiodInput">
+                    <option value="Past90Days">Past 90 Days</option>
+                    <option value="PastTwoYears">Past Two Years</option>
+                    <option value="Custom">Custom</option>
+                </select>
+            </td>
+            <td>
+                <div class="datePicker">
+                    <input id="StartDate" type="text" value="" data-maxdate="01/01/2100" data-MinDate = 1/1/0001 12:00:00 AM data-hinttext="mm/dd/yyyy">
+                </div>
+            </td>
+            <td>
+                To &nbsp;
+            </td>
+            <td>
+                <div class="datePicker">
+                    <input id="EndDate" type="text" value="" data-maxdate="01/01/2100" data-MinDate = 1/1/0001 12:00:00 AM data-hinttext="mm/dd/yyyy">
+                </div>
+            </td>
+            <td class="spacer"></td>
+            <td>
+                <select id="stageDropDown">
+                    <option value="all">All</option>
+                    <option value="active">Active</option>
+                    <option value="closed">Closed Only</option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <div class="clearfix"></div>
+</div>
+
+<div class="title">
+    <span id="relatedDenialsTitleCount"></span> Related Denials
+</div>
+
+<input id="pageIndex" name="PageIndex" type="hidden" value="1" />
+<input id="hdnTakeSize" name="TakeSize" type="hidden" value="10" />
+
+<div id="relatedDenialTableContainer" class="relatedDenialTableContainer">
+</div>
+
+<div class="webPagerDiv">
+    <table>
+        <thead>
+            <tr>
+                <td>
+                    <div class="results"></div>
+                </td>
+                <td class="prev">
+                    <button id="btnFirst" class="smallDefaultButton webPagerLeftLink disabled">
+                        <img class="pagerFirstImage sprite-arrowleft-firstpage" alt="first" src="/Content/images/transparent.gif">
+                    </button>
+                    <button id="btnPrev" class="smallDefaultButton webPagerRightLink disabled">
+                        <img class="pagerPreviousImage" alt="prev" src="/Content/images/transparent.gif">
+                    </button>
+                </td>
+                <td class="pageIndex">
+                    <span>Page</span>
+                    <input id="pageCounter" class="pageIndex" type="text" maxlength="3" value="1">
+                    <span> of </span>
+                    <span id="lblTotalpages">0</span>
+                </td>
+                <td class="next">
+                    <button id="btnNext" class="smallDefaultButton webPagerLeftLink ">
+                        <img class="pagerNextImage" alt="next" src="/Content/images/transparent.gif">
+                    </button>
+                    <button id="btnLast" class="smallDefaultButton webPagerRightLink ">
+                        <img class="pagerLastImage sprite-arrowright-lastpage" alt="last" src="/Content/images/transparent.gif">
+                    </button>
+                </td>
+                <td class="pageSize">
+                    <span>Per Page:</span>
+                    <select id="TakeSize" name="TakeSize">
+                        <option selected="selected" value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </td>
+            </tr>
+        </thead>
+    </table>
+</div>
+
+
+<div id="mergeClaimNumberSearch">
+    Don't see a denial you need to merge in this list? Search for a denial to merge not listed here<br />
+    <input type="text" id="claimNumberSearch" data-hinttext="Type a claim number" /> <button id="searchRelatedDenialBtn" class="smallDefaultButton">Search</button>
+</div>
+
+
+<div class="gridActionMenu"> 
+    <div class="innerGridActionDiv">
+        <a id="gridMenuReview" class="first"> Review </a>
+        <a id="gridMenuMergeDenial"> Merge </a>
+        <a id="gridMenuView"> View Claim </a>
+    </div>
+</div>
+
+
+<div class="clearfix"></div>
+
+<div id="mergeConfirmModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <div class="dialogMessage">
+        You are about to merge two different denials into one denial.<br />Would you like to continue?
+    </div>
+    <div class="clearfix"></div>
+    <div class="modalBtnContainer">
+        <button class="mediumDefaultButton" id="btnContinueMerge">Continue Merge</button>
+        <a id="cancelMerge" class="Link" href="#">Cancel</a>
+    </div>
+</div>
+
+<div id="mergeSuccessModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <div class="dialogMessage">
+        Your denials have been successfully merged.
+    </div>
+    <div class="clearfix"></div>
+</div>
+
+<div id="ReportModalWindow" class="modalDiv">
+    <iframe src="about:blank"></iframe>
+</div>
+
+            </div>
+        </div>
+        <input type="hidden" id="tourName" value="ReviewTour" />
+<input type="hidden" id="showTour" />
+
+<ol class="tour-container" style="display:none;" id="ReviewTour">
+    <li data-button="Next" data-options="modal:true;">
+        <h4>Welcome to the new Review Screen</h4>
+        <p>Welcome to the new Review Screen! We’ve redesigned the screen to allow users to clearly see all relevant information related to the denial in a more friendly format. </p>
+        <p>The key changes include displaying more relevant information pertaining to the denial, making it easier to see which remits have active adjustments, and creating a customizable timeline of events in the Activity History tab.</p>
+    </li>
+    <li data-id="sidebarOverview" data-button="Next" data-options="tipLocation:top">
+        <h4>Details & Insurance</h4>
+        <p>The left hand panel highlights patient and insurance details pertaining to the denial. This includes new data elements surrounding the Denial Age, Child Account, and patient insurance details like Member ID and Group Number.</p>
+    </li>
+    <li data-id="workflowSection" data-button="Next" data-options="tipLocation:top">
+        <h4>Workflow</h4>
+        <p>The center panel highlights a new Workflow section, which displays the Category, Current Workflow Stage, Days in Stage and Workgroup, so users can easily see where this denial belongs in My Work. </p>
+    </li>
+    <li data-id="overviewSummaryTitle" data-button="Next" data-options="tipLocation:top">
+        <h4>Summary</h4>
+        <p>The center panel includes the familiar Summary section, with a minor design tweak to better highlight the Current Denial Amount and Additional Payment collected on the denial.</p>
+    </li>
+    <li data-id="overviewRemits" data-button="Next" data-options="tipLocation:top">
+        <h4>Remits</h4>
+        <p>
+            Finally, the center panel focuses the user’s attention on the Remits that contain active adjustments that need to be worked.           
+            By default, closed remits and closed procedure lines will be collapsed, but can be expanded if needed.            
+            The table layout for the Remit is also new, to better align with how the data correlates on the actual Explanation of Benefits.
+        </p>
+    </li>
+    <li data-id="activityTab" data-button="Okay">
+        <h4>Activity History</h4>
+        <p>This new tab, which replaces the previous ‘Breakdown’ section, allows the user to see a quick timeline view of all Claim, Remit and user activity performed on the denial over time. </p>
+        <p>The user can dictate whether they want to see the activity chronologically from Oldest to Newest or vice versa.</p>
+    </li>
+    <li data-id="relatedTab" data-button="Okay">
+        <h4>Related Denials</h4>
+        <p>This new tab, which replaces the previous Merge Denials option, allows the user to see all denials for the same patient in a centralized location.</p>
+        <p>Denials marked with the 'Possible Merge' label match the current denial on some but not all key data fields.  With Related Denials, users can view all denials for the patient and work them together.</p>
+    </li>
+
+    
+</ol>
+        <div id="appealPayersModal" class="modalDiv modalButtonCenter"></div>
+        <div id="reassignModal" class="modalDiv ui-dialog-content ui-widget-content">  
+    <input name="hdnReassignWorkgroupDenialId" id="hdnReassignWorkgroupDenialId" type="hidden">
+
+    <div class="lFloat subLabelRight dropDownLabel">
+        Workgroup
+    </div>
+    <div class="lFloat selectContainer">
+        <select id="ddl_reassignWorkGroup" name="DomainWorkGroups"><option value="">- Select Workgroup -</option>
+<option value="41436">Mohamed Hussain&#39;s Denial Group</option>
+<option value="41437">Sherif&#39;s Denial Group</option>
+<option value="41443">Bassem&#39;s Denial Group</option>
+<option value="41444">Mohamed Hany Denial Group</option>
+<option value="41445">Abdelrahman&#39;s Denial Group</option>
+<option value="41446">Bassil&#39;s Denial Group</option>
+<option value="41447">Rouvan&#39;s Denial Group</option>
+<option value="41451">Salma&#39;s Patients collection Group</option>
+<option value="41477">Historical Denials</option>
+<option value="41676">Ganna&#39;s Denial Group</option>
+<option value="42066">Rashwan&#39;s Denial Group</option>
+<option value="42069">Boda&#39;s Denial Group</option>
+<option value="42384">NYCE</option>
+<option value="42427">BCBS</option>
+<option value="42444">Abdelmola&#39; Workgroup</option>
+<option value="41435">Catch-All</option>
+</select>
+    </div>
+    <div class="clearfix"></div>
+    <div class="lFloat subLabelRight">
+        Notes
+    </div>
+    <div class="lFloat">
+        <textarea rows="2" cols="20" id="notes_txtReassignNewNote" class="NewNote hintText resizable" data-hinttext="Begin typing your note here..."></textarea>
+    </div>
+    <div class="clearfix"></div>
+
+    <div class="modalBtnContainer">
+        <button class="mediumDefaultButton" id="btnReassignWorkgroup" >Reassign</button>
+        <a id="cancelReassign" class="Link" href="#">Cancel</a>
+    </div>
+</div>
+        
+
+<input id="ReminderDate" name="ReminderDate" type="hidden" value="7/14/2026" />
+<input id="activityDenialID" name="activityDenialID" type="hidden" value="0" />
+<input id="activityInstanceID" name="activityInstanceID" type="hidden" value="0" />
+<input id="activityTypeHdn" name="activityTypeHdn" type="hidden" value="None" />
+<input id="awaitingPayerReasonsCountHdn" name="awaitingPayerReasonsCountHdn" type="hidden" value="0" />
+<input id="internalHoldReasonsCountHdn" name="internalHoldReasonsCountHdn" type="hidden" value="0" />
+
+<div id="addActivityModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <div class="title">Notes </div>
+    <div class="optional">(Optional)</div>
+    <div class="addActivityNote">
+        <textarea rows="10" cols="25" id="addActivityNoteText" class="NewNote" name="addActivityNoteText"></textarea>
+    </div>
+    <div class="activitiesContainer">
+        <div class="headings">
+            Status
+        </div>
+        <div class="multiSelectDropDown actionButton actionButtonDropMenu" id="activityTypeDropDown">
+            <span id="activityType"> Change Status </span>
+            <ul class="shadow mainDropMenu activityTypeDropMenu" style="display:none;">
+                <li onclick="activityTypeSelect('None', 'None');">
+                    <div>None</div>
+                </li>
+                <li onclick="activityTypeSelect('Resubmitted', 'Resubmitted');">
+                    <div>Resubmitted</div>
+                </li>
+                <li onclick="activityTypeSelect('Internal Hold', 'InternalHold');">
+                    <div>Internal Hold</div>
+                </li>
+                <li onclick="activityTypeSelect('Awaiting Payer', 'AwaitingPayer');">
+                    <div>Awaiting Payer</div>
+                </li>
+                <li onclick="activityTypeSelect('In Appeal', 'InAppeal');">
+                    <div>In Appeal</div>
+                </li>
+            </ul>
+        </div>
+
+
+
+        <div class="headings">
+            Additional Actions
+        </div>
+        <div class="multiSelectDropDown actionButton actionButtonDropMenu additional1 additionalActivityDropDown" id="additionalActivityDropDown">
+            <span class="additionalActivity"> None </span>
+            <ul class="shadow mainDropMenu additionalActivityDropMenu" style="display:none;">
+                <li onclick="additionalActivitySelect('None');">
+                    <div>None</div>
+                </li>
+                <li onclick="additionalActivitySelect('Reassign');">
+                    <div>Reassign</div>
+                </li>
+                <li onclick="additionalActivitySelect('Close Denial');">
+                    <div>Close Denial</div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="multiSelectDropDown actionButton actionButtonDropMenu additional2 additionalActivityDropDown" id="additionalActivityDropDown" style="display:none;">
+            <span class="additionalActivity"> Close Denial </span>
+            <ul class="shadow mainDropMenu additionalActivityDropMenu" style="display:none;">
+                <li onclick="additionalActivitySelect('Close Denial');">
+                    <div>Close Denial</div>
+                </li>
+                    <li onclick="additionalActivitySelect('Reassign');">
+                        <div>Reassign</div>
+                    </li>
+                    <li onclick="additionalActivitySelect('None');">
+                        <div>None</div>
+                    </li>
+                </ul>
+        </div>
+
+            <div id="workgroupSelectList">
+                <select class="workgroupSelect">
+                    <option selected hidden value="0">- Workgroup -</option>
+                        <option class="workgroupSelectItem" value="41436">Mohamed Hussain&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41437">Sherif&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41443">Bassem&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41444">Mohamed Hany Denial Group</option>
+                        <option class="workgroupSelectItem" value="41445">Abdelrahman&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41446">Bassil&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41447">Rouvan&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41451">Salma&#39;s Patients collection Group</option>
+                        <option class="workgroupSelectItem" value="41477">Historical Denials</option>
+                        <option class="workgroupSelectItem" value="41676">Ganna&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="42066">Rashwan&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="42069">Boda&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="42384">NYCE</option>
+                        <option class="workgroupSelectItem" value="42427">BCBS</option>
+                        <option class="workgroupSelectItem" value="42444">Abdelmola&#39; Workgroup</option>
+                        <option class="workgroupSelectItem" value="41435">Catch-All</option>
+                </select>
+            </div>
+
+            <div id="closeTypeSelectList">
+                <select class="closeTypeSelect">
+                    <option selected hidden value="NoType">- Close Type -</option>
+                                <option value="Paid">Payment Received</option>
+                                <option value="WriteOff">Informational Write-Off</option>
+                                <option value="PatientResponsibility">Patient Responsibility</option>
+                                <option value="WorkableWriteOff">Workable Write-Off</option>
+                </select>
+            </div>
+
+        <div class="headings">
+            Reminder Date
+        </div>
+            <div class="datePicker">
+                <input id="editActivityReminder" type="text" value="7/14/2026" data-maxdate="01/01/2100" data-mindate="01/01/1900" data-hinttext="mm/dd/yyyy">
+            </div>
+
+
+        <div id="addActivityError" class="errorText" style="display:none;"></div>
+
+        <div class="applyCancel">
+            <button id="applyNewActivity" class="primaryButton mediumDefaultButton"> Apply</button>
+            <span class="cancel">
+                <a id="cancelModal">Cancel</a>
+            </span>
+        </div>
+    </div>
+</div>
+        <div class="modalDiv" id="framedUrlModalWindow">
+    <iframe id="urlModalFrame" frameborder="0" scrolling="no" src="about:blank"></iframe>
+</div>
+    </div>
+    <div id="loadingouter" class=""><div id="loadinglist"><div class="loading-image"></div><div class="loading-text"><p><strong>Please Wait</strong></p><p>Processing...</p></div></div></div>
+</div>
+
+
+
+
+
+    <div class="clear-fix"></div>
+<div id="waystarFooter" class="">
+    <div>
+                <a href="#" class="waystar-support-link" onclick="return waystarHeader.LaunchSupportCenter('https://general.zirmed.com//Help/LaunchCustomerSupportCenter.aspx');">Support &amp; Training</a>
+                <span class='separator waystar-support-spacer'></span>
+                <a href="https://general.zirmed.com//logout2.aspx">Logoff</a>
+
+    </div>
+            <div>
+                &copy; 1999 - 2026 Waystar&trade; All rights reserved
+            </div>
+
+</div>
+    
+        <script>var TitleSelector = '';</script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/JavaScript/SmartSearch.js"></script>
+
+
+    <script>
+        (function(apiKey){
+            (function (p, e, n, d, o) {
+                var v, w, x, y, z; o = p[d] = p[d] || {}; o._q = o._q || [];
+                v = ['initialize', 'identify', 'updateOptions', 'pageLoad', 'track']; for (w = 0, x = v.length; w < x; ++w)(function (m) {
+                    o[m] = o[m] || function () { o._q[m === v[0] ? 'unshift' : 'push']([m].concat([].slice.call(arguments, 0))); };
+                })(v[w]);
+                y = e.createElement(n); y.async = !0; y.src = 'https://cdn.pendo.io/agent/static/' + apiKey + '/pendo.js';
+                z = e.getElementsByTagName(n)[0]; z.parentNode.insertBefore(y, z);
+            })(window, document, 'script', 'pendo');
+            pendo.initialize({
+                visitor: {
+                    id: 'abdelrahman.hamdy@cobsolution.com',
+                    name: 'Abdelrahman Hamdy',
+                    csrep: 'False',
+                    usrid: '1834705'
+                    },
+                account: {
+                    id: 'Physical Therapy of the City P.C.',
+                    city: 'New York',
+                    state: 'NY',
+                    custid: '296638',
+                    domainid: '296638'
+                    }
+             });
+        })('dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5');
+    </script>
+
+
+
+    
+    <script type="text/javascript">
+            var globalUrl_ViewAttachment = '/Files/ViewFile';
+            var SetClaimsCustInSessionURL = "/Denials/SetClaimsCustInSession";
+            var DenialSearchURL = '/DenialSearch';
+            var userActivityTrackingUrl = '/Denials/AuditUserActivityTracking';
+            var Browser = 'Chrome';
+    </script>
+
+    <script type="text/javascript" src="/Scripts/jquery.watermark.min.js" async></script>
+    <script type="text/javascript" src="/Scripts/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="/Scripts/header-setup.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js"></script>
+
+    
+    <script type="text/javascript">
+        var ActivityHistoryURL = '/Review/ActivityHistory';
+        var AppealURL = "/Appeals";
+        var CheckActivityDateURL = '/Denials/CheckActivityDate';
+        var CheckMultiplePayersURL = '/Appeals/CheckForMultiplePayers';
+        var ClaimsSiteURL = "https://claims.zirmed.com/";
+        var CloseDenialURL = "/Denials/CloseDenial";
+        var DemoClaimUrl = '/Demo/Claim';
+        var DemoEditClaimUrl = '/Demo/EditClaim';
+        var DemoUrl = '/Demo/Eob';
+        var DenialHistoryURL = "/Review";
+        var DenialMergeURL = "/Merge";
+        var DenialUnlinkedURL = "/Denials/UnlinkedDenial";
+        var EligibilityInquiryURL = "/Review/EligibilityInquiryWithPayer";
+        var GetActivityModalURL = '/Denials/GetActivityModal';
+        var MergeDenialURL = '/Review/MergeDenials';
+
+        var PollDenialTagsURL = '/Review/PollDenialTags';
+        var ReloadRelatedDenialsURL = "/Review/ReloadRelatedDenials";
+        var ReminderDateURL = "/Review/SaveReminderDate";
+        var RemitsSiteURL = "https://remits.zirmed.com/";
+        var ReassignWorkgroupURL = '/Denials/ReassignWorkgroup';
+        var SaveActivityURL = '/Denials/SaveActivity';
+        var SaveRootCauseURL = "/Review/SaveRootCause";
+        var SaveUserSetting = "/Review/SaveUserSetting";
+        var TagModalURL = "/Review/GetTagModal";
+        var ViewClaimURL = '/Denials/ViewClaim';
+        var CheckForDenialBuildingInProgressURL = '/Review/CheckForDenialBuildingInProgress';
+        var RemoveDenialUnderActionURL = '/Review/RemoveDenialUnderAction';
+
+        var hdnIndex = $("#pageIndex");
+        var hdnTakeSize = $("#hdnTakeSize");
+        var hdnTotalCount = $("#totalCount");
+
+
+        var CurrentEnvironment = "5";
+        var denialIDReview = "3652667586";
+        var IsDemo = 'false';
+        var IsWorkcenter = 'Workcenter';
+        var OrigReminderDate = '';
+        var pollTags = 'False';
+        var ReminderDate = '7/14/2026';
+        var MinAllowedDateForDenialSearch = new Date(2023,07-1,09);
+        var isSnowflakeDenial = 'False';
+
+    </script>
+    <script type="text/javascript" src="/Scripts/jquery.unobtrusive-ajax.min.js" async></script>
+    <script type="text/javascript" src="/Scripts/denials-review.js" async></script>
+    <script type="text/javascript" src="/Scripts/denials-common.js" async></script>
+    <script type="text/javascript" src="/Scripts/denials-add-activity-modal.js" async></script>
+    <link type="text/css" href="/Content/font-awesome.min.css" rel="stylesheet">
+    <script type="text/javascript">
+        var MarkTourReadURL = '/Review/MarkTourRead';
+        var tourList = $("#ReviewTour");
+        var staticSiteURL = 'https://www.zirmed.com/Static';
+</script>
+
+<script type="text/javascript" src="/Scripts/joyridetour.js" async></script>
+
+
+
+</body>
+</html>

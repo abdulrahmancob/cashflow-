@@ -1,0 +1,2708 @@
+URL: https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+var postbackElement;
+var controlContainer;
+var controlContainerClass;
+var rowLastHovered;
+var tagRowLastHovered;
+var uploadResults = new Array();
+
+$(document).ready(function () {
+    //<hate>ms updatepanels!
+    if (window.Sys && Sys.WebForms && Sys.WebForms.PageRequestManager) {
+        Sys.WebForms.PageRequestManager.getInstance().add_beginRequest(beginRequest);
+        Sys.WebForms.PageRequestManager.getInstance().add_pageLoaded(pageLoadedHandler);
+    }
+    //</hate>
+
+    InitLeftNav();
+
+    controlContainerClass = '.controlContainer';
+    controlContainer = $(controlContainerClass);
+
+    //if you don't have a container with class .controlContainer, nothing will happen
+    if (controlContainer.length == 0) {
+        return;
+    }
+
+    setupControls(controlContainer);
+    setupDialog(controlContainer);
+
+    controlContainer.show();
+
+    //connected elements only works correctly when visible on setup.
+    //if you are showing your page after load, call setupConnectedElements after show
+    setupConnectedElements(controlContainer);
+});
+
+function beginRequest(sender, args) {
+    postbackElement = args.get_postBackElement();
+}
+
+function pageLoadedHandler(sender, args) {
+    var updatedPanels = args.get_panelsUpdated();
+
+    if (typeof (postbackElement) === "undefined") {
+        return;
+    }
+
+    for (var x = 0; x < updatedPanels.length; x++) {
+        if ($(updatedPanels[x]).parents(controlContainerClass).length > 0) {
+            setupControls($(updatedPanels[x]));
+        }
+    }
+}
+
+function setupControls(containerElement) {
+    setupDatePicker(containerElement);
+    setupSearchPanel(containerElement);
+    //custom combobox no longer supported, use html select
+    //setupComboBox(containerElement);
+    setupMainDropMenu(containerElement);
+    setupActionButtonDropMenu(containerElement);
+
+    styleJQueryModal(containerElement);
+    addGridRowMouseOverFunctionality(containerElement);
+    addActionMenuActions(containerElement);
+    setupActionMenuHover(containerElement);
+    setTagRowOnHover(containerElement);
+
+    setupGrid(containerElement);
+    setupHintText(containerElement);
+    setupValidationTypes(containerElement);
+    setupDraftRow(containerElement);
+    registerHeaderSelectMenu(containerElement);
+    registerSortableHeaders(containerElement);
+    setupDefaultButton(containerElement);
+    highlightSelectedGridRows(containerElement);
+
+    customizePager(containerElement);
+    customizeSmartSearch(containerElement);
+    setEmptyGridStyleForIE(containerElement);
+    setupGoogleAnalyticsEventControls(containerElement);
+
+    setupToolTips(containerElement);
+    setupShowHideContainer(containerElement);
+    setupMaskText(containerElement);
+    setUpfilterSideBar(containerElement);
+    setupCloseAlert(containerElement);
+    setupTooltipPopups(containerElement);
+
+    setupAccountSearch(containerElement);
+    setupZirMedTable(containerElement);
+}
+
+function setupCloseAlert(containerElement) {
+    containerElement.find('.page-notification').on('click', '.close-alert', function () {
+        $(this).parent().slideUp(500);
+    });
+}
+
+function createErrorSummaryListItem(FieldToValidate, failedValidationDescription) {
+    return '<li  data-associated-control=' + FieldToValidate.attr("id") + '> ' + FieldToValidate.attr('data-summary-text') + ' ' + failedValidationDescription + '</li>';
+}
+
+function showErrorSummary(errorSummaryNotification, errorSummaryListItems) {
+    var errorSummaryBody = errorSummaryNotification.children('.error-summary-body');
+    errorSummaryBody.html(errorSummaryListItems);
+    errorSummaryBody.children('li').on('click', function () {
+        var associatedControl = $(this).attr('data-associated-control');
+        $('#' + associatedControl).focus();
+    });
+    errorSummaryNotification.show();
+}
+
+function validateErrorSummaryRegex(validationFieldsContainer, RegexPatternToValidate, fieldsToValiddate, failedValidationDescription) {
+    var RegexToValidate = new RegExp(RegexPatternToValidate);
+    var AllFieldsToValidate = validationFieldsContainer.find(fieldsToValiddate);
+    var AllFieldsToValidateLength = AllFieldsToValidate.length;
+    var errorSummaryListItems = '';
+    for (var x = 0; x < AllFieldsToValidateLength; x++) {
+        var FieldToValidate = AllFieldsToValidate.eq(x);
+        if (!RegexToValidate.test(FieldToValidate.val())) {
+            errorSummaryListItems += createErrorSummaryListItem(FieldToValidate, failedValidationDescription);
+        }
+    }
+    return errorSummaryListItems;
+}
+
+function showPageNotification(pageNotification, message, type) {
+    if (type == "success") {
+        pageNotification.removeClass('failure').addClass('success');
+    }
+    else if (type == "failure") {
+        pageNotification.addClass('failure').removeClass('success');
+    }
+    else {
+        pageNotification.removeClass('success').removeClass('failure');
+    }
+
+    pageNotification.children('.notification-message').text(message);
+    pageNotification.show();
+}
+
+function setupDialog(containerElement) {
+    appendDialogToForm(containerElement);
+    customDialogExtend();
+}
+
+function setEmptyGridStyleForIE(container) {
+    $('tr.gridViewEmpty td', container).addClass('last-child');
+}
+
+function setupDefaultButton(containerElement) {
+    $('input[data-DefaultButton]', containerElement)
+        .on({
+            keydown: function (event) {
+                var keycode = (event.keyCode ? event.keyCode : (event.which ? event.which : event.charCode));
+                if (keycode == 13) {
+                    $('#' + $(this).attr('data-DefaultButton')).focus();
+                    $('#' + $(this).attr('data-DefaultButton')).click();
+                }
+            }
+        })
+}
+
+function registerHeaderSelectMenu(containerElement) {
+    $(".actionButtonDropMenu", containerElement).on('click', function () {
+        toggleArrow($(this));
+        toggleVisible("headerSelectMenu");
+    });
+}
+
+function toggleArrow(container) {
+    var control = container.find('img.downArrow');
+
+    if (control.hasClass('upArrow')) {
+        control.removeClass('upArrow');
+    } else {
+        control.addClass('upArrow');
+    }
+}
+
+function toggleVisible(controlId, displayType) {
+    controlId = "#" + controlId;
+
+    if (typeof displayType === 'undefined') {
+        displayType = 'block';
+    }
+
+    if ($(controlId).css('display') === 'none') {
+        $(controlId).css('display', displayType);
+    }
+    else {
+        $(controlId).css('display', 'none');
+    }
+}
+
+function setupDraftRow(containerElement) {
+    $('tr[data-isdraft="true"]', containerElement)
+        .addClass('draftRow')
+        .next()
+        .addClass('draftRow');
+}
+
+function setupHintText(containerElement) {
+    $('input[data-HintText], textarea[data-HintText]', containerElement)
+        .focus(function () {
+            removeHint($(this));
+        })
+        .blur(function () {
+            if (!$(this).parent().hasClass('datePicker')) {
+                addHint($(this));
+            }
+        })
+        .each(function () {
+            if ($(this).val().length == 0 || $(this).val() == $(this).attr('data-HintText')) {
+                $(this).addClass('hintText');
+            }
+            $(this).blur();
+        })
+}
+
+function setupValidationTypes(containerElement) {
+    $('input[data-validationtype]', containerElement)
+        .on({
+            keydown: function (event) {
+                var keycode = (event.keyCode ? event.keyCode : (event.which ? event.which : event.charCode));
+                var validationType = $(this).attr('data-validationtype');
+
+                switch (validationType) {
+                    case "NumericOnly":
+                        return (keycode < 31 || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106))
+                        break;
+                    case "NumericOrPeriodOnly":
+                        return (keycode < 31 || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106) || keycode === 110 || keycode === 190)
+                        break;
+                    case "DollarOnly":
+                        return (keycode < 31 || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106) || keycode === 110 || keycode === 190)
+                        break;
+                    case "NumericOnlyCommaSeparated":
+                        return (keycode < 31 || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106) || keycode === 188);
+                        break;
+                    case "NumericOrCommaOrPeriodOnly":
+                        return (keycode < 31 || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106) || keycode === 188 || keycode === 110 || keycode === 190);
+                        break;
+                    case "AlphaNumOrDashOrSpace":
+                        // a-z || 0-9 || - || space
+                        return (keycode < 33) || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode >= 65 && keycode <= 90) || (keycode > 95 && keycode < 106) || keycode === 109 || keycode === 173;
+                    case "AlphaNumOnly":
+                        // a-z || 0-9
+                        return (keycode < 33) || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode >= 65 && keycode <= 90) || (keycode > 95 && keycode < 106);
+                        break;
+                    case "DollarOnlyWithMinus":
+                        // same as Dollar Only but allows negatives (189 and 109)
+                        return (keycode < 31 || (keycode > 34 && keycode < 41) || keycode === 45 || keycode === 46 || (keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106) || keycode === 110 || keycode === 190 || keycode == 189 || keycode == 109);
+                        break;
+                }
+            }
+        })
+}
+
+$(function () {
+    $('.viewMore span').each(function () {
+        toggleViewMore($(this));
+    });
+});
+
+function setDateRange(datePicker) {
+    var mxDate = $(datePicker).attr("data-MaxDate");
+    var mnDate = $(datePicker).attr("data-MinDate");
+
+    if (mxDate !== undefined)
+        mxDate = new Date(mxDate);
+    else
+        mxDate = null;
+
+    if (mnDate !== undefined)
+        mnDate = new Date(mnDate);
+    else
+        mnDate = null;
+
+    var minDateSelection = "c-100";
+    if (mnDate != null) {
+        minDateSelection = mnDate.getFullYear();
+    }
+
+    var maxDateSelection = "c+100";
+    if (mxDate != null) {
+        maxDateSelection = mxDate.getFullYear();
+    }
+
+    return {
+        maxDate: mxDate,
+        minDate: mnDate,
+        yearRange: minDateSelection + ":" + maxDateSelection
+    };
+}
+
+function setupDatePicker(containerElement) {
+    var datePickers = $(".datePicker input", containerElement);
+    var datePickersLen = datePickers.length;
+
+    for (var index = 0; index < datePickersLen; index++) {
+        $(datePickers[index]).datepicker({
+            dateFormat: getDateFormat(datePickers[index]),
+            showOn: "both",
+            buttonImage: "/Images/transparent.gif",
+            dayNamesMin: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
+            buttonImageOnly: true,
+            changeMonth: true,
+            changeYear: true,
+            showOtherMonths: true,
+            constrainInput: true,
+            buttonText: "Show Calendar",
+            onClose: function (dateText, inst) {
+                setTimeout(function () {
+                    inst.dpDiv.removeClass('dpMinHeight');
+                }, 200);
+                if (dateText.length == 0) {
+                    addHint($(this));
+                } else {
+                    removeHint($(this));
+                    var dateFormat = inst.settings.dateFormat;
+                    var mxDate = inst.settings.maxDate;
+                    var mnDate = inst.settings.minDate;
+
+                    try {
+                        var date;
+                        // expanded format uses a locally scoped parseDate to validate against multiple formats
+                        if ($(this).parent().hasClass('expanded-format')) {
+                            date = $(this).datepicker.parseDate(dateFormat, dateText);
+                        }
+                        // otherwise, just use the default jQuery UI parse method
+                        else {
+                            date = $.datepicker.parseDate(dateFormat, dateText);
+                        }
+                    } catch (err) {
+                        $(this).val('');
+                        addHint($(this));
+                        return false;
+                    }
+
+                    if (mxDate != null && date > mxDate) {
+                        $(this).val($.datepicker.formatDate(dateFormat, mxDate));
+                    } else if (mnDate != null && date < mnDate) {
+                        $(this).val($.datepicker.formatDate(dateFormat, mnDate));
+                    } else {
+                        $(this).val($.datepicker.formatDate(dateFormat, date));
+                    }
+                }
+            },
+            beforeShow: function (dateText, inst) {
+                setMinHeight(dateText, inst);
+                return setDateRange(this);
+            }
+        }).focus(function () {
+            if (isYearHidden(this)) {
+                $('.ui-datepicker-year').addClass('hidden');
+            }
+        }).next(".ui-datepicker-trigger").addClass("calendarImage");
+
+        // jquery UI will show the year drop down on key press into the input
+        // this is undesirable behavior if the year is hidden
+        // so, override this and hide the year DD on each keyup
+        if (isYearHidden(datePickers[index])) {
+            $(datePickers[index]).keyup(function () {
+                $('.ui-datepicker-year').addClass('hidden');
+            });
+        }
+    }
+
+    $(".datePicker", containerElement)
+        .each(function () {
+            $(this).after('<div class="clearfix"></div>');
+            if ($(this).hasClass('expanded-format')) {
+                var dpInput = $(this).find('input.hasDatepicker');
+                allowExpandedDatePickerEntry($(dpInput));
+                var nextSibling = $(dpInput).next(".ui-datepicker-trigger");      //add the calendar image class if missing
+                if (!nextSibling.hasClass("calendarImage")) {
+                    $(nextSibling).addClass("calendarImage");
+                };
+            }
+        })
+        .on({
+            mouseenter: function () {
+                $(this).find('input').addClass('textHover')
+            },
+            mouseleave: function () {
+                $(this).find('input').removeClass('textHover')
+            }
+        })
+        .on({
+            click: function () {
+                if (!$(this).siblings("input").datepicker("isDisabled") && !$(this).parent().datepicker("widget").is(":visible")) {
+                    $(this).siblings('input').focus();
+                }
+            },
+            blur: function () {
+                checkDatePickerHint($(this).val(), $(this));
+            }
+        }, "input");
+
+    // gets the date format for a date picker depending on whether the year should be hidden or not
+    function getDateFormat(element) {
+        if (isYearHidden(element)) {
+            return 'm/d';
+        } else {
+            return 'm/d/yy';
+        }
+    }
+
+    // determines whether the year should be hidden for a date picker
+    function isYearHidden(element) {
+        return $(element).attr('data-hideyear') === 'true';
+    }
+}
+
+function setMinHeight(input, inst) {
+    if ((($(window).scrollTop() + $(window).height()) - input.offsetTop) < 240) {
+        inst.dpDiv.addClass('dpMinHeight');
+    }
+}
+
+function getDatePickerValue($dpCtrl) {
+    return ($dpCtrl.val() === $dpCtrl.attr('data-hinttext')) ? null : $dpCtrl.val();
+}
+
+//Make a copy of the original datepicker.parsedate for use if we override it to allow multiple formats
+$.datepicker.originalParseDate = $.datepicker.parseDate;
+
+function allowExpandedDatePickerEntry(picker) {
+    $(picker).datepicker("option", "constrainInput", false);
+    $(picker).datepicker.inputFormats = ["mm-dd-yy", "mm/dd/yy", "mm.dd.yy", "mmddyy"];    //list formats to be accepted here
+    $(picker).datepicker.parseDate = function (format, value, settings) {
+        var date;
+        function testParse(format, value, settings) {
+            if (!date) {
+                try {
+                    date = $.datepicker.originalParseDate(format, value, settings);
+                } catch (Error) {
+                }
+            }
+        }
+        testParse(format, value, settings);
+        for (var n = 0, stop = $(picker).datepicker.inputFormats ? $(picker).datepicker.inputFormats.length : 0; n < stop; n++) {
+            testParse($(picker).datepicker.inputFormats[n], value, settings);
+        };
+        return date;
+    };
+}
+
+function checkDatePickerHint(dataText, inst) {
+    if ($.trim(dataText) == "")
+        addHint(inst);
+    else if (($.trim(dataText) != 'mm/dd/yyyy') && ($.trim(dataText) != 'mm/dd'))
+        removeHint(inst);
+}
+
+function registerSortableHeaders(container) {
+    $('tr th.sortableHeader', container).on('click', function () {
+        toggleSort(this);
+        if (typeof triggerSearch != "undefined") {
+            triggerSearch();
+        }
+    });
+}
+
+function toggleSort(container) {
+    var containerObject = $(container);
+    containerObject.addClass('activeHeader');
+
+    var containerSiblings = containerObject.siblings();
+    containerSiblings.children('img').removeClass('sprite-sort-arrow-desc').removeClass('sprite-sort-arrow-asc');
+    containerSiblings.removeClass('activeHeader');
+
+    var image = containerObject.children('img');
+    var imgId = image.attr('id');
+
+    if (image.hasClass('sprite-sort-arrow-asc')) {
+        image.removeClass('sprite-sort-arrow-asc').addClass('sprite-sort-arrow-desc');
+        $('#hdnSortValue').val(imgId + "-desc");
+    } else if (image.hasClass('sprite-sort-arrow-desc')) {
+        image.removeClass('sprite-sort-arrow-desc').addClass('sprite-sort-arrow-asc');
+        $('#hdnSortValue').val(imgId + "-asc");
+    } else {
+        image.addClass('sprite-sort-arrow-desc');
+        $('#hdnSortValue').val(imgId + "-desc");
+    }
+}
+
+function setHeaderSorting() {
+    var sortVal = $('#hdnSortValue').val().split('-');
+    var sortImg = $('#' + sortVal[0]);
+
+    if (sortVal[1] === "asc") {
+        sortImg.addClass('sprite-sort-arrow-asc');
+    }
+    else {
+        sortImg.addClass('sprite-sort-arrow-desc');
+    }
+
+    sortImg.parents('th').addClass('activeHeader');
+}
+
+function setupMainDropMenu(containerElement) {
+    $(".comboBox ul.mainDropMenu li", containerElement).on("click", function () {
+        var parent = $(this).parent();
+        var dropDown = parent.siblings('select');
+        var selectedIndex = $(this).attr('data-index');
+
+        dropDown.prop('selectedIndex', selectedIndex);
+        dropDown.trigger("change");
+
+        parent.siblings('input').val($(this).text());
+        hideComboMenu(parent.parent());
+    });
+
+    $(".comboBox ul.mainDropMenu", containerElement).on("mousedown", function () {
+        comboScrollClick = true;
+    })
+        .on("mouseleave", function () {
+            comboScrollClick = false;
+            if ($(this).is(':visible')) {
+                $(this).siblings('input').focus();
+            }
+        });
+}
+
+function setupActionButtonDropMenu(containerElement) {
+    $(".actionButtonDropMenu", containerElement)
+        .each(function () {
+            if ($(this).children("span.downArrow, img.downArrow").length == 0) {
+                $(this).append('<span class="downArrow"></span>')
+            }
+        })
+        .mouseenter(function () {
+            showMenu($(this));
+        })
+        .mouseleave(function () {
+            hideMenu($(this));
+        });
+}
+
+function setupGrid(containerElement) {
+    $(".gridActionButton", containerElement).on("mouseover", function () {
+        showGridActionMenu(this.id);
+    });
+
+    $('body').on("mouseover", function (event) {
+        hideGridActionMenu(event);
+    });
+
+    $(".gridViewExpandableRow", containerElement).on("click", function (event) {
+        toggleDetailRow(event, $(this));
+    });
+
+    $(".toggleAllDetailRows", containerElement).on("click", function () {
+        toggleAllDetailRows($(this));
+    });
+}
+
+function hideGridActionMenu(event) {
+    if ($('.gridActionButtonMenu').is(":visible")) {
+        target = (event.target) ? event.target : event.srcElement;
+        if (!$(target).closest('.gridActionButtonMenu').length && target.className.indexOf('gridActionButton') == -1 && target.className.indexOf('dropArrow') == -1) {
+            $('.gridActionButtonMenu')
+                .hide()
+                .attr('data-gridActionButtonID', '');
+            $('.gridActionButton').removeClass('buttonHover');
+        }
+    }
+}
+
+function setupSearchPanel(containerElement) {
+    if ($(".searchPanelSectionHeader", containerElement).children('#expandCollapseImage').length == 0) {
+        $(".searchPanelSection").each(function () {
+            toggleSearchPanelSection($(this), !getBool($(this).attr('data-Expanded')), false);
+        });
+
+        $(".searchPanelSectionHeader", containerElement).on("click", function () {
+            $(this).parent().siblings().each(function () {
+                toggleSearchPanelSection($(this), true, true, 'fast');
+            });
+            toggleSearchPanelSection($(this).parent(), getBool($(this).parent().attr('data-Expanded')), true, 'fast');
+        });
+
+        $(".searchPanelSectionHeader", containerElement).append('<img id="expandCollapseImage" src="../Images/transparent.gif" height="1" width="1" alt="Expand/Collapse" />');
+    }
+}
+
+function addHint(element) {
+    if (element.val().length == 0) {
+        element.addClass('hintText').val(element.attr('data-HintText'));
+    }
+}
+
+function removeHint(element) {
+    if (element.hasClass('hintText')) {
+        element.val('').removeClass('hintText');
+    }
+}
+
+function toggleSearchPanelSection(section, hide, slide, speed) {
+    var spHeader = section.find('.searchPanelSectionHeader');
+
+    if (hide) {
+        if (slide) {
+            section.children('ul').slideUp(speed);
+        } else {
+            section.children('ul').hide();
+        }
+        section.attr('data-Expanded', 'false');
+
+        spHeader.removeClass('expanded').addClass('collapsed');
+    } else {
+        if (slide) {
+            section.children('ul').slideDown(speed);
+        } else {
+            section.children('ul').show();
+        }
+        section.attr('data-Expanded', 'true');
+
+        spHeader.removeClass('collapsed').addClass('expanded');
+    }
+}
+
+function toggleDetailRow(event, parentRow) {
+    var target = (event.target) ? event.target : event.srcElement;
+    if (target.className.indexOf('noExpand') != -1) {
+        return;
+    }
+    parentRow.next('.gridViewDetailRow').toggle();
+    if (parentRow.next('.gridViewDetailRow').is(":visible")) {
+        var toggleImage = parentRow.find('.plusImage');
+        toggleImage.removeClass('plusImage').addClass('minusImage');
+    } else {
+        var toggleImage = parentRow.find('.minusImage');
+        toggleImage.removeClass('minusImage').addClass('plusImage');
+    }
+}
+
+function toggleAllDetailRows(image) {
+    if (image.hasClass('plusImage')) {
+        image.parent().parent().siblings('.gridViewDetailRow').show();
+        image
+            .removeClass('plusImage')
+            .addClass('minusImage');
+
+        image.parent().parent().siblings('.gridViewExpandableRow').find('.plusImage')
+            .removeClass('plusImage')
+            .addClass('minusImage');
+    } else if (image.hasClass('minusImage')) {
+        image.parent().parent().siblings('.gridViewDetailRow').hide();
+        image
+            .removeClass('minusImage')
+            .addClass('plusImage');
+
+        image.parent().parent().siblings('.gridViewExpandableRow').find('.minusImage')
+            .removeClass('minusImage')
+            .addClass('plusImage');
+    }
+}
+
+function showMenu(actionButton) {
+    actionButton.children('.mainDropMenu')
+        .css('top', actionButton.position().top + actionButton.outerHeight() - 1)
+        .css('left', actionButton.position().left + 2)
+        .show();
+}
+
+function hideMenu(actionButton) {
+    actionButton
+        .children('.mainDropMenu')
+        .hide();
+}
+
+function showGridActionMenu(gridActionButtonID) {
+    var gridActionButton = $('#' + gridActionButtonID)
+    var gridActionButtonMenu = $('.gridActionButtonMenu');
+
+    var left = gridActionButton.offset().left;
+    var top = gridActionButton.offset().top + gridActionButton.height() + 3;
+
+    if (left + gridActionButtonMenu.width() > $(window).width()) {
+        left = left - gridActionButtonMenu.width() + gridActionButton.width();
+    }
+
+    if (top + gridActionButtonMenu.height() > $(window).height()) {
+        top = top - gridActionButtonMenu.height() - gridActionButton.height() - 5;
+    }
+
+    for (x = 0; x < gridActionButton[0].attributes.length; x++) {
+        var attribute = gridActionButton[0].attributes[x];
+        if (attribute.name.indexOf('data-') != -1) {
+            $('#hdn' + attribute.name.substring(5, attribute.name.length), controlContainer).val(attribute.value);
+        }
+    }
+
+    if (getBool($('#hdnhidden').val())) {
+        $('.showGroup', gridActionButtonMenu).parent().hide();
+        $('.hideGroup', gridActionButtonMenu).parent().show();
+    } else {
+        $('.showGroup', gridActionButtonMenu).parent().show();
+        $('.hideGroup', gridActionButtonMenu).parent().hide();
+    }
+
+    if (getBool($('#hdncomplete').val())) {
+        $('.completeGroup', gridActionButtonMenu).removeClass('disabledActionButtonMenuGroup');
+    } else {
+        $('.completeGroup', gridActionButtonMenu).addClass('disabledActionButtonMenuGroup');
+    }
+
+    if ($('#hdnactualtransactionid').val() == 'null') {
+        $('.paperEOBGroup', gridActionButtonMenu).parent().hide();
+    }
+    else {
+        $('.paperEOBGroup', gridActionButtonMenu).parent().show();
+    }
+
+    if ($('#hdnpsiid').val() === undefined || $('#hdnpsiid').val() == 'null' || $('#hdnpsiid').val() == '0') {
+        $('.paperPSIGroup', gridActionButtonMenu).parent().hide();
+    }
+    else {
+        $('.paperPSIGroup', gridActionButtonMenu).parent().show();
+    }
+
+    if ($('#hdnisinstitutional').val() == 'null' || $('#hdnisinstitutional').val() == 'False') {
+        $('.dataViewGroup', gridActionButtonMenu).parent().hide();
+    }
+    else {
+        $('.dataViewGroup', gridActionButtonMenu).parent().show();
+    }
+
+    gridActionButtonMenu
+        .css('top', top)
+        .css('left', left)
+        .show()
+        .attr('data-gridActionButtonID', gridActionButtonID)
+        .on("click", function () {
+            gridActionButtonMenu
+                .hide()
+                .attr('data-gridActionButtonID', '');
+            gridActionButton.removeClass('buttonHover');
+        });
+
+    gridActionButton.addClass('buttonHover');
+}
+
+function toggleViewMore(link) {
+    if ($(link).text() == 'View More') {
+        $(link)
+            .text('View Less')
+            .parent().nextAll('li').show();
+    } else if ($(link).text() == 'View Less') {
+        $(link)
+            .text('View More')
+            .parent().nextAll('li').hide();
+    }
+}
+
+function highlightSelectedGridRows(containerElement) {
+    var selectedRows = $('input:checked.rowSelectCheckbox');
+
+    selectedRows.each(function () {
+        $(this).parents('tr').addClass('selectedRow');
+    });
+}
+
+function toggleRowSelect(selectCheckbox) {
+    var rowsCheckedDiff;
+
+    if (selectCheckbox.is(':checked')) {
+        selectCheckbox.parents('tr').addClass('selectedRow');
+        rowsCheckedDiff = 1;
+    } else {
+        selectCheckbox.parents().removeClass('selectedRow');
+        rowsCheckedDiff = -1;
+    }
+
+    var selectedRowsLabel = $('[id$=actionBarSelectedCount]', '.actionBar');
+    var selectedRowsCount = parseInt(selectedRowsLabel.text());
+
+    selectedRowsLabel.text(selectedRowsCount + rowsCheckedDiff);
+}
+
+function toggleAllRowSelectOnPage(selectCheckbox, selectValue) {
+    selectCheckbox.attr('checked', selectValue);
+
+    var rowSelectCheckbox = $('.rowSelectCheckbox');
+    var selectedRowsBefore;
+
+    if (selectValue) {
+        selectedRowsBefore = rowSelectCheckbox.filter(':checked').length;
+    } else {
+        selectedRowsBefore = rowSelectCheckbox.not(':checked').length;
+    }
+
+    var selectedRowsLabel = $('[id$=actionBarSelectedCount]', '.actionBar');
+    var countBefore = parseInt(selectedRowsLabel.text());
+
+    rowSelectCheckbox
+        .attr('checked', selectValue)
+        .each(function () {
+            toggleRowSelect($(this));
+        });
+
+    var selectedRowsAfter = rowSelectCheckbox.filter(':checked').length;
+    var selectedRowsDifference = selectedRowsAfter - selectedRowsBefore;
+    var selectedRowsCount = parseInt(selectedRowsLabel.text()) + selectedRowsDifference;
+
+    if (selectValue) {
+        selectedRowsLabel.text((parseInt(selectedRowsLabel.text()) - selectedRowsBefore));
+    } else {
+        selectedRowsLabel.text((parseInt(selectedRowsLabel.text()) + selectedRowsBefore));
+    }
+}
+
+function toggleGridSelect(clickedObject, value) {
+    var checkBox = clickedObject.parents('div.actionButtonDropMenu').find('input[type=checkbox]');
+    checkBox.attr('checked', value);
+}
+
+function ShowNotes(containerDiv) {
+    $('#' + containerDiv).dialog({
+        width: 480,
+        modal: true,
+        resizable: false,
+        title: "Notes",
+        buttons: {
+            "Cancel": function () {
+                $(this).dialog("close");
+            }
+        },
+        close: function (event, ui) {
+            if ($(this).attr('data-refreshpanel').length > 0) {
+                __doPostBack($(this).attr('data-refreshpanel'), 'refreshGrid');
+            }
+        }
+    });
+}
+
+function noCacheURL(url) {
+    if (url.indexOf('?') == -1) {
+        url = url + "?" + new Date().getTime();
+    } else {
+        url = url + "&" + new Date().getTime();
+    }
+    return url;
+}
+
+function showModal(width, height, url, title, popout) {
+    var frameWindow = $('#framedUrlModalWindow');
+    var frame = frameWindow.find('iframe');
+
+    url = noCacheURL(url);
+
+    frameWindow
+        .css('display', 'block')
+        .dialog({
+            height: height,
+            width: width,
+            modal: true,
+            resizable: false,
+            title: title,
+            close: function () {
+                $(this).find('iframe').attr('src', 'about:blank');
+            },
+            popOutButton: popout,
+            popOutUrl: url
+        });
+
+    frame.attr('src', url).attr('height', height - 55).attr('width', width - 15).css('height', height - 55).css('width', width - 15);
+}
+
+function customizePager(containerElement) {
+    var pagerDiv = $('#PagerDiv', containerElement);
+
+    if (pagerDiv.length == 0) { return; }
+
+    var displayLabel = $('[id$=Pager_lblDisplay]', pagerDiv);
+    var pageCountClass = $('.PageCountClass', pagerDiv);
+    var goLink = $('[id$=_lnkGo]', pagerDiv);
+    var nextLink = $('[id$=_lnkNext]', pagerDiv);
+    var prevLink = $('[id$=_lnkPrev]', pagerDiv);
+    $('[id$=Pager_tcControls]', pagerDiv).css("width", "0px");
+    $('[id$=_txtPage]', pagerDiv).css("font-size", "9pt");
+
+    pagerDiv.addClass('webPagerDiv');
+    displayLabel.addClass('webPagerDisplayLabel').parent().remove();
+    pageCountClass.addClass('webPagerPageCount');
+    goLink.addClass('webPagerGoLink');
+    nextLink.addClass('webPagerNextLink').addClass('smallDefaultButton');
+    prevLink.addClass('webPagerPrevLink').addClass('smallDefaultButton');
+    nextLink.html('<img src="../Images/transparent.gif" height="1" width="1" class="pagerNextImage" />');
+    nextLink.children().css('padding-top', '0px');
+    prevLink.children().css('padding-top', '0px');
+    prevLink.html('<img src="../Images/transparent.gif" height="1" width="1" class="pagerPreviousImage" />');
+}
+
+function customizeSmartSearch(containerElement) {
+    var panel = $('[id$=_pnlSearch]', containerElement);
+
+    if (panel.length == 0) { return; }
+
+    $('[id$=_toppager]', panel).css("display", "none");
+
+    panel.addClass('webSmartSearchPanel');
+
+    var header = panel.children(':first');
+    header.addClass('webSmartSearchHeader');
+
+    var title = $('.subtitle', panel);
+    title.removeClass('subtitle').addClass('webSmartSearchTitle');
+
+    var cancel = $('[id$=_cancelbutton]', header);
+    cancel.addClass('webSmartSearchCancel');
+    cancel.parent('td').css('text-align', 'left');
+    cancel.text('');
+
+    panel.find('table').css('width', '100%');
+    panel.find('.Inside100Txt').addClass('webSmartSearchInside100');
+}
+
+function getBool(aString) {
+    try {
+        switch (aString.toLowerCase()) {
+            case "true": case "yes": case "1": return true;
+            default: return false;
+        }
+    }
+    catch (err) {
+        return false;
+    }
+}
+
+function appendDialogToForm(containerElement) {
+    $("body").on("dialogopen", function (event, ui) {
+        if ($(event.target).parents(containerElement.selector).length == 0) {
+            if (!$(event.target).hasClass("partner-search-modal")
+                && !$(event.target).hasClass("header-account-search-modal")
+                && !$(event.target).hasClass("header-account-error-modal")) {
+                $(event.target).parent().appendTo(containerElement);
+            }
+        }
+    });
+
+    $("body").on("dialogclose", function (event, ui) {
+        //restores div to original state/location - need to put on queue because ie8 is dumb.
+        if (!$(event.target).hasClass("partner-search-modal")
+            && !$(event.target).hasClass("header-account-search-modal")
+            && !$(event.target).hasClass("header-account-error-modal")        ) {
+            $(event.target).delay(0).queue(function (next) {
+                $(this).dialog("destroy");
+                next();
+            });
+        }
+    });
+}
+
+function customDialogExtend() {
+    var _init = $.ui.dialog.prototype._init;
+
+    $.ui.dialog.prototype._init = function () {
+        var self = this;
+        _init.apply(this, arguments);
+        var uiDialogTitlebar = this.uiDialogTitlebar;
+        $('.ui-dialog-titlebar-popOut', uiDialogTitlebar).remove();
+
+        if (this.options.popOutButton) {
+            var url = this.options.popOutUrl;
+            uiDialogTitlebar.append('<a href="#" class="ui-dialog-titlebar-popOut ui-icon" role="button"><span>popout</span></a>');
+
+            this.uiDialogTitlebarPopOut = $('.ui-dialog-titlebar-popOut', uiDialogTitlebar).click(function () {
+                self.popOut(url);
+                self.close();
+                return false;
+            });
+        }
+    };
+
+    $.extend($.ui.dialog.prototype, {
+        popOut: function (url) {
+            window.open(url);
+        }
+    });
+}
+
+function showMessageDivHelp(helpPageURL, messageDiv, messageTextName) {
+    messageDiv.dequeue();
+    $('#' + messageTextName, messageDiv).load(helpPageURL, function () {
+        messageDiv.slideDown('fast');
+    });
+}
+
+function hideMessageDiv(messageDivID, messageTextID) {
+    var messageDiv = $('#' + messageDivID);
+    messageDiv.dequeue();
+    messageDiv.slideUp('fast', function () {
+        $('#' + messageTextID, messageDiv).empty();
+    });
+}
+
+function swapVisibleClass(hideClass, showClass) {
+    $('.' + hideClass).parent().hide();
+    $('.' + showClass).parent().show();
+}
+
+function gridDownloadClick(batchID) {
+    showDownloadModal(batchID);
+}
+
+function downloadClick() {
+    if (getBool($('#hdncomplete').val())) {
+        showDownloadModal($('#hdntransactionid').val());
+    }
+}
+
+//function showDownloadModal(batchID) {
+//    showModal(850, 630, '/Remits/PayerDownloads.aspx?PaymentID=' + batchID + '&IsModal=true', 'Downloads', false);
+//}
+
+function showAlreadyBuiltWarning() {
+    $("#alreadyBuiltWarning").dialog({
+        modal: true,
+        resizable: false,
+        title: 'Attention'
+    });
+}
+
+function showMessageDiv(messageType, additionalText) {
+    var messageText = getMessageText(messageType);
+
+    if (additionalText) {
+        messageText = messageText + "<br /><br />" + additionalText;
+    }
+
+    var messageDiv = $('#messageDiv');
+    messageDiv.dequeue();
+    $('#messageText', messageDiv).html(messageText);
+    messageDiv.slideDown('fast').delay(10000).slideUp('fast');
+}
+
+function getMessageText(messageType) {
+    var messageText;
+
+    if (messageType == 'Export') {
+        messageText = 'Your request has been successfully submitted for processing.&nbsp;&nbsp;To download your requested file(s) go to the <a href="/Lockbox/Exports.aspx?AppId=13">Exports</a> tab.';
+    }
+    else if (messageType == 'ExportWithVoided') {
+        messageText = 'Your request has been successfully submitted for processing.&nbsp;&nbsp;To download your requested file(s) go to the <a href="/Lockbox/Exports.aspx?AppId=13">Exports</a> tab.';
+    }
+    else if (messageType == 'Build') {
+        messageText = 'Your files have been successfully submitted for processing.&nbsp;&nbsp;To download your requested file(s) go to the <a href="/PayerDownloads_NoDX.aspx?AppId=13">Downloads</a> tab.';
+    }
+    else if (messageType == 'MaxRowsExceeded') {
+        messageText = 'The number of rows returned exceeds the maximum allowed.  Please narrow your criteria to view all available rows.';
+    }
+    else if (messageType == 'Expired') {
+        messageText = 'Please call Waystar for items that have expired (greater than 2yrs old).';
+    }
+    else if (messageType == 'Attention') {
+        messageText = 'Attention';
+    }
+
+    return messageText;
+}
+
+function showAlert(messsage, title, cb) {
+    $('<div class="modalButtonCenter">' + messsage + '</div>').dialog({
+        modal: true,
+        title: title,
+        resizable: false,
+        buttons: {
+            "OK": function () {
+                $(this).dialog("close");
+            }
+        },
+        close: function () {
+            $(this).remove();
+            if (cb) cb();
+        }
+    })
+}
+
+function showEOBWarningPopup(message) {
+    var eobPopup = $('#eobWarningPopup');
+    $('#printEobValidationWarning', eobPopup).text(message);
+    eobPopup.dialog({
+        modal: true,
+        title: 'Warning',
+        resizable: false
+    });
+}
+
+function validateDates(s, e, groupName, fromDate, toDate, checkBlank) {
+    var success = false;
+
+    if (checkBlank) {
+        checkBlankDates(fromDate, toDate);
+    }
+
+    success = checkDateOrder(groupName, fromDate, toDate);
+    e.processOnServer = success;
+    return success;
+}
+
+function checkBlankDates(fromDate, toDate) {
+    var currentTime = new Date();
+
+    if (toDate.GetDate() == null) {
+        toDate.SetDate(currentTime);
+        //var cal = toDate.GetCalendar();
+    }
+
+    if (fromDate.GetDate() == null) {
+        var year = toDate.GetDate().getFullYear();
+        year = year - 2;
+        currentTime = toDate.GetDate();
+        currentTime.setFullYear(year);
+        fromDate.SetDate(currentTime);
+    }
+}
+
+function checkDateOrder(groupName, fromDate, toDate) {
+    if (fromDate.GetDate() > toDate.GetDate()) {
+        showAlert('Attention', groupName + ': The From Date cannot be later than the To Date.');
+        return false;
+    }
+    return true;
+}
+
+function validateAllFields(e) {
+    var event = e || window.event;
+    var target = (event.target) ? event.target : event.srcElement;
+
+    var numericOnlyRegex = new RegExp(/^(\s*|\d+)$/);
+    var numericOnlyCommaSeparatedRegex = new RegExp(/^(\d+(,\d+)*)?$/);
+    var remitIdCommaSeparatedRegex = new RegExp(/^((\d+\.\d+)(,\d+\.\d+)*)?$/);
+    var dateRegex = new RegExp(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
+    var alphaNumOrDashOrSpaceRegEx = new RegExp(/^[a-zA-Z]|[A-Z]|\d|,|-| |^$/);
+
+    var dollarOnlyRegex = new RegExp(/^(\s*|-?\d*(\,\d{3})*|(\d+))(\.\d{2})?$/);
+
+    var numericOnlyTooltip = '\'This field can only contain numeric values.\'';
+    var numericOnlyCommaSeparatedTooltip = '\'This field can only contain comma separated, numeric values.\'';
+    var remitIDCommaSeparatedTooltip = '\'This field can only contain comma separated Remittance IDs.\'';
+    var dollarOnlyTooltip = '\'This field can only contain dollar values without the dollar sign.\'';
+    var dateTooltip = '\'This is not a valid date.\'';
+    var alphaNumOrDashOrSpaceTooltip = '\'This field can only contain letters, numbers, dash or spaces\'';
+
+    var validationDiv = $('#ValidationDiv');
+    validationDiv.hide();
+
+    var failedValidationControls = [];
+
+    var navBar = $('#' + target.id).closest('.searchPanelSection');
+
+    var isValidNumeric = validateFields(navBar, 'NumericOnly', numericOnlyRegex, numericOnlyTooltip, failedValidationControls);
+    var isValidNumericCommaSeparated = validateFields(navBar, 'NumericOnlyCommaSeparated', numericOnlyCommaSeparatedRegex, numericOnlyCommaSeparatedTooltip, failedValidationControls);
+    var isValidRemitIDCommaSeparated = validateFields(navBar, 'RemitIDOnlyCommaSeparated', remitIdCommaSeparatedRegex, remitIDCommaSeparatedTooltip, failedValidationControls);
+    var isValidDollar = validateFields(navBar, 'DollarOnly', dollarOnlyRegex, dollarOnlyTooltip, failedValidationControls);
+    var isValidDate = validateFields(navBar, 'Date', dateRegex, dateTooltip, failedValidationControls);
+    var isAlphaNumOrDashOrSpace = validateFields(navBar, 'AlphaNumOrDashOrSpace', alphaNumOrDashOrSpaceRegEx, alphaNumOrDashOrSpaceTooltip, failedValidationControls);
+
+    var isValid = isValidNumeric && isValidDollar && isValidNumericCommaSeparated && isValidRemitIDCommaSeparated && isValidDate && isAlphaNumOrDashOrSpace;
+
+    if (!isValid) {
+        var validationMessageBuilder = [];
+        var focusControlID;
+
+        validationDiv.css('top', navBar.position().top);
+        validationDiv.css('left', navBar.width() + 5);
+        validationDiv.css('min-height', navBar.height() - 2);
+        for (var x = 0; x < failedValidationControls.length; x++) {
+            var splitMessage = failedValidationControls[x].split(";");
+
+            if (x == 0) {
+                focusControlID = splitMessage[1];
+            }
+
+            validationMessageBuilder.push(
+                "<div class=\'ValidationDivErrorItem\' title=",
+                splitMessage[2],
+                " onclick=\'setFocus(\"",
+                splitMessage[1],
+                "\");return false;\'><div class=\'ValidationDivErrorImage exclamationImage\'></div>",
+                "<div class=\'ValidationDivErrorLink\'>",
+                splitMessage[0],
+                "</div></div>"
+            );
+        }
+
+        $('#ValidationMessageDiv').html(validationMessageBuilder.join(""));
+
+        validationDiv.show();
+        setFocus(focusControlID);
+
+        failedValidationControls = null;
+
+        if (event.stopPropagation) {
+            event.stopPropagation();
+        }
+
+        event.cancelBubble = true;
+        event.preventDefault ? event.preventDefault() : event.returnValue = false;
+    }
+    return isValid;
+}
+
+function validateFields(navBar, validationType, regex, tooltip, failedValidationControls) {
+    var isValid = true;
+
+    $("input[data-validationtype='" + validationType + "']", navBar)
+        .filter(function () {
+            if (!this.value.match(regex) && !$(this).is(':hidden') && !$(this).hasClass('hintText')) {
+                $(this).addClass('failedValidation');
+                var failedItem = [];
+
+                failedItem.push(
+                    $(this).attr('data-validationID'),
+                    ";",
+                    $(this).attr('id'),
+                    ";",
+                    tooltip
+                );
+
+                failedValidationControls.push(failedItem.join(""));
+                isValid = false;
+            }
+            else {
+                $(this).removeClass('failedValidation');
+            }
+        });
+
+    return isValid;
+}
+
+function setFocus(controlID) {
+    var cntrl = $('#' + controlID);
+    cntrl.focus();
+    cntrl.select();
+}
+
+function styleJQueryModal(containerControl) {
+    $('.ui-button', containerControl).addClass('mediumDefaultButton');
+}
+
+function addGridRowMouseOverFunctionality(controlContainer) {
+    var gridViewRow = $('.gridViewRow:not(.noRowHover)', controlContainer);
+    gridViewRow.on('mouseover', function (event) { addRowBorder(this); });
+    gridViewRow.on('mouseout', function (event) { removeRowBorder(this); });
+
+    var tagRow = $('.tagRow:not(.noRowHover)', controlContainer);
+    tagRow.on('mouseover', function (event) { addRowBorderTag(this); });
+    tagRow.on('mouseout', function (event) { removeRowBorderTag(this); });
+}
+
+function addActionMenuActions(container) {
+    $('.gridActionMenu', container).css('display', 'none');
+
+    $('.gridViewRow:not(.noActionMenu):not(.navicure-grid-row)', container).on('mouseover', function () {
+        moveGridMenu($(this));
+        setGridMenuItemVisibility($(this));
+    });
+
+    $('.tagRow:not(.navicure-grid-row)', container).on('mouseover', function () {
+        moveGridMenuTagRow($(this));
+        setGridMenuItemVisibility($(this).prev());
+    })
+
+    $('.gridViewRow.navicure-grid-row, .tagRow.navicure-grid-row, .gridViewRow.noActionMenu, .tagRow.noActionMenu', container)
+        .on('mouseover', function () {
+            dismissGridMenu();
+        });
+
+    $('.tagRow.navicure-grid-row', container).on('mouseover', function () {
+        dismissGridMenu();
+    });
+
+    $('.gridViewRow.navicure-grid-row[data-navicure-url]', container).on('click', function () {
+        window.open($(this).attr('data-navicure-url'), '_blank');
+    });
+
+    $('.tagRow.navicure-grid-row[data-navicure-url]', container).on('click', function () {
+        window.open($(this).attr('data-navicure-url'), '_blank');
+    });
+
+}
+
+function moveGridMenu(control) {
+    setGridMenuPosition(control);
+    rowLastHovered = control.context;
+    if (!control.hasClass("noTagRow")) {
+        tagRowLastHovered = control.next();
+    } else {
+        rowLastHovered = control;
+    }
+}
+
+function moveGridMenuTagRow(control) {
+    setGridMenuPosition(control.prev());
+    rowLastHovered = control.prev();
+    tagRowLastHovered = control.context;
+}
+function setGridMenuPosition(control) {
+    var positionTop = control.outerHeight() + Math.floor(control.offset().top);
+    if (!control.hasClass("noTagRow")) {
+        positionTop += control.next().outerHeight();
+    }
+    //top -.5 is a hack to deal with ie8 rounding improperly.
+    //left + 40 is a shift so the next row's selection checkbox isn't behind the menu
+    $('.gridActionMenu')
+        .css('top', positionTop - .5)
+        .css('left', control.position().left + 40)
+        .css('display', '');
+}
+
+function setGridMenuItemVisibility(control) {
+    var gridActionLinks = $('.gridActionMenu a');
+    gridActionLinks.show().removeClass("first last");
+
+    var hideGroup = control.attr('data-hide-group');
+    var hideGroupItems = hideGroup ? hideGroup.split(';') : '';
+    $.each(hideGroupItems, function () {
+        if ($.trim(this) != '') {
+            gridActionLinks.filter('#' + $.trim(this)).hide();
+        }
+    });
+
+    var visibleGridActionLinks = gridActionLinks.filter(':visible');
+    visibleGridActionLinks.first().addClass('first');
+    visibleGridActionLinks.last().addClass('last');
+}
+
+function dismissGridMenu() {
+    $('.gridActionMenu').css('display', 'none');
+}
+
+function setupActionMenuHover(container) {
+    $('.gridActionMenu', container).on('mouseover', function () {
+        actionGridMouseover();
+    })
+        .mouseout(function () {
+            actionGridMouseout();
+        });
+
+    $(document).mouseover(function () {
+        if ($('tr.rowHover', container).length == 0) { $('.gridActionMenu', container).hide() }
+    });
+}
+
+function setTagRowOnHover(container) {
+    var row = $(".gridViewRow:not(.noTagRow)", container).each(function () {
+        $(this).next().attr('onmouseover', $(this).attr('onmouseover'));
+    });
+}
+
+function actionGridMouseover() {
+    addRowBorder(rowLastHovered);
+    addRowBorderTag(tagRowLastHovered);
+}
+
+function actionGridMouseout() {
+    removeRowBorder(rowLastHovered);
+    removeRowBorderTag(tagRowLastHovered);
+}
+
+function addRowBorder(row) {
+    $(row).addClass('rowHover');
+
+    if (!$(row).hasClass('noTagRow')) {
+        $(row).next()
+            .addClass('tagRowHover');
+    }
+}
+
+function addRowBorderTag(row) {
+    $(row).addClass('tagRowHover')
+        .prev()
+        .addClass('rowHover');
+}
+
+function removeRowBorderTag(row) {
+    $(row).removeClass('tagRowHover')
+        .prev()
+        .removeClass('rowHover');
+}
+
+function removeRowBorder(row) {
+    $(row).removeClass('rowHover')
+
+    if (!$(row).hasClass('noTagRow')) {
+        $(row).next()
+            .removeClass('tagRowHover');
+    }
+}
+
+function clearFilters() {
+    $('#filterHeaderDiv').siblings().remove();
+    checkForEmptyTagContainer();
+}
+
+function showAdvancedSearch() {
+    var searchDiv = $('#ulSearchOptions')
+    var pos = searchDiv.position();
+    var width = searchDiv.outerWidth();
+
+    $('#ulAdvancedOptions')
+        .css('display', 'inline')
+        .css('top', pos.top)
+        .css('left', pos.left + width - 4);
+
+    $("#advancedSearchLink").html('< Advanced Search').click(function () {
+        hideAdvancedSearch();
+    });
+}
+
+function hideAdvancedSearch() {
+    $('#ulAdvancedOptions').css('display', 'none');
+    $('#ulSearchOptions').removeClass('advancedSearchDivVisible');
+
+    $("#advancedSearchLink").off('click');
+    $("#advancedSearchLink")
+        .html('Advanced Search >')
+        .attr('onclick', '')
+        .click(function () {
+            showAdvancedSearch();
+        });
+}
+
+function setNoResultsText() {
+    var emptyGridHeader = $('span#emptyGridHeader');
+    var emptyGridSubText = $('span#emptyGridSubText');
+
+    if (emptyGridHeader.length > 0 && emptyGridSubText.length > 0) {
+        emptyGridHeader.text('Your search returned no results.');
+        emptyGridSubText.text('Please broaden your search criteria and try again.');
+    }
+}
+
+function setControls(searchObj) {
+    clearFilters();
+
+    for (var i = 0; i < searchObj.length; i++) {
+        var obj = $('#' + $.trim(searchObj[i].key));
+
+        if (obj.is(':checkbox')) {
+            if (searchObj[i].value == 'true') {
+                obj.prop('checked', true);
+            }
+        } else {
+            obj.val(searchObj[i].value);
+        }
+    }
+
+    addSearchToFilters(searchObj);
+    //This is hacky and probably doesn't belong here... but I couldn't make it work from the code behind.
+    setNoResultsText();
+}
+
+function addSearchToFilters(searchObj) {
+    var filters = [];
+    var filterContainer = $("#filterContainer");
+    $('#filterHeaderDiv').siblings().remove();
+
+    for (var i = 0; i < searchObj.length; i++) {
+        var controlId = $.trim(searchObj[i].key);
+        var control = $("#" + controlId);
+        var friendlyName = control.attr('data-friendlyname');
+        var searchValue = $.trim(searchObj[i].value);
+        var displayText = $.trim(searchObj[i].text);
+
+        if (control.val() == '$' || control.val() == '') {
+            continue;
+        }
+
+        if (control.is(':checkbox') != true || control.prop('checked') == true) {
+            if (typeof friendlyName === "undefined") {
+                friendlyName = control.parent('span').attr('data-friendlyname');
+                if (typeof friendlyName !== "undefined") {
+                    searchValue = friendlyName;
+                }
+            }
+
+            var filter = createFilterTag(controlId, friendlyName, displayText, searchValue);
+            filterContainer.append(filter);
+            filterContainer.find('.filterButtonRight:last').on('click', function () {
+                removeFilter($(this).prev('.filterButtonLeft'));
+            });
+        }
+    }
+    checkForEmptyTagContainer();
+}
+
+// Shared functionality to create a tag
+function createFilterTag(controlId, friendlyName, displayText, searchValue, searchValueText) {
+    var filter;
+    if (controlId == "ddlStatus") {
+        filter = "<b><span class='statusText' data-controlid='" + controlId + "' title='" + friendlyName + "'>Status - " + displayText + "</span></b>";
+    } else {
+        if (searchValueText != null && searchValueText.length > 0) {
+            searchValue = searchValueText;
+        }
+        filter = "<div class='filterDiv'>" +
+            "<span class='filterButtonLeft' data-controlid='" + controlId + "' title='" + friendlyName + "'><b>" + friendlyName + ":</b> " + searchValue + "</span>" +
+            "<span class='filterButtonRight'>" +
+            "<img class='filter-x' src='/Images/transparent.gif' height='1' width='1' alt='filter'></img></span></div>";
+    }
+    return filter;
+}
+
+function addDatePickerToFilters(searchObj) {
+    var filters = [];
+    var filterContainer = $("#filterContainer");
+
+    for (var i = 0; i < searchObj.length; i++) {
+        var fieldname = searchObj[i].name;
+        var searchValue = searchObj[i].value;
+        var displayText = searchObj[i].text;
+        var friendlyName = displayText;
+        var filter = createFilterTag(fieldname, friendlyName, displayText, searchValue);
+        filterContainer.append(filter);
+        filterContainer.find('.filterButtonRight:last').on('click', function () {
+            removeRangeFilter($(this).prev('.filterButtonLeft'));
+        });
+    }
+    checkForEmptyTagContainer();
+}
+
+function findSearchDTO(searchObj, name) {
+    return $.grep(searchObj, function (x) {
+        return (x.name == name)
+    })[0];
+}
+
+//Splits a filter Tag into its corresponding pair of controls to remove
+function removeRangeFilter(filterToRemove) {
+    var controlIds = $(filterToRemove).attr('data-controlid').split('|');
+    $(filterToRemove).remove();
+    //the controlid is actually the name attr. find the id and call the clearControls function
+    clearControl($('.searchPanel input[name="' + controlIds[0] + '"]').attr('id'));
+    clearControl($('.searchPanel input[name="' + controlIds[1] + '"]').attr('id'));
+    removeSelectedStyle();
+    checkForEmptyTagContainer();
+    if (typeof triggerSearch != "undefined") {
+        triggerSearch();
+    }
+}
+
+function removeFilter(filterToRemove) {
+    var controlId = $(filterToRemove).attr('data-controlid');
+    $(filterToRemove).parent('.filterDiv').remove();
+    clearControl(controlId);
+    checkForEmptyTagContainer();
+    removeSelectedStyle();
+    if (typeof triggerSearch != "undefined") {
+        triggerSearch();
+    }
+}
+
+function checkForEmptyTagContainer() {
+    //Hide filter container if necessary.
+    if ($('#filterHeaderDiv').siblings().length === 0) {
+        $('#filterContainer').hide();
+        $('#filtershadowImg').hide();
+    }
+    else {
+        $('#filterContainer').show();
+        $('#filtershadowImg').show();
+    }
+}
+
+function clearControl(controlId) {
+    var control = $("#" + controlId);
+    if (control.is(":checkbox"))
+        control.prop('checked', false);
+    else
+        if (control.is("select")) //clear ddl for IEHATE
+            control.find('option:first').attr('selected', 'selected');
+        else
+            control.val('');
+}
+
+function removeSelectedStyle() {
+    $('.selectedSearch').removeClass('selectedSearch');
+}
+
+function applySelectedStyle(control) {
+    removeSelectedStyle();
+    $(control).parent().parent().addClass('selectedSearch');
+}
+
+function setDatePicker(fieldname, value) {
+    var field = $('input[name="' + fieldname + '"]');
+    field.datepicker();
+    field.datepicker("setDate", value).removeClass('hintText');
+}
+
+function validateInput(input, validationLabel) {
+    if (input.val() === '') {
+        input.addClass('failedValidation');
+        validationLabel.css('display', 'block');
+        return false;
+    }
+    else {
+        input.removeClass('failedValidation');
+        validationLabel.css('display', 'none');
+        return true;
+    }
+}
+
+function showSaveSearchModal() {
+    $("#saveSearchModal").dialog({
+        height: 170,
+        width: 360,
+        modal: true,
+        draggable: false,
+        resizable: false
+    });
+    $('#txtSearchName').val('');
+}
+
+function confirmDeleteSearch(controlId) {
+    $("#deleteSearchModal").dialog({
+        height: 170,
+        width: 360,
+        modal: true,
+        draggable: false,
+        resizable: false,
+        buttons: {
+            "Delete": function () { __doPostBack(controlId, ''); $(this).dialog('close'); },
+            "Cancel": function () { $(this).dialog('close'); }
+        }
+    });
+    $("#deleteSearchModal").dialog('open');
+    return false;
+}
+
+function showSavedSearchList() {
+    if ($("#btnSavedSearchToggle span.savedSearchCount").html() === "(0)") {
+        toggleVisible('emptySavedSearchList');
+    }
+    else {
+        toggleVisible('savedSearchList');
+    }
+}
+
+function validateUpload(e) {
+    var batchNames = $('.batchNameText');
+    var isValid = true;
+
+    //batch name validation
+    if (batchNames != null) {
+        batchNames.each(function () {
+            if ($(this).val() == $(this).attr('data-HintText') || $(this).val().length == 0) {
+                isValid = false;
+                $(this).addClass('failedValidation');
+            } else {
+                $(this).removeClass('failedValidation');
+            }
+        });
+    }
+
+    //format selection validation
+    $('.formatDropdown').children('select').each(function () {
+        if (this.selectedIndex == 0) {
+            isValid = false;
+            $(this).addClass('failedValidation');
+        } else {
+            $(this).removeClass('failedValidation');
+        }
+    });
+
+    if (!isValid) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+    }
+}
+
+function SetupFileUpload(types) {
+    var startButton = $('.start').on('click', function (e) {
+        validateUpload(e);
+        return false;
+    });
+
+    var uploadContainer = $('.controlContainer');
+    uploadContainer.fileupload();
+
+    uploadContainer.fileupload('option', {
+        url: 'UploadHandler',
+        dataType: 'json',
+        sequentialUploads: true,
+        acceptFileTypes: ""
+    });
+
+    $('#fileupload').on('fileuploadadded', function (e, data) {
+        setupHintText(data.context);
+    })
+}
+
+function ShowUploadFiles() {
+    $("#uploadFileModal").dialog({
+        title: "Upload Files",
+        modal: true,
+        resizable: false,
+        minWidth: 550,
+        close: function () {
+            $('#btnCancelUpload').click();
+            $("input[type='text']", $(this)).val("");
+            $('.files').html('');
+
+            if ($(this).attr('data-refreshpanel').length > 0) {
+                //__doPostBack($(this).attr('data-refreshpanel'), 'refreshGrid');
+                $("#HiddenUploadResults").val(JSON.stringify(uploadResults));
+                uploadResults = new Array();
+                $('#UploadCompleteButton').click();
+            }
+        }
+    });
+}
+
+function ShowUploadErrors(containerDiv) {
+    $('#' + containerDiv).dialog({
+        width: 600,
+        minHeight: 120,
+        modal: true,
+        resizable: false,
+        title: "Errors"
+    });
+}
+
+function setupGoogleAnalyticsEventControls(containerElement) {
+    $('.gaEventControl', containerElement).each(function () {
+        $(this).on($(this).attr('data-gaTrigger'), function () {
+            if (typeof _gaq !== 'undefined') {
+                var category = $(this).attr("data-gaCategory");
+                var event = $(this).attr("data-gaEvent");
+                _gaq.push(['_trackEvent', category, event]);
+            } else if (typeof ga !== 'undefined') {
+                var category = $(this).attr("data-gaCategory");
+                var event = $(this).attr("data-gaEvent");
+                ga('send', 'event', category, event);
+            } else if (typeof window.console !== 'undefined') {
+                console.log("_gaq.push(['_trackEvent', '" + $(this).attr('data-gaCategory') + "', '" + $(this).attr('data-gaEvent') + "']));");
+            }
+        });
+    });
+}
+
+function expandableFilterClicked(container) {
+    exp = $(container);
+    if (exp.next("li").is(":hidden")) {
+        exp.next("li").slideDown("fast");
+        exp.find('img')
+            .attr('class', '')
+            .attr('class', 'arrow_expanded_down');
+    } else {
+        exp.next("li").slideUp("fast");
+        exp.find('img')
+            .attr('class', '')
+            .attr('class', 'arrow_collapsed_right');
+    }
+}
+
+function showToolTip(toolTipButton) {
+    var height = toolTipButton.children('.toolTipContainer').height();
+    var width = toolTipButton.children('.toolTipContainer').width() / 2;
+    toolTipButton.children('.toolTipContainer')
+        .css('top', toolTipButton.position().top - height + 20)
+        .css('left', toolTipButton.position().left + (toolTipButton.width() / 2) - width)
+        .show();
+}
+
+function hideToolTip(toolTipButton) {
+    toolTipButton
+        .children('.toolTipContainer')
+        .hide();
+}
+
+function setupToolTips(containerElement) {
+    $(".toolTip", containerElement)
+        .click(function () {
+            if ($(this).children('.toolTipContainer').is(':visible')) {
+                hideToolTip($(this));
+            } else {
+                showToolTip($(this));
+            }
+        }
+        );
+}
+
+function setupConnectedElements(containerElement) {
+    var containerSection = containerElement.find('.connectedContainer');
+    var andContainers = containerSection.children('.andContainer');
+    connectORContainers(andContainers);
+    connectANDContainers(andContainers);
+}
+
+function connectANDContainers(andContainers) {
+    var andContainerLength = andContainers.length;
+    for (var i = 0; i < andContainerLength - 1; i++) {
+        var thisContainer = $(andContainers[i]);
+        var nextContainer = $(andContainers[i + 1]);
+        var thisMiddle = thisContainer.outerHeight(true) / 2;
+        var nextMiddle = nextContainer.outerHeight(true) / 2;
+        var distance = (nextContainer.outerHeight() / 2) + (thisContainer.outerHeight() / 2);
+        thisContainer.before('<div class="topConnector"></div><div class="middleConnector"></div>');
+        thisContainer.after('<div class="andLabel">AND</div><div class="bottomConnector"></div>');
+        thisContainer.prevAll('.topConnector').first().css('top', thisMiddle + thisContainer.position().top);
+        thisContainer.prevAll('.middleConnector').first().css('top', thisMiddle + thisContainer.position().top + 4).css('height', thisMiddle + nextMiddle + parseInt(thisContainer.css('margin-top'), 10) + 1);
+        thisContainer.nextAll('.bottomConnector').first().css('top', nextMiddle + nextContainer.position().top);
+    }
+}
+
+function connectORContainers(andContainers) {
+    var andContainerLength = andContainers.length;
+    for (var i = 0; i < andContainerLength; i++)
+        $(andContainers[i]).find('.orContainer').not(':last').after('<div class="orLabel">OR</div>');
+}
+
+function disconnectContainers(containerSection) {
+    containerSection.find('.topConnector,.middleConnector,.bottomConnector,.andLabel,.orLabel').remove();
+}
+
+function setupShowHideContainer(containerElement) {
+    var showHideHeader = containerElement.find('.show-hide-container').find('.show-hide-header');
+    showHideHeader.each(function () {
+        if ($(this).hasClass('collapsed')) {
+            $(this).prepend('<span class="expand-collapse">&#x25B6;</span>');
+        } else {
+            $(this).prepend('<span class="expand-collapse">&#x25BC;</span>');
+            $(this).next('.show-hide-body').show();
+        }
+    });
+    showHideHeader.on('click', function () {
+        if ($(this).hasClass('collapsed')) {
+            $(this).next('.show-hide-body').show();
+            $(this).find('.expand-collapse').html('&#x25BC;');
+            $(this).addClass('expanded').removeClass('collapsed');
+        } else {
+            $(this).next('.show-hide-body').hide();
+            $(this).find('.expand-collapse').html('&#x25B6;');
+            $(this).addClass('collapsed').removeClass('expanded');
+        }
+    });
+}
+
+function setupMaskText(containerElement) {
+    $('input[data-masktext]', containerElement)
+        .each(function () {
+            var maskVal = $(this).attr('data-masktext').replaceAll('9', '_');
+            if ($(this).val().length != 0) {
+                var thisVal = $(this).val();
+                var maskLength = maskVal.length;
+                var thisIterator = thisVal.length;
+                for (var i = maskLength; i >= 0; i--) {
+                    if (thisIterator == 0) {
+                        break;
+                    }
+                    if (maskVal[i] == '_') {
+                        maskVal = maskVal.replaceAt(i, thisVal[thisIterator - 1]);
+                        thisIterator = thisIterator - 1;
+                    }
+                }
+            }
+            $(this).val(maskVal);
+            $(this).addClass('maskedText');
+        }).on('keydown', function (event) {
+            var keycode = (event.keyCode ? event.keyCode : (event.which ? event.which : event.charCode));
+            if (keycode == 8) {
+                return maskBackspaceKey(this);
+            } else if (keycode == 46) {
+                return maskDeleteKey(this);
+            } else if (keycode >= 37 && keycode <= 40 || keycode == 13 || keycode == 9) {
+                return true;
+            }
+            else if (((keycode > 47 && keycode < 58) || (keycode > 95 && keycode < 106))) {
+                return maskNumericKey(this);
+            } else {
+                event.preventDefault();
+                return false;
+            }
+        })
+}
+
+function maskBackspaceKey(control) {
+    var charPosition = getTextCaretPosition(control);
+    if (charPosition != 0) {
+        charPosition = charPosition - 1;
+    }
+    var newChar = '_';
+    var maskText = $(control).attr('data-masktext');
+    if (maskText.substring(charPosition)[0] != 9) {
+        newChar = maskText.substring(charPosition)[0];
+    }
+    var newVal = $(control).val().replaceAt(charPosition, newChar);
+    $(control).val(newVal);
+    setTextCaretPosition(control, charPosition);
+    event.preventDefault();
+    return false;
+}
+
+function maskDeleteKey(control) {
+    var charPosition = getTextCaretPosition(control);
+    var newChar = '_';
+    var maskText = $(control).attr('data-masktext');
+    if (charPosition >= maskText.length) {
+        event.preventDefault();
+        return false;
+    }
+    if (maskText.substring(charPosition)[0] != 9) {
+        var maskChar = maskText.substring(charPosition)[0];
+        var newVal = $(control).val().replaceAt(charPosition, maskChar);
+        $(control).val(newVal);
+        while (maskText.substr(charPosition)[0] != 9 && charPosition < maskText.length) {
+            charPosition = charPosition + 1;
+        }
+    }
+    var newVal = $(control).val().replaceAt(charPosition, newChar);
+    $(control).val(newVal);
+    setTextCaretPosition(control, charPosition + 1);
+    event.preventDefault();
+    return false;
+}
+
+function maskNumericKey(control) {
+    var maskText = $(control).attr('data-masktext');
+    var charPosition = getTextCaretPosition(control);
+    if (charPosition >= maskText.length) {
+        event.preventDefault();
+        return false;
+    }
+    while (maskText.substr(charPosition)[0] != 9 && charPosition < maskText.length) {
+        charPosition = charPosition + 1;
+    }
+    var newVal = $(control).val().slice(0, charPosition) + $(control).val().slice(charPosition + 1);
+    $(control).val(newVal);
+    setTextCaretPosition(control, charPosition);
+    return true;
+}
+
+String.prototype.replaceAll = function (find, replace) {
+    return this.replace(new RegExp(find, 'g'), replace);
+}
+
+String.prototype.replaceAt = function (index, character) {
+    return this.substr(0, index) + character + this.substr(index + character.length);
+}
+
+function getTextCaretPosition(ctrl) {
+    var CaretPos = 0;
+    if (document.selection) {
+        ctrl.focus();
+        var Sel = document.selection.createRange();
+        Sel.moveStart('character', -ctrl.value.length);
+        CaretPos = Sel.text.length;
+    }
+    else if (ctrl.selectionStart || ctrl.selectionStart == '0')
+        CaretPos = ctrl.selectionStart;
+    return (CaretPos);
+}
+
+function setTextCaretPosition(ctrl, pos) {
+    if (ctrl.setSelectionRange) {
+        ctrl.focus();
+        ctrl.setSelectionRange(pos, pos);
+    }
+    else if (ctrl.createTextRange) {
+        var range = ctrl.createTextRange();
+        range.collapse(true);
+        range.moveEnd('character', pos);
+        range.moveStart('character', pos);
+        range.select();
+    }
+}
+
+function setUpfilterSideBar(container) {
+    container.find('.filterSideBar-container').find('.filterSideBar-header')
+        .each(function (index) {
+            if ($(this).parent().hasClass('expanded')) {
+                $(this).prepend('<span class="arrow">&#9660</span>');
+            } else {
+                $(this).prepend('<span class="arrow">&#9658</span>');
+            }
+            $(this).on('click', function () {
+                filterSideBarClicked($(this).parent());
+            });
+        })
+}
+
+function filterSideBarClicked(container) {
+    var $this = $(container);
+    var next = $this.find(".filterSideBar-body");
+    var arrow = $this.find('.arrow');
+
+    if (!$this.hasClass('expanded')) {
+        next.slideDown("fast", function () {
+            $this.addClass('expanded');
+        });
+        arrow.html('&#9660'); //▼
+    } else {
+        next.slideUp("fast", function () {
+            $this.removeClass('expanded');
+        });
+        arrow.html('&#9658'); //►
+    }
+}
+
+function filterSideBarCollapseAll(container) {
+    container.find('.filterSideBar-container.expanded').find('.filterSideBar-header').click();
+}
+
+function setupTooltipPopups(container) {
+    var popupGroups = {};
+    container.find('.tooltip-popup').each(function () {
+        var $this = $(this),
+            data = $this.data(),
+            group = data.popupGroup || "default";
+
+        if (data.initialized) {
+            return;
+        }
+        data.initialized = true;
+
+        // This method will create and show a popup attached to $this
+        var showPopup = function () {
+            //first hide any existing popups
+            if (popupGroups[group]) {
+                hidePopup();
+            }
+
+            //create the popup container
+            var popupClass = "popup-container " + (data.popupClass || "");
+            var $popup = $('<div class="' + popupClass + '"></div>');
+            popupGroups[group] = $popup;
+            $('body').append($popup);
+
+            //create the popup title
+            if (data.popupTitle) {
+                var $header = $('<div class="popup-header"></div>');
+                $popup.append($header);
+                $header.append($('<span class="popup-title"></span>').html(data.popupTitle));
+            }
+
+            //add the 'x' if this popup was clicked open
+            if (data.popupOpenEvent == "click") {
+                var $closeButton = $('<div class="popup-close"><span class="icon-close"></span></div>');
+                $closeButton.on('click', hidePopup);
+                $popup.append($closeButton);
+
+                //we additionally want to hide the popup if you click somewhere else on the page
+                $(document).on('click.' + group, function (e) {
+                    if (!$this.is(e.target) && !$popup.is(e.target) && $popup.has(e.target).length === 0) {
+                        hidePopup();
+                    }
+                });
+
+                //...or if you scroll the parent of $this
+                $this.scrollParent().on('scroll.' + group, function () {
+                    hidePopup();
+                });
+            }
+
+            //add the content of the popup
+            var $content = $('<div class="popup-content"></div>');
+
+            if (data.popupContentText) { // simple text content
+                $content.html(data.popupContentText);
+            } else if (data.popupContentSelector) { // existing html content
+                $(data.popupContentSelector).clone().appendTo($content);
+            } else if (data.popupContentAjax) { // content retrieved from ajax
+                var request = {
+                    type: "GET",
+                    url: data.popupContentAjax
+                };
+                $this.trigger('popupAjaxBeforeSend', [request]); // this gives the consumer a chance to muck around with the request before it is sent
+                request.success = function (data) {
+                    var response = {
+                        data: data, content: data
+                    };
+                    $this.trigger('popupAjaxResponse', [response]); // this gives the consumer a chance to muck around with the data before it is rendered
+                    $content.append(response.content);
+                    positionPopup($this, $popup, data.popupPosition);
+                };
+                request.error = function (error) {
+                    $this.trigger('popupAjaxError', [error]);
+                    hidePopup();
+                };
+                $.ajax(request);
+            }
+            $popup.append($content);
+
+            positionPopup($this, $popup, data.popupPosition);
+            $this.trigger('popupOpened', [$popup]);
+        };
+
+        //this method positions the popup in the correct location relative to the '$this' anchor
+        var positionPopup = function ($element, $popup, position) {
+            switch (position) {
+                case "right":
+                    $popup.addClass('popup-right');
+                    $popup.position({
+                        my: "left+15 center",
+                        at: "right center",
+                        of: $element,
+                        collision: "none"
+                    });
+                    break;
+                case "left":
+                    $popup.addClass('popup-left');
+                    $popup.position({
+                        my: "right-15 center",
+                        at: "left center",
+                        of: $element,
+                        collision: "none"
+                    });
+                    break;
+                case "bottom":
+                    $popup.addClass('popup-bottom');
+                    $popup.position({
+                        my: "center top+15",
+                        at: "center bottom",
+                        of: $element,
+                        collision: "none"
+                    });
+                    break;
+                case "top":
+                default:
+                    $popup.addClass('popup-top');
+                    $popup.position({
+                        my: "center bottom-15",
+                        at: "center top",
+                        of: $element,
+                        collision: "none"
+                    });
+                    break;
+            }
+        };
+
+        //this method hides the popup and clears any events associated with it
+        var hidePopup = function () {
+            if (popupGroups[group]) {
+                $(document).off('click.' + group);
+                $this.scrollParent().off('scroll.' + group);
+                popupGroups[group].remove();
+                delete popupGroups[group];
+                $this.trigger('popupClosed');
+            }
+        };
+
+        //set up the initial show/hide events for the popup
+        if (data.popupOpenEvent == "click") {
+            $this.on('click', showPopup);
+        } else {
+            $this.on('mouseenter', showPopup);
+            $this.on('mouseleave', hidePopup);
+        }
+    });
+}
+
+function setupAccountSearch(container) {
+    container.find('.account-search-form').each(function () {
+        var $accountSearchForm = $(this),
+            $accountSearch = $accountSearchForm.find('#accountSearch'),
+            $selectedId = $accountSearchForm.find('#SelectedAccountId'),
+            searchUrl = $accountSearch.data('searchUrl'),
+            changingCust = false,
+            onSelect = function (args) {
+                var fnString = $accountSearchForm.find('#OnSelectJavascriptFns').val();
+                if (fnString) {
+                    fnString.split(',').forEach(function (fnString) {
+                        fnString = fnString.trim();
+                        var fn = window[fnString];
+                        if (fn && fn instanceof Function) {
+                            fn.apply($accountSearch, args);
+                        }
+                    });
+                }
+                changingCust = false;
+            },
+            manualChangeCusts = function (event) {
+                var accountId = +$accountSearch.val();
+                if (!isNaN(accountId) && accountId !== 0 && !changingCust) {
+                    changeCusts(accountId);
+                    changingCust = true;
+                    event.stopPropagation();
+                }
+            },
+            changeCusts = function (custId) {
+                $selectedId.val(custId);
+
+                $.ajax({
+                    url: $accountSearchForm.attr("action") || $accountSearchForm.data("selectAccountUrl"),
+                    type: 'post',
+                    data: {
+                        SelectParentAccount: $accountSearchForm.find('#SelectParentAccount').val(),
+                        CustIdSessionKey: $accountSearchForm.find('#CustIdSessionKey').val(),
+                        OnSelectJavascriptFns: $accountSearchForm.find('#OnSelectJavascriptFns').val(),
+                        SelectedAccountId: custId,
+                        __RequestVerificationToken: $accountSearchForm.find('input[name=__RequestVerificationToken]').val()
+                    },
+                    contentType: "application/x-www-form-urlencoded; charset=utf-8",
+                    dataType: "json"
+                }).done(function (data) {
+                    onSelect(Array.prototype.slice.call(arguments));
+                }).fail(function (error) {
+                    onSelect(Array.prototype.slice.call(arguments));
+                });
+            };
+
+        $accountSearch
+            .on('focus', function () {
+                $(this).select();
+            })
+            .on('blur', manualChangeCusts)
+            .on('keydown', function (event) {
+                if (event.keyCode == 13) {
+                    event.preventDefault();
+                    manualChangeCusts(event);
+                }
+            })
+            .autocomplete({
+                source: searchUrl,
+                minLength: 1,
+                autoFocus: true,
+                select: function (event, ui) {
+                    if (!changingCust) {
+                        changeCusts(ui.item.id);
+                        changingCust = true;
+                    }
+                },
+                change: function (event, ui) {
+                    if (ui.item == null) {
+                        $(this).val('');
+                    }
+                }
+            });
+    });
+}
+
+function parentAccountSearchOnSelect(data) {
+    if (data && data.SelectedAccount) {
+        var $this = $(this);
+        $this.val('');
+        var $parent = $this.parents('#ParentAccountSearch');
+        $parent.find('.page-notification').show();
+        $parent.find('#parentAccountSearchName').text(data.SelectedAccount.DisplayName);
+        $parent.find('#parentAccountSearchSelectedAccountId').text(data.SelectedAccountId);
+    }
+}
+
+function contractSearchLabelOnSelect(data) {
+    if (data && data.SelectedContract) {
+        var $this = $(this);
+        $this.val('');
+
+        var $parent = $this.parent().siblings('.contract-search-notification');
+        $parent.find('#contractSearchName').text(data.SelectedContract.DisplayName);
+        $parent.find('.page-notification').show();
+    }
+}
+
+function setupZirMedTable(container) {
+    container.find('div.zirmed-table').each(function () {
+        var $this = $(this),
+            $tbody = $this.find('.gridView tbody'),
+            existingRows = $tbody.find('gridViewRow'),
+            $headers = $tbody.find('tr th.sortableHeader'),
+            state;
+
+        $this.data('columnData', $tbody
+            .find('tr th')
+            .get()
+            .map(function (th) { return $(th).data(); })
+            .filter(function (data) { return data.columnId; }));
+
+        $this.data('selectable', $this.hasClass('selectable'));
+
+        if (typeof zirmedTableInitialState !== "undefined") {
+            var state = zirmedTableInitialState[$this.attr('id')];
+            $this.data('state', state);
+            $this.find('.pageSize select').val(state.RecordsPerPage);
+            if (state.SortColumn) {
+                $headers.each(function () {
+                    if ($(this).data('columnId') == state.SortColumn) {
+                        toggleSort(this);
+                        if (state.SortDescending) {
+                            toggleSort(this);
+                        }
+                    }
+                });
+            }
+        }
+
+        if ($this.data('selectable')) {
+            state.Selected = state.Selected || [];
+        }
+
+        if (!existingRows.length && typeof zirmedTableInitialData !== "undefined") {
+            populateZirMedTableData($this, zirmedTableInitialData[$this.attr('id')]);
+        }
+
+        $headers.on('click', function () {
+            var sort = $(this).data('columnId');
+            if (state.SortColumn == sort) {
+                state.SortDescending = !state.SortDescending;
+            } else {
+                state.SortDescending = false;
+                state.SortColumn = sort;
+            }
+            searchZirMedTable($this, state, true);
+        });
+
+        $this.find('.next,.previous').on('click', 'button:not([disabled])', function () {
+            var $button = $(this);
+
+            if ($button.hasClass('first-page')) {
+                state.Page = 1;
+            }
+            if ($button.hasClass('previous-page')) {
+                state.Page--;
+            }
+            if ($button.hasClass('next-page')) {
+                state.Page++;
+            }
+            if ($button.hasClass('last-page')) {
+                state.Page = parseInt($this.find('.total-pages').text(), 10);
+            }
+            searchZirMedTable($this, state, true);
+        });
+
+        $this.find('.pageSize select').on('change', function () {
+            state.Page = 1;
+            state.RecordsPerPage = parseInt($(this).val(), 10);
+            searchZirMedTable($this, state, true);
+        });
+
+        $this.find('.page input').on('keydown', function () {
+            if (event.keyCode == 13) {
+                event.preventDefault();
+                var $input = $(this)
+                page = parseInt($input.val(), 10);
+                if (isNaN(page)) {
+                    $input.val(state.Page);
+                } else if (page != state.Page) {
+                    state.Page = page;
+                    searchZirMedTable($this, state, true);
+                }
+            }
+        });
+
+        $this.find('.page input').on('blur', function () {
+            var $input = $(this)
+            page = parseInt($input.val(), 10);
+            if (isNaN(page)) {
+                $input.val(state.Page);
+            } else if (page != state.Page) {
+                state.Page = page;
+                searchZirMedTable($this, state, true);
+            }
+        });
+
+        $this.on('change', '.select-column input', function () {
+            var $checkbox = $(this),
+                checked = $checkbox.prop('checked'),
+                id = $checkbox.parents('tr').toggleClass('selectedRow', checked).attr('id'),
+                index = state.Selected.indexOf(id);
+
+            if (checked && index == -1) {
+                state.Selected.push(id);
+            } else if (!checked && index != -1) {
+                state.Selected.splice(index, 1);
+            }
+        });
+
+        var selectAll = function () {
+            var $rows = $tbody.find('tr.gridViewRow').addClass('selectedRow'),
+                ids = $rows.get().map(function (row) { return $(row).attr('id'); }).filter(function (id) { return state.Selected.indexOf(id) < 0; });
+
+            state.Selected = state.Selected.concat(ids);
+            $rows.find('.select-column input').prop('checked', true);
+            $this.find('#gridHeaderSelect').prop('checked', true);
+        },
+            selectNone = function () {
+                var $rows = $tbody.find('tr.gridViewRow').removeClass('selectedRow'),
+                    ids = $rows.get().map(function (row) { return $(row).attr('id'); });
+
+                ids.forEach(function (id) {
+                    var index = state.Selected.indexOf(id);
+                    if (index >= 0) {
+                        state.Selected.splice(index, 1);
+                    }
+                });
+
+                $rows.find('.select-column input').prop('checked', false);
+                $this.find('#gridHeaderSelect').prop('checked', false);
+            };
+
+        $this.find('#gridHeaderSelect').on('change', function () {
+            if ($(this).prop('checked')) {
+                selectAll();
+            } else {
+                selectNone();
+            }
+        });
+
+        $this.find('.select-all-page').on('click', selectAll);
+
+        $this.find('.select-none-page').on('click', selectNone);
+
+        $this.find('.select-all').on('click', function () {
+            $this.trigger('tableBeforeSelectAll');
+            $.ajax({
+                type: "POST",
+                url: $this.data('selectAllIdsUrl'),
+                data: JSON.stringify(state),
+                contentType: "application/json",
+                dataType: "json"
+            }).done(function (data) {
+                $this.trigger('tableAfterSelectAll');
+                state.Selected = state.Selected.concat(data.filter(function (id) { return state.Selected.indexOf(id) < 0; }));
+                selectAll();
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                $this.trigger('tableAfterSelectAll', jqXHR, textStatus, errorThrown);
+                console.log(arguments);
+            });
+        });
+
+        $this.find('.select-none').on('click', function () {
+            state.Selected = [];
+            selectNone();
+        });
+    });
+}
+
+function populateZirMedTableData($zirMedTable, data) {
+    var $tbody = $zirMedTable.find('.gridView tbody'),
+        $recordsShowing = $zirMedTable.find('.records-showing'),
+        $totalRecords = $zirMedTable.find('.total-records'),
+        $totalPages = $zirMedTable.find('.total-pages'),
+        $pageNumber = $zirMedTable.find('.page-number'),
+        state = $zirMedTable.data('state'),
+        $header = $tbody.find('.gridViewHeader'),
+        $empty = $tbody.find('.gridViewEmpty'),
+        $nextButtons = $zirMedTable.find('.next button'),
+        $previousButtons = $zirMedTable.find('.previous button'),
+        $actionMenu = $zirMedTable.find('.innerGridActionDiv'),
+        tagRowFn = $zirMedTable.data('tagRowFn') && window[$zirMedTable.data('tagRowFn')];
+
+    $tbody.find('.gridViewRow,.tagRow').remove();
+    if (!data || !data.Rows.length) {
+        $header.hide();
+        $empty.show();
+
+        $recordsShowing.text("0 - 0");
+        $totalRecords.text(0);
+        $totalPages.text(1);
+        $pageNumber.val(1);
+
+        $nextButtons.prop('disabled', true);
+        $previousButtons.prop('disabled', true);
+    } else {
+        $header.show();
+        $empty.hide();
+
+        var columnData = $zirMedTable.data('columnData');
+        for (var i = 0, l = data.Rows.length; i < l; i++) {
+            if (data.Rows[i].Data) {
+                var $tr = buildZirMedTableRow(data.Rows[i], $tbody, columnData, $actionMenu, tagRowFn, $zirMedTable.data('selectable'), $zirMedTable.data('rowId'));
+                $zirMedTable.trigger("ZirMedTableRowBuilt", $tr);
+            }
+        }
+        if (state.Selected) {
+            for (var j = 0, k = state.Selected.length; j < k; j++) {
+                $tbody.find('#' + state.Selected[j]).addClass('selectedRow')
+                    .find('input[type="checkbox"]').prop('checked', true);
+            }
+        }
+
+        addGridRowMouseOverFunctionality($tbody);
+        addActionMenuActions($tbody)
+
+        state.Page = data.CurrentPage;
+        var recordsFrom = (data.CurrentPage - 1) * state.RecordsPerPage + 1,
+            recordsTo = recordsFrom + data.Rows.length - 1,
+            totalPages = state.RecordsPerPage ? Math.ceil(data.TotalRecords / state.RecordsPerPage) : 1;
+
+        $recordsShowing.text(recordsFrom + " - " + recordsTo);
+        $totalRecords.text(data.TotalRecords);
+        $totalPages.text(totalPages);
+        $pageNumber.val(data.CurrentPage);
+
+        $nextButtons.prop('disabled', data.CurrentPage >= totalPages);
+        $previousButtons.prop('disabled', data.CurrentPage <= 1);
+    }
+    $zirMedTable.trigger("ZirMedTablePopulated", data);
+};
+
+function buildZirMedTableRow(row, $tbody, columnData, $actionMenu, tagRowFn, hasSelectColumn, rowId) {
+    var tr = '<tr class="gridViewRow">',
+        colspan = columnData.length;
+
+    if (hasSelectColumn) {
+        colspan++;
+        tr += '<td class="select-column">';
+        tr += '<input type="checkbox">';
+        tr += '</td>';
+    }
+
+    for (var j = 0; j < columnData.length; j++) {
+        var key = columnData[j].columnId,
+            cssClass = columnData[j].columnCssClass,
+            cellData = (typeof row.Data[key] == "undefined" || row.Data[key] == null) ? '' : row.Data[key];
+
+        if (typeof cellData === 'string') { //parse dot.nets serialized dates
+            var d = /\/Date\((-?\d*)\)\//.exec(cellData);
+            cellData = (d) ? new Date(+d[1]) : cellData;
+        }
+
+        if (cssClass) {
+            tr += '<td class="' + cssClass + '">';
+        } else {
+            tr += '<td>';
+        }
+        tr += cellData; //todo: at some point maybe allow the consumer to format this?
+        tr += '</td>';
+    }
+    tr += '</tr>'
+
+    var $tr = $(tr).appendTo($tbody).data({ rowData: row.Data }),
+        $rows = $tr;
+
+    if (rowId) {
+        $tr.attr('id', row.Data[rowId]);
+    }
+
+    if (tagRowFn) {
+        $tagRow = $('<tr class="tagRow"></tr>').append($('<td colspan="' + colspan + '"></td>').append(tagRowFn(row.Data))).appendTo($tbody);
+        $rows = $rows.add($tagRow);
+    } else {
+        $tr.addClass('noTagRow');
+    }
+
+    if (row.Actions != null) {
+        $rows.on('mouseover', function () {
+            var r = this;
+            $actionMenu.empty();
+            for (var key in r.Actions) {
+                var $menuItem = $("<a>" + key + "</a>");
+                $menuItem.appendTo($actionMenu).on('click', function () {
+                    window[this](r.Data);
+                }.bind(r.Actions[key]));
+            }
+        }.bind(row));
+    } else {
+        $tr.addClass('noActionMenu noRowHover');
+    }
+
+    if (row.CssClass) {
+        $tr.addClass(row.CssClass);
+    }
+
+    return $tr;
+}
+
+function searchZirMedTable($zirMedTable, state, preserveSelections) {
+    if (!$zirMedTable.hasClass('zirmed-table')) {
+        $zirMedTable = $zirMedTable.find('zirmed-table');
+        if (!$zirMedTable.length) return;
+    }
+
+    state.AsHtml = false;
+
+    var selected = state.Selected;
+    state.Selected = null;
+
+    var previousState = $zirMedTable.data('previousState');
+    $zirMedTable.trigger('tableBeforeSearch', [state, previousState]);
+    $zirMedTable.data('previousState', $.extend(true, {}, state));
+
+    $.ajax({
+        type: "POST",
+        url: $zirMedTable.data('searchUrl'),
+        data: JSON.stringify(state),
+        contentType: "application/json",
+        dataType: "json"
+    }).done(function (data) {
+        $zirMedTable.trigger('tableAfterSearch');
+
+        state.Selected = preserveSelections ? selected : [];
+        $zirMedTable.data('state', state);
+        populateZirMedTableData($zirMedTable, data);
+    }).fail(function (jqXHR, textStatus, errorThrown) {
+        $zirMedTable.trigger('tableAfterSearch', jqXHR, textStatus, errorThrown);
+        console.log(arguments);
+    });
+}
+
+$.widget("zirmed.phonenumber", {
+    options: {
+        mask: "(xxx) xxx-xxxx"
+    },
+
+    _create: function () {
+        this._refresh();
+        var self = this;
+        this.element.on('input', function () {
+            var caret = this.selectionStart,
+                atEnd = this.selectionStart == this.value.length;
+            self._refresh();
+            if (atEnd) {
+                this.selectionStart = this.selectionEnd = this.value.length;
+            } else {
+                this.selectionStart = this.selectionEnd = caret;
+            }
+        });
+    },
+
+    _refresh: function () {
+        var num = this.number(),
+            j = 0,
+            result = "";
+
+        if (num) {
+            for (var i = 0, l = this.options.mask.length; i < l; i++) {
+                var char = this.options.mask[i],
+                    nextdigit = num[j];
+
+                if (char == 'x') {
+                    if (!nextdigit) {
+                        break;
+                    }
+                    result += nextdigit;
+                    j++;
+                } else {
+                    result += char;
+                }
+            }
+        }
+        if (result.substr(0, this.element.val().length) !== this.element.val()) {
+            this.element.val(result);
+        }
+    },
+
+    number: function (event) {
+        return this.element.val().replace(/[^\d]*/g, '');
+    },
+
+    _setOptions: function () {
+        this._superApply(arguments);
+        this._refresh();
+    }
+});
+
+/* Browser Shims */
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (searchElement, fromIndex) {
+        return $.inArray(searchElement, this, fromIndex);
+    };
+}
+/* Browser Shims */
+
+function InitLeftNav() {
+    //*** Display legacy tertiary navigation if left navigation absent
+    if ($('ul.nav_panel_left').length == 0) {
+        $('div.subheaderbackground').css('display', 'block');
+        return;
+    }
+
+    var leftNav = $('ul.nav_panel_left');
+    var pageTitle = $('.tertiary_title').text().toLowerCase();
+    pageTitle = $.trim(pageTitle);
+
+    leftNav.find('li').children('a').filter(function () {
+        return $(this).text().toLowerCase() === pageTitle;
+    }).parent().addClass('selected');
+
+    var anchors = leftNav.find('a');
+    var expandable = leftNav.find('li').has('ul').addClass('expandable');
+    var expandedList = leftNav.find('li').has('.selected').addClass('expanded');
+    var collapsedList = expandable.not('li.expanded').addClass('collapsed');
+
+    collapsedList.find('ul').addClass('hidden');
+
+    anchors.on('click', function (event) {
+        event.stopPropagation();
+    });
+
+    expandable.on('click', function (event) {
+        event.stopImmediatePropagation();
+        var $this = $(this);
+        $this.children('span').children('img').remove();
+
+        if ($this.hasClass('expanded')) {
+            $this.removeClass('expanded').addClass('collapsed');
+            $this.children('ul').slideUp(250);
+        } else {
+            $this.removeClass('collapsed').addClass('expanded');
+            $this.children('ul').slideDown(250);
+        }
+    });
+
+    $('ul.nav_panel_left').css('display', 'block');
+}

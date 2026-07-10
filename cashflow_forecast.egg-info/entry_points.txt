@@ -1,0 +1,2 @@
+[console_scripts]
+cashflow-forecast = cashflow_forecast.__main__:main

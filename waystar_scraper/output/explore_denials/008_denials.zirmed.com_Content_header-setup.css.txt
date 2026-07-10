@@ -1,0 +1,20 @@
+URL: https://denials.zirmed.com/Content/header-setup.css
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/css
+POST: 
+================================================================================
+.denial-search-link-panel {
+    padding: 8px;
+    margin-top: 25px;
+    margin-right:10px;
+    float: right;
+    background-color: #f0f0f0;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.denial-search-icon{
+    color: #666;
+    padding-right: 5px;
+}

@@ -21,6 +21,23 @@ from network_retry import RetrySettings, retry_transient
 
 log = get_logger("auth")
 
+CHROME_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
+
+STEALTH_INIT_SCRIPT = """
+Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+window.chrome = window.chrome || { runtime: {} };
+"""
+
+DEFAULT_EXTRA_HEADERS = {
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-CH-UA": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+    "Sec-CH-UA-Mobile": "?0",
+    "Sec-CH-UA-Platform": '"Windows"',
+}
+
 POST_LOGIN_URL = re.compile(r"https://(claims|general)\.zirmed\.com/.*")
 CLAIMS_LISTING_URL_PATTERN = re.compile(
     r"https://claims\.zirmed\.com/Claims/Listing", re.IGNORECASE
@@ -149,6 +166,33 @@ async def _ensure_trust_device_checked(page: Page) -> None:
         log.info("Checked 'Trust this device for future logins'")
 
 
+def _mfa_cleared(url: str) -> bool:
+    return MFA_URL_FRAGMENT not in url
+
+
+async def _submit_mfa_verify(page: Page, human: HumanSettings, config: WaystarConfig) -> None:
+    if _mfa_cleared(page.url):
+        log.info("MFA already cleared — skipping Verify click")
+        return
+
+    verify_btn = page.locator(
+        'input[type="submit"][value*="Verify" i], '
+        'button:has-text("Verify"), '
+        'input[value="Verify"]'
+    ).first
+
+    try:
+        async with page.expect_navigation(timeout=config.mfa_timeout_sec * 1000):
+            await human_click(verify_btn, page, human)
+        log.info("Clicked Verify — navigation completed")
+    except PlaywrightTimeoutError:
+        if _mfa_cleared(page.url):
+            log.info("MFA redirect completed without explicit navigation event")
+        else:
+            raise
+    await human.screenshot(page, "mfa_after_verify")
+
+
 async def handle_mfa(page: Page, config: WaystarConfig, human: HumanSettings) -> None:
     log.warning("Additional authentication required (security question)")
     await human.screenshot(page, "mfa_security_question")
@@ -183,15 +227,7 @@ async def handle_mfa(page: Page, config: WaystarConfig, human: HumanSettings) ->
         await human_type(answer_input, answer, human)
         await human.screenshot(page, "mfa_answer_filled")
         await human.delay()
-
-        verify_btn = page.locator(
-            'input[type="submit"][value*="Verify" i], '
-            'button:has-text("Verify"), '
-            'input[value="Verify"]'
-        ).first
-        await human_click(verify_btn, page, human)
-        log.info("Clicked Verify — waiting for redirect...")
-        await human.screenshot(page, "mfa_after_verify")
+        await _submit_mfa_verify(page, human, config)
     elif not config.headless:
         log.info(
             "No MFA answer configured — complete the security question "
@@ -222,6 +258,11 @@ async def handle_mfa(page: Page, config: WaystarConfig, human: HumanSettings) ->
 
     log.info("MFA completed successfully | %s", await _page_snapshot(page))
     await human.screenshot(page, "mfa_success_dashboard")
+
+
+async def ensure_mfa_cleared(page: Page, config: WaystarConfig, human: HumanSettings) -> None:
+    if MFA_URL_FRAGMENT in page.url:
+        await handle_mfa(page, config, human)
 
 
 async def login(
@@ -385,13 +426,11 @@ async def create_context(
     )
 
     context_kwargs: dict = {
-        "user_agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ),
+        "user_agent": CHROME_USER_AGENT,
         "viewport": {"width": 1366, "height": 768},
         "locale": "en-US",
         "timezone_id": "America/New_York",
+        "extra_http_headers": DEFAULT_EXTRA_HEADERS,
     }
     if reuse_session and STORAGE_STATE_PATH.exists():
         context_kwargs["storage_state"] = str(STORAGE_STATE_PATH)
@@ -400,6 +439,7 @@ async def create_context(
         log.info("No saved session — fresh login will be required")
 
     context = await browser.new_context(**context_kwargs)
+    await context.add_init_script(STEALTH_INIT_SCRIPT)
     log.debug("Browser context created")
     return browser, context
 
@@ -426,7 +466,7 @@ async def ensure_authenticated(
 
     if MFA_URL_FRAGMENT in page.url:
         log.warning("MFA required when opening claims listing")
-        await handle_mfa(page, config, human)
+        await ensure_mfa_cleared(page, config, human)
         await save_storage_state(context)
         await navigate_to_claims_listing(page, human, retry=retry)
 

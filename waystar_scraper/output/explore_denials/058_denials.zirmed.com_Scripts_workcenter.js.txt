@@ -1,0 +1,2107 @@
+URL: https://denials.zirmed.com/Scripts/workcenter.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+$(function () {
+    setUpPage();
+    setUpContentFunctions();
+    setUpSearchPanel();
+    setUpWorkgroupDropdown();
+    reloadWorkcenterGrid();
+    setupAndInitCheckBoxes();
+});
+
+//-- Control ELg and CD CheckBoxes
+function setupAndInitCheckBoxes() {
+    setUpCdElgCheckBoxes();
+    initCheckBoxes();
+}
+function setUpCdElgCheckBoxes() {
+    $('#WorkcenterArgs_FilterEligibilityResponse').change(function () {
+        toggleCheckboxes(this, '#WorkcenterArgs_FilterCoverageDetectionResponse');
+    });
+
+    $('#WorkcenterArgs_FilterCoverageDetectionResponse').change(function () {
+        toggleCheckboxes(this, '#WorkcenterArgs_FilterEligibilityResponse');
+    });
+}
+
+function initCheckBoxes() {
+    toggleCheckboxes('#WorkcenterArgs_FilterEligibilityResponse', '#WorkcenterArgs_FilterCoverageDetectionResponse');
+    toggleCheckboxes('#WorkcenterArgs_FilterCoverageDetectionResponse', '#WorkcenterArgs_FilterEligibilityResponse');
+}
+function toggleCheckboxes(changed, other) {
+    if ($(changed).is(':checked')) {
+        $(other).prop('disabled', true);
+    } else {
+        $(other).prop('disabled', false);
+    }
+}
+function setUpPage() {
+    $("#WorkcenterArgs_WorkgroupID").on('change', function () {
+        changeWorkgroup($(this).val());
+    });
+
+    if (SelectingAll) {
+        $('#chkGridSelect').prop('checked', true);
+    }
+    else {
+        $('#chkGridSelect').prop('checked', false);
+    }
+}
+
+function setUpSearchPanel() {
+    setupControls($("#searchPanel"));
+
+    $('.multiSelectDropDown').unbind('click').off('mouseenter').on('click', function () {
+        showMenu($(this));
+    });
+
+    var $multiSelectDropDownItems = $(".multiSelectDropDown li");
+
+    $multiSelectDropDownItems.on("click", function (e) {
+        multiSelectDropDownClick($(this));
+    });
+
+    $multiSelectDropDownItems.children("input[type='checkbox']").on("click", function (e) {
+        if ($(this).parent().hasClass("selectAll")) {
+            multiSelectDropDownClick($(this).parent());
+        }
+        else {
+            e.stopPropagation();
+        }
+    });
+
+    PayerAutoComplete();
+    AccountAutoComplete();
+}
+
+function setUpAdvancedSearchModal() {
+    setupControls($("#advancedSearchModal"));
+
+    $("#filterCategories ul").show();
+
+    $("#filterCategories ul li a").on('click', function () {
+        selectFilterType($(this));
+        return false;
+    });
+
+    var $multiSelectListItems = $("#filterOptions .multiSelect li label");
+
+    $multiSelectListItems.children("input[type='checkbox'],input[type='radio']").on("click", function (e) {
+        advancedMultiSelectDropDownClick($(this));
+    });
+
+    $("#optionContainer .textInput").on("change", function () {
+        var filterGroup = null;
+        var isFrom = null;
+        var itemID = $(this).attr("id");
+        if (itemID == "txtPatientNameModal" || itemID == "txtClaimNumberModal" || itemID == "txtDenialIDModal") {
+            filterGroup = $(this).closest("ul").attr("id").split("_")[1];
+        }
+        if (itemID.indexOf("Date") > -1) {
+            filterGroup = $(this).closest("ul").attr("id").split("_")[1];
+            isFrom = itemID.indexOf("From") > -1;
+        }
+        if (itemID.indexOf("Amount") > -1) {
+            filterGroup = $(this).closest("ul.multiSelect").attr("id").split("_")[1];
+            isFrom = itemID.indexOf("Min") > -1;
+        }
+        removeTagItItem(filterGroup, null, isFrom);
+
+        var selection = $("#" + itemID).val();
+
+        if (selection != "") {
+            if (itemID.indexOf("Amount") > -1) {
+                selection = "$" + selection;
+            }
+            if (itemID.indexOf("From") > -1 || itemID.indexOf("Min") > -1) {
+                if (itemID === "WorkcenterArgs_DenialDateFrom") {
+                    var denialDateFrom = $("#WorkcenterArgs_DenialDateFrom").datepicker('getDate');
+                    if (denialDateFrom < MinAllowedDateForDenialSearch) {
+                        $('#WorkcenterArgs_DenialDateFrom').val(MinAllowedDateForDenialSearch.toLocaleDateString());
+                        selection = MinAllowedDateForDenialSearch.toLocaleDateString();
+                    }
+                }
+                selection = "From " + selection;
+            }
+            else if (itemID.indexOf("To") > -1 || itemID.indexOf("Max") > -1) {
+                selection = "To " + selection;
+                if (itemID === "WorkcenterArgs_DenialDateTo") {
+                    var denialDateTo = $('#WorkcenterArgs_DenialDateTo').datepicker('getDate');
+                    if (denialDateTo < MinAllowedDateForDenialSearch) {
+                        $('#WorkcenterArgs_DenialDateTo').val(MinAllowedDateForDenialSearch.toLocaleDateString());
+                        selection = MinAllowedDateForDenialSearch.toLocaleDateString();
+                    }
+                }
+            }
+            createTagItItem(selection, selection, filterGroup, "");
+        }
+    });
+
+    var deniedAmountMin = $("#WorkcenterArgs_DeniedAmountMin").val();
+    var deniedAmountMax = $("#WorkcenterArgs_DeniedAmountMax").val();
+
+    $("#Options_DeniedAmount > li > input").each(function () {
+        if ($(this).hasClass("all") && deniedAmountMin == "" && deniedAmountMax == "") {
+            $(this).parent().trigger("click");
+            return false;
+        }
+        else if (deniedAmountMin != "" || deniedAmountMax != "") {
+            if ($(this).hasClass("customDeniedAmount")) {
+                $(this).parent().trigger("click");
+                $("#customDeniedAmount").show();
+                return false;
+            }
+            else {
+                if ($(this).data("min") != undefined) {
+                    if ($(this).data("max") != undefined) {
+                        if ($(this).data("min") == deniedAmountMin && $(this).data("max") == deniedAmountMax) {
+                            $(this).parent().trigger("click");
+                            return false;
+                        }
+                    }
+                    else {
+                        if ($(this).data("min") == deniedAmountMin && deniedAmountMax == "") {
+                            $(this).parent().trigger("click");
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    $("#Options_DeniedAmount li input[type='radio']").on('change', function () {
+        var $deniedAmountMin = $("#WorkcenterArgs_DeniedAmountMin");
+        var $deniedAmountMax = $("#WorkcenterArgs_DeniedAmountMax");
+
+        if ($(this).hasClass("customDeniedAmount")) {
+            $("#customDeniedAmount").show();
+        }
+        else {
+            $("#customDeniedAmount").hide();
+        }
+        if ($(this).hasClass("customDeniedAmount") || $(this).hasClass("all")) {
+            $deniedAmountMin.val("");
+            $deniedAmountMax.val("");
+        }
+        else {
+            if ($(this).data("min") != undefined) {
+                $deniedAmountMin.val($(this).data("min"));
+            }
+            else {
+                $deniedAmountMin.val("");
+            }
+            if ($(this).data("max") != undefined) {
+                $deniedAmountMax.val($(this).data("max"));
+            }
+            else {
+                $deniedAmountMax.val("");
+            }
+        }
+        $deniedAmountMin.trigger("change");
+        $deniedAmountMax.trigger("change");
+    });
+
+    $("#optionSearchBox input[type=text]").on('keyup', function () {
+        modalSearch($(this));
+    });
+    $("#optionSearchBoxLateLoad input[type=text]").on('keyup', function () {
+        CarcRarcAutoCompleteSearch($(this));
+    });
+
+    $("#filterSelection > ul > li.filterGroupList").each(function () {
+        if ($(this).find("ul").children().length < 1) {
+            $(this).hide();
+        }
+    });
+
+    $("#filterSelection > ul > li.filterGroupList ul .tagit-close").on("click", function () {
+        removeFilterSelection($(this).closest("li"));
+    });
+
+    $("#txtDenialIDModal").keydown(function (e) {
+        configureNumericInput(e);
+    });
+
+    $("#filterSelection > ul > li.filterGroupList ul .hoverToolTip .toolTipContainer").each(function () {
+        $(this).detach().appendTo("#advancedSearchModal");
+    });
+
+    setupAdvancedToolTips($("#advancedSearchModal"));
+}
+
+function setUpContentFunctions() {
+    $("#gridDenialSearchLink").on("click", function () {
+        $("#domainSearchLink").trigger("click");
+    });
+
+    $("#CurrentPageInput").unbind('change').on('change', function () {
+        if (validatePageInput()) {
+            pageAndSortGrid();
+        }
+    });
+
+    showLastNote();
+    checkToDisplayFilters();
+    setPagerStyles();
+    setUpSorting();
+
+    $('#btnBulkExport').on('click', function () {
+        NeedSelection(BulkExport);
+    });
+
+    $('#btnBulkReassign').on('click', function () {
+        NeedSelection(BulkReassignModal);
+    });
+
+    $('#btnBulkClose').on('click', function () {
+        NeedSelection(BulkCloseModal);
+    });
+
+    $('#btnBulkAppeal').on('click', function () {
+        NeedSelection(BulkAppeal);
+    });
+
+    $("#filterContainer div.filterDiv span.filterButtonRight").on('click', function () {
+        var $filter = $(this).siblings("span.filterButtonLeft");
+        var filterType = $filter.data("filtertype");
+        var filterSelection = $filter.data("filterselection");
+        var isFrom = false;
+        if (filterType == "DenialDate" || filterType == "DeniedAmount" || filterType == "ServiceDate") {
+            var title = $filter.text();
+            if (title.indexOf("From") > -1) {
+                isFrom = true;
+            }
+        }
+        clearSingleFilter(filterType, filterSelection, isFrom);
+    });
+}
+
+function BulkExport() {
+    var isChecked = $("#chkExcelFriendlyWC").is(":checked");
+    $.ajax({
+        url: BulkExportURL,
+        data: {
+            workgroupId: $('#WorkcenterArgs_WorkgroupID option:selected').val(),
+            excelFriendly: isChecked
+        },
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function () {
+            showAlert('Selected Denials have been exported. Please go to the Denials Exports tab to view your download.', 'Export');
+        },
+        error: function () {
+            alert('An error occurred while attempting to export denials.');
+        }
+    });
+}
+
+function BulkReassignModal() {
+    BulkActionMessage($("#bulkReassignSelectedCount"));
+
+    $("#bulkReassignNotification_Error span.close-alert").click(function () {
+        $("#bulkReassignNotification_Error").fadeOut("slow");
+    });
+
+    $("#bulkReassignModal").dialog({
+        modal: true,
+        resizable: false,
+        title: "Reassign Selected Denials",
+        buttons: {
+            "Reassign Denials": {
+                click: function () {
+                    if ($("#ddl_bulkReassignWorkGroup").text() !== "") {
+                        if ($("#ddl_bulkReassignWorkGroup").val() === $('#WorkcenterArgs_WorkgroupID option:selected').val()) {
+                            window.showPageNotification($('#bulkReassignNotification_Error'), 'The selected denials are already assigned to this workgroup.', 'failure');
+                            $("#bulkReassignWorkgroupSelectLabel").addClass("validationErrorLabel");
+                        }
+                        else if ($("#ddl_bulkReassignWorkGroup").val() <= 0) {
+                            window.showPageNotification($('#bulkReassignNotification_Error'), 'Invalid Workgroup has been selected. Please choose a different one.', 'failure');
+                            $("#bulkReassignWorkgroupSelectLabel").addClass("validationErrorLabel");
+                        }
+                        else {
+                            if (SelectingAll) {
+                                var actualDenialCount = selectedCount;
+
+                                $('#areYouSureMessage').text('Are you sure you wish to Reassign ' + actualDenialCount + ' Denials to ' + $('#ddl_bulkReassignWorkGroup option:selected').text() + '?');
+
+                                $('#areYouSureModal').dialog({
+                                    modal: true,
+                                    resizable: false,
+                                    title: "Confirm Bulk Action",
+                                    buttons: {
+                                        "Yes": {
+                                            click: function () { BulkReassign($(".ui-dialog-buttonpane button:contains('Yes')")) },
+                                            text: "Yes"
+                                        },
+                                        "No": {
+                                            click: function () {
+                                                $(this).dialog('close')
+                                            },
+                                            text: "No"
+                                        }
+                                    }
+                                });
+
+                                $(this).dialog('close')
+                            }
+                            else {
+                                BulkReassign($(".ui-dialog-buttonpane button:contains('Reassign Denials')"));
+                            }
+                        }
+                    }
+                },
+                text: "Reassign Denials"
+            },
+            "Cancel": {
+                click: function () { $("#bulkReassignNoteTextArea").val(""); $(this).dialog('close'); },
+                "class": 'modalCancelButton',
+                text: "Cancel"
+            }
+        }
+    });
+}
+
+function BulkCloseModal() {
+    var actualDenialCount = 0;
+    actualDenialCount = selectedCount;
+
+    $("#bulkCloseWorkgroupName").text($("#WorkcenterArgs_WorkgroupID option:selected").text());
+
+    $("#bulkCloseSelectedCount").text(actualDenialCount + (actualDenialCount == 1 ? " Denial " : " Denials ") + "selected");
+
+    $("#bulkCloseNotification_Error span.close-alert").click(function () {
+        $("#bulkCloseNotification_Error").fadeOut("slow");
+    });
+
+    $("#bulkCloseModal").dialog({
+        modal: true,
+        resizable: false,
+        title: "Close Selected Denials",
+        buttons: {
+            "Close Denials": {
+                id: "closeDenialsBtn",
+                click: function () {
+                    if ($("#closeTypesDD_").val() != "") {
+                        if (SelectingAll) {
+                            $('#areYouSureMessage').text('Are you sure you wish to close ' + actualDenialCount +
+                                (actualDenialCount == 1 ? ' Denial?' : ' Denials?'));
+
+                            $('#areYouSureModal').dialog({
+                                modal: true,
+                                resizable: false,
+                                title: "Confirm Bulk Action",
+                                buttons: {
+                                    "Yes": {
+                                        id: "confirmCloseBtn",
+                                        click: function () { BulkClose($("#confirmCloseBtn")); },
+                                        text: "Yes"
+                                    },
+                                    "No": {
+                                        click: function () {
+                                            $(this).dialog('close')
+                                        },
+                                        text: "No"
+                                    }
+                                }
+                            });
+
+                            $(this).dialog('close')
+                        }
+                        else {
+                            BulkClose($("#closeDenialsBtn"));
+                        }
+                    }
+                    else {
+                        showPageNotification($('#bulkCloseNotification_Error'), 'Please select a close type.', 'failure');
+                        $("#closeTypeSelectLabel").addClass("validationErrorLabel");
+                    }
+                },
+                text: "Close Denials"
+            },
+            "Cancel": {
+                click: function () { $("#closeNoteTextArea").val(""); $(this).dialog('close'); },
+                "class": 'modalCancelButton',
+                text: "Cancel"
+            }
+        },
+        beforeClose: function (event, ui) {
+
+            var panelShowing = $('#bulkCloseLoadingPanel').is(':visible');
+
+            if (panelShowing) {
+
+                alert('Denials are still currently being closed');
+            }
+
+            return !panelShowing;
+        }
+    });
+}
+
+function BulkActionMessage($messageArea) {
+    $messageArea.text(selectedCount + " Denial(s) selected");
+}
+
+function BulkReassign($closeButton) {
+    $closeButton.button("disable");
+
+    var offset = $closeButton.offset();
+
+    var panel = $('#bulkCloseLoadingPanel');
+
+    panel.css({ top: offset.top + 3, left: offset.left - 30 });
+
+    panel.show();
+
+    var reassignNote = "";
+    var workgroupName = $('#WorkcenterArgs_WorkgroupID option:selected').text();
+
+    if ($.trim($('#bulkReassignNoteTextArea').val()) === '') {
+        reassignNote = "Denial moved from " + workgroupName + " to " + $("#ddl_bulkReassignWorkGroup option:selected").text();
+    } else {
+        reassignNote = $("#bulkReassignNoteTextArea").val();
+    }
+
+    $.ajax({
+        url: ReassignURL,
+        data: {
+            oldWorkgroupId: $('#WorkcenterArgs_WorkgroupID option:selected').val(),
+            workgroupName: workgroupName,
+            newWorkgroupId: $("#ddl_bulkReassignWorkGroup").val(),
+            note: reassignNote
+        },
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function () {
+            location.reload();
+            $(this).dialog('close');
+            toggleLoading(false);
+        }
+    });
+}
+
+function BulkClose($closeButton) {
+    $closeButton.button("disable");
+
+    var offset = $closeButton.offset();
+
+    var panel = $('#bulkCloseLoadingPanel');
+
+    panel.css({ top: offset.top + 3, left: offset.left - 30 });
+
+    panel.show();
+
+    $.ajax({
+        url: CloseURL,
+        data: {
+            workgroupId: $('#WorkcenterArgs_WorkgroupID option:selected').val(),
+            closeType: $("#closeTypesDD_").val(),
+            closeNote: $('#closeNoteTextArea').val()
+        },
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function (result) {
+            if (result.success == true) {
+                PollForPendingClosings(result.requestID);
+            }
+            else {
+                alert('An error occurred while attempting to close denials');
+
+                $closeButton.button('enable');
+
+                panel.hide();
+            }
+        },
+        error: function () {
+            alert('An error occurred while attempting to close denials.');
+        }
+    });
+}
+
+function PollForPendingClosings(requestID) {
+    var maxAttempts = 15;
+    var currentAttempt = 0;
+    var timer = setTimeout(function poll() {
+        $.ajax({
+            url: PollForPendingClosingsURL,
+            data: { requestID: requestID },
+            type: "POST",
+            success: function (result) {
+                if (!result.denialsQueued && !result.requestErrored && currentAttempt != maxAttempts) {
+                    currentAttempt++;
+                    setTimeout(poll, 1000);
+                }
+                else if (result.requestErrored) {
+                    alert('An error occurred while attempting to close denials.');
+                }
+                else {
+                    $('#bulkCloseLoadingPanel').hide();
+                    if ($("#bulkCloseModal").is(':visible')) {
+                        $("#bulkCloseModal").dialog('close');
+                    }
+                    if ($("#areYouSureModal").is(':visible')) {
+                        $("#areYouSureModal").dialog('close');
+                    }
+                    reloadWorkcenterGrid();
+                }
+            }
+        });
+    }, 1000);
+}
+
+function BulkAppeal() {
+    $.ajax({
+        url: DenialsToAppealURL,
+        data: {
+            workgroupId: $('#WorkcenterArgs_WorkgroupID option:selected').val(),
+            workgroupName: $('#WorkcenterArgs_WorkgroupID option:selected').text()
+        },
+        type: "POST",
+        success: function (result) {
+            CheckMultiplePayers(result);
+        }
+    });
+}
+
+function CheckMultiplePayers(denialIDs) {
+    $.ajax({
+        url: CheckMultiplePayersURL,
+        data: JSON.stringify(denialIDs),
+        type: "POST",
+        traditional: true,
+        contentType: "application/json; charset=utf-8",
+        success: function (data) {
+            if (data == "") {
+                if (denialIDs.length > parseInt($('#AppealBatchLimit').val())) {
+                    $("#appealLimitModal").dialog({
+                        modal: true,
+                        resizable: false,
+                        width: 500,
+                        title: "Too Many Denials Selected",
+                        buttons: {
+                            "Okay": {
+                                click: function () { $(this).dialog('close'); },
+                                text: "Okay"
+                            }
+                        }
+                    });
+                }
+                else {
+                    checkExistingDrafts(denialIDs.join(), null);
+                }
+            }
+            else {
+                $("#appealPayersModal").html(data);
+                openBulkAppealPayerSelectModal();
+            }
+        }
+    });
+}
+
+function checkExistingDrafts(denialIDs, payerID) {
+    var data = {
+        denialIDs: denialIDs,
+        payerID: payerID
+    };
+    $.ajax({
+        url: CheckExistingDraftsURL,
+        data: JSON.stringify(data),
+        type: "POST",
+        traditional: true,
+        contentType: "application/json; charset=utf-8",
+        success: function (data) {
+            if (data == "") {
+                bulkRouteToAppeals(denialIDs, payerID);
+            }
+            else {
+                $("#existingDraftsModal").html(data);
+                $("#existingDraftsModal").dialog({
+                    title: "Existing Appeals",
+                    modal: true,
+                    resizable: false,
+                    width: 450,
+                    close: function () {
+                        $("#existingDraftsModal").empty();
+                    },
+                    buttons: {
+                        "Continue Appeals": {
+                            click: function () {
+                                bulkRouteToAppeals(denialIDs, payerID);
+                            },
+                            text: "Continue Appeals"
+                        },
+                        "Remove from Batch": {
+                            click: function () {
+                                var denialsWithoutExistingDrafts = $("#denialsWithoutExistingDrafts").val();
+                                if (denialsWithoutExistingDrafts.length > 0) {
+                                    bulkRouteToAppeals(denialsWithoutExistingDrafts, payerID);
+                                }
+                                else {
+                                    $(this).dialog('close');
+                                }
+
+                            },
+                            text: "Remove from Batch"
+                        }
+                    }
+                });
+            }
+        }
+    });
+}
+
+function openBulkAppealPayerSelectModal() {
+    $(".payerSelectButton").on("click", function () {
+        var payerID = $(this).closest(".payerBox").data("payerid");
+        var denialIDs = $(this).closest(".payerBox").data("denialids");
+        $("#appealPayersModal").dialog('close');
+        checkExistingDrafts(denialIDs, payerID);
+    });
+
+    $("#appealPayersModal").dialog({
+        title: "Select Your Payer",
+        modal: true,
+        resizable: false,
+        width: 500,
+        close: function () {
+            $("#appealPayersModal").empty();
+        }
+    });
+}
+
+function bulkRouteToAppeals(denialIDs, payerID) {
+    var url = CheckAppealStepURL + "?denialIDs=" + denialIDs;
+
+    if (IsWorkcenter) {
+        url += "&appId=41&tabAppId=40&returntoworkcenter=true";
+    }
+
+    if (payerID != null) {
+        url += "&payerID=" + payerID;
+    }
+
+    window.location.href = url;
+    return false;
+}
+
+function NeedSelection(func) {
+    var selectedWorkgroupId = $('#WorkcenterArgs_WorkgroupID option:selected').val();
+
+    if (selectedWorkgroupId == null) {
+        showAlert('No workgroup is selected. Please select a workgroup before continuing.', '');
+        return false;
+    }
+    else {
+        $.ajax({
+            url: ValidateDenialsToWorkURL,
+            data: {
+                workgroupId: selectedWorkgroupId
+            },
+            traditional: true,
+            cache: false,
+            type: "POST",
+            success: function (data) {
+                if (data == null || data == 0) {
+                    showAlert('No denials have been selected. Please select denials before continuing.', '');
+                    return false;
+                }
+                else {
+                    selectedCount = data;
+                    func();
+                }
+            }
+        });
+    }
+}
+
+function searchButtonClick() {
+    $("#CurrentPageInput").val(1);
+    var workflowStages = new Array();
+    $("#workflowStageDropDown").children("ul").children("li:not(.selectAll)").children("input[type='checkbox']:checked").each(function () {
+        workflowStages.push($(this).val());
+    });
+    var categories = new Array();
+    $("#categoryDropDown").children("ul").children("li:not(.selectAll)").children("input[type='checkbox']:checked").each(function () {
+        categories.push($(this).val());
+    });
+
+    var $txtPayer = $("#txtPayer");
+    var $payerIDArg = $("#payerIDArg");
+    var $checkededPayers = $("#filterContainer > .filterDiv > .filterButtonLeft[data-filtertype='Payer']");
+    var payerIDs = new Array();
+
+    if ($txtPayer.val() == "" && $payerIDArg.val() != "") {
+        if ($checkededPayers.length == 1 && $checkededPayers.data("filterselection") == $payerIDArg.val()) {
+            $checkededPayers = $checkededPayers.not("[data-filterselection='" + $payerIDArg.val() + "']");
+            $payerIDArg.val("");
+        }
+    }
+
+    if ($txtPayer.val() != "" && $payerIDArg.val() != "" && $txtPayer.val().indexOf($payerIDArg.val()) > -1) {
+        payerIDs.push($payerIDArg.val());
+    }
+    else {
+        $checkededPayers.each(function () {
+            payerIDs.push($(this).data("filterselection"));
+        });
+
+        if (payerIDs.length == 0) {
+            $txtPayer.val("");
+        }
+    }
+
+    var $txtAccount = $("#txtAccount");
+    var $accountIDArg = $("#accountIDArg");
+    var $checkedAccounts = $("#filterContainer > .filterDiv > .filterButtonLeft[data-filtertype='Account']");
+
+    if ($txtAccount.val() == "" && $accountIDArg.val() != "") {
+        if ($checkedAccounts.length == 1 && $checkedAccounts.data("filterselection") == $accountIDArg.val()) {
+            $checkedAccounts = $checkedAccounts.not("[data-filterselection='" + $accountIDArg.val() + "']");
+            $accountIDArg.val("");
+        }
+    }
+    var accountIDs = new Array();
+    if ($txtAccount.val() != "" && $accountIDArg.val() != "" && $txtAccount.val().indexOf($accountIDArg.val()) > -1) {
+        accountIDs.push($accountIDArg.val());
+    }
+    else {
+        $checkedAccounts.each(function () {
+            accountIDs.push($(this).data("filterselection"));
+        });
+
+        if (accountIDs.length == 0) {
+            $txtAccount.val("");
+        }
+    }
+
+    var billingProviders = getFiltersForSearch("BillingProvider");
+    var renderingProviders = getFiltersForSearch("RenderingProvider");
+    var carcCodes = getFiltersForSearch("CarcCodes");
+    var rarcCodes = getFiltersForSearch("RarcCodes");
+    var denialId = getFiltersForSearch("DenialID");
+    if (denialId.length > 0) {
+        denialId = denialId[0];
+    }
+    else {
+        denialId = "";
+    }
+
+    var gridArgs = getGridArgs();
+    var data = {
+        args: {
+            WorkgroupID: $("#WorkcenterArgs_WorkgroupID").val(),
+            WorkgroupName: $('#WorkcenterArgs_WorkgroupID option:selected').text(),
+            WorkcenterStages: workflowStages,
+            CategoryIDs: categories,
+            PatientName: $("#txtPatientName").val().trim(),
+            ClaimNumber: $("#txtClaimNumber").val().trim(),
+            DenialID: denialId,
+            PayerIDs: payerIDs,
+            Payer: $txtPayer.val().trim(),
+            AccountIDs: accountIDs,
+            Account: $txtAccount.val().trim(),
+            WorkcenterGridArgs: gridArgs,
+            ReminderDateDueOrPastDue: $("#WorkcenterArgs_ReminderDateDueOrPastDue").is(':checked'),
+            FilterPriorityDenials: $("#WorkcenterArgs_FilterPriorityDenials").is(':checked'),
+            FilterEligibilityResponse: $("#WorkcenterArgs_FilterEligibilityResponse").is(':checked'),
+            FilterCoverageDetectionResponse: $("#WorkcenterArgs_FilterCoverageDetectionResponse").is(':checked'),
+            ProfessionalClaimType: $("#WorkcenterArgs_ProfessionalClaimType").is(':checked'),
+            InstitutionalClaimType: $("#WorkcenterArgs_InstitutionalClaimType").is(':checked'),
+            LinkedDenials: $("#WorkcenterArgs_LinkedDenials").is(':checked'),
+            UnlinkedDenials: $("#WorkcenterArgs_UnlinkedDenials").is(':checked'),
+            DeniedAmountMin: $("#WorkcenterArgs_DeniedAmountMin").val(),
+            DeniedAmountMax: $("#WorkcenterArgs_DeniedAmountMax").val(),
+            DenialDateFrom: $("#WorkcenterArgs_DenialDateFrom").val(),
+            DenialDateTo: $("#WorkcenterArgs_DenialDateTo").val(),
+            ServiceDateFrom: $("#WorkcenterArgs_ServiceDateFrom").val(),
+            ServiceDateTo: $("#WorkcenterArgs_ServiceDateTo").val(),
+            BillingProviders: billingProviders,
+            RenderingProviders: renderingProviders,
+            CarcCodes: carcCodes,
+            RarcCodes: rarcCodes,
+            IsAdvancedSearchModal: false,
+        }
+    }
+    removeSelectedStyle();
+    saveWorkcenterArgsInSession(data);
+    reloadWorkcenterGrid();
+    reloadSearchPanel();
+}
+
+function getFiltersForSearch(filterType) {
+    var filterValues = new Array();
+    var $filterElements = $("#filterContainer > .filterDiv > .filterButtonLeft[data-filtertype='" + filterType + "']");
+    $filterElements.each(function () {
+        filterValues.push($(this).data("filterselection"));
+    });
+
+    return filterValues;
+}
+
+function applyFiltersButtonClick() {
+    $("#CurrentPageInput").val(1);
+    var workflowStages = new Array();
+    $("#Options_WorkflowStage").children("li:not(.selectAll)").children("label").children("input[type='checkbox']:checked").each(function () {
+        workflowStages.push($(this).val());
+    });
+    var categories = new Array();
+    $("#Options_DenialCategory").children("li:not(.selectAll)").children("label").children("input[type='checkbox']:checked").each(function () {
+        categories.push($(this).val());
+    });
+    var payerIDs = new Array();
+    $("#Options_Payer").children("li:not(.selectAll)").children("label").children("input[type='checkbox']:checked").each(function () {
+        payerIDs.push($(this).val());
+    });
+    var accountIDs = new Array();
+    $("#Options_Account").children("li:not(.selectAll)").children("label").children("input[type='checkbox']:checked").each(function () {
+        accountIDs.push($(this).val());
+    });
+    var billingProviders = new Array();
+    $("#Options_BillingProvider").children("li:not(.selectAll)").children("label").children("input[type='checkbox']:checked").each(function () {
+        billingProviders.push($(this).val());
+    });
+    var renderingProviders = new Array();
+    $("#Options_RenderingProvider").children("li:not(.selectAll)").children("label").children("input[type='checkbox']:checked").each(function () {
+        renderingProviders.push($(this).val());
+    });
+    //Get carcs & rarcs from filterSelection because the search results may have changed
+    var carcCodes = getFiltersForAdvancedSearch("CarcCodes");
+    var rarcCodes = getFiltersForAdvancedSearch("RarcCodes");
+
+    var gridArgs = getGridArgs();
+    var data = {
+        args: {
+            WorkgroupID: $("#WorkcenterArgs_WorkgroupID").val(),
+            WorkgroupName: $('#WorkcenterArgs_WorkgroupID option:selected').text(),
+            WorkcenterStages: workflowStages,
+            CategoryIDs: categories,
+            PatientName: $("#txtPatientNameModal").val().trim(),
+            ClaimNumber: $("#txtClaimNumberModal").val().trim(),
+            DenialID: $("#txtDenialIDModal").val().trim(),
+            PayerIDs: payerIDs,
+            AccountIDs: accountIDs,
+            CarcCodes: carcCodes,
+            RarcCodes: rarcCodes,
+            WorkcenterGridArgs: gridArgs,
+            ReminderDateDueOrPastDue: $("#modalReminderDate").is(':checked'),
+            FilterPriorityDenials: $("#modalFilterPriorityDenials").is(':checked'),
+            FilterEligibilityResponse: $("#modalFilterEligibilityResponse").is(':checked'),
+            FilterCoverageDetectionResponse: $("#modalFilterCoverageDetectionResponse").is(':checked'),
+            ProfessionalClaimType: $("#WorkcenterArgs_ProfessionalClaimType").is(':checked'),
+            InstitutionalClaimType: $("#WorkcenterArgs_InstitutionalClaimType").is(':checked'),
+            LinkedDenials: $("#WorkcenterArgs_LinkedDenials").is(':checked'),
+            UnlinkedDenials: $("#WorkcenterArgs_UnlinkedDenials").is(':checked'),
+            DeniedAmountMin: $("#WorkcenterArgs_DeniedAmountMin").val(),
+            DeniedAmountMax: $("#WorkcenterArgs_DeniedAmountMax").val(),
+            DenialDateFrom: $("#WorkcenterArgs_DenialDateFrom").val(),
+            DenialDateTo: $("#WorkcenterArgs_DenialDateTo").val(),
+            ServiceDateFrom: $("#WorkcenterArgs_ServiceDateFrom").val(),
+            ServiceDateTo: $("#WorkcenterArgs_ServiceDateTo").val(),
+            BillingProviders: billingProviders,
+            RenderingProviders: renderingProviders,
+            IsAdvancedSearchModal: true
+        }
+    }
+    saveWorkcenterArgsInSession(data);
+    $("#advancedSearchModal").dialog('close');
+    removeSelectedStyle();
+    reloadWorkcenterGrid();
+    reloadSearchPanel();
+}
+
+function getFiltersForAdvancedSearch(filterGroup) {
+    var filterValues = new Array();
+    var filterGroupList = $("#filterSelection li.filterGroupList[data-filtergroup='" + filterGroup + "']");
+    var selectedFilters = filterGroupList.find("li.tagit-choice");
+    selectedFilters.each(function () {
+        var value = this.getAttribute("data-selection");
+        filterValues.push(value);
+    });
+
+    return filterValues;
+}
+
+function reloadWorkcenterGrid() {
+    toggleLoading(true);
+
+    $.ajax({
+        url: ReloadWorkcenterGridURL,
+        type: "POST",
+        success: function (data) {
+            setUpGrid(data);
+            getGridCount({
+                url: ReloadWorkcenterGridCountURL,
+                type: "POST"
+            });
+        }
+    });
+}
+
+function reloadSearchPanel() {
+    $.ajax({
+        url: ReloadSearchPanelURL,
+        type: "POST",
+        success: function (data) {
+            $("#searchPanel").html(data);
+            setUpSearchPanel();
+            setupAndInitCheckBoxes();
+        }
+    });
+}
+
+function reloadAdvancedSearchPanel() {
+    $("#advancedSearchModal").html("");
+    return $.ajax({
+        url: AdvancedSearchModalURL,
+        type: "POST",
+        success: function (data) {
+            $("#advancedSearchModal").html(data);
+            setUpAdvancedSearchModal();
+            setupAndInitCheckBoxes();
+        }
+    });
+}
+
+function changeWorkgroup(workgroupID) {
+    toggleLoading(true);
+
+    selectedCount = 0;
+    SelectingAll = false;
+
+    $.ajax({
+        url: ChangeWorkgroupURL,
+        data: JSON.stringify({ workgroupID: workgroupID }),
+        contentType: 'application/json; charset=utf-8',
+        type: "POST",
+        success: function (data) {
+            reloadSavedSearches();
+            setUpGrid(data);
+            reloadSearchPanel();
+            hideCurrentWorkgroup(workgroupID);
+            getGridCount({
+                url: ChangeWorkgroupCountURL,
+                data: JSON.stringify({ workgroupID: workgroupID }),
+                contentType: 'application/json; charset=utf-8',
+                type: "POST"
+            });
+        }
+    });
+}
+
+function pageAndSortGrid() {
+    toggleLoading(true);
+
+    var dataArgs = {
+        gridArgs: getGridArgs()
+    }
+    $.ajax({
+        url: PageAndSortGridURL,
+        data: JSON.stringify(dataArgs),
+        contentType: 'application/json; charset=utf-8',
+        type: "POST",
+        success: function (data) {
+            setUpGrid(data);
+            //page and sort does not need to update grid counts
+        }
+    });
+}
+
+function setUpGrid(data) {
+    var $rightSide = $("#rightSide");
+    $rightSide.html(data);
+    setupControls($rightSide);
+    setUpContentFunctions();
+    setSessionValues();
+    configureGridColumnLinks();
+    setupHoverToolTips($("#filterContainer"));
+    setupHoverToolTips($(".gridView"));
+    toggleLoading(false);
+    initializeWorkcenterScripts();
+}
+
+function getGridArgs() {
+    return {
+        SortColumn: getSortColumn(),
+        SortDirection: getSortDirection(),
+        PageIndex: $("#CurrentPageInput").val(),
+        PageSize: $("#ctrl_ItemsPerPage").val(),
+    }
+}
+
+function CaptureSelectedDenial($checkbox) {
+    var denialId = $checkbox.closest("tr").data("denialid");
+    var isChecked = SelectingAll ? !$checkbox.is(':checked') : $checkbox.is(':checked');
+
+    if ($checkbox.is(':checked')) {
+        $checkbox.closest("tr").addClass('selectedRow');
+    }
+    else {
+        $checkbox.closest("tr").removeClass('selectedRow');
+    }
+
+    var data = {
+        denialId: denialId,
+        selected: isChecked
+    }
+
+    $.ajax({
+        url: CaptureSelectedDenialURL,
+        data: data,
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function (result) {
+            selectedCount = result;
+        }
+    });
+}
+
+function CaptureDenialsSelection($checkbox, $option) {
+    var selectionType = $option.data("selectiontype");
+
+    switch (selectionType) {
+        case 1:
+            PurgeDenialSelection(true);
+            break;
+        case 2:
+            PurgeDenialSelection(false);
+            break;
+        case 3:
+            PageSelection(true);
+            break;
+        case 4:
+            PageSelection(false);
+            break;
+    }
+
+    if (SelectingAll) {
+        $checkbox.prop('checked', true);
+    }
+    else if ($option.data("select") == true) {
+        $checkbox.prop('checked', true);
+    }
+    else {
+        $checkbox.prop('checked', false);
+    }
+}
+
+function PurgeDenialSelection(selectingAll) {
+    SelectingAll = selectingAll;
+
+    var $rows = $('#gridData table tr.gridViewRow input');
+
+    $rows.each(function () {
+        if (SelectingAll) {
+            $(this).prop('checked', true);
+            $(this).closest("tr").addClass('selectedRow');
+        }
+        else {
+            $(this).prop('checked', false);
+            $(this).closest("tr").removeClass('selectedRow');
+        }
+    });
+
+    var data = {
+        selectingAll: SelectingAll
+    }
+
+    $.ajax({
+        url: PurgeDenialSelectionURL,
+        data: data,
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function (result) {
+            selectedCount = result;
+        }
+    });
+}
+
+function CaptureDenialsSelectionDefault($checkbox) {
+    PageSelection($checkbox.prop('checked'));
+}
+
+function PageSelection(selectPage) {
+    var ids = new Array();
+    var $rows = $('#gridData table tr.gridViewRow');
+
+    $rows.each(function () {
+        ids.push($(this).data("denialid"));
+    });
+
+    var data = {
+        denialIds: ids,
+        selected: SelectingAll ? !selectPage : selectPage
+    }
+
+    if (selectPage && SelectingAll) {
+        SelectingAll = false;
+    }
+
+    $.ajax({
+        url: CaptureDenialsSelectionURL,
+        data: data,
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function (result) {
+            selectedCount = result;
+        }
+    });
+
+    $rows = $('#gridData table tr.gridViewRow input');
+
+    $rows.each(function () {
+        if (selectPage) {
+            $(this).prop('checked', true);
+            $(this).closest("tr").addClass('selectedRow');
+        }
+        else {
+            $(this).prop('checked', false);
+            $(this).closest("tr").removeClass('selectedRow');
+        }
+    });
+}
+
+function showLastNote() {
+    var $lastNote = $("div.lastNote");
+    var width = $("#gridData").width() - 50;
+    $lastNote.width(width);
+    $lastNote.show();
+}
+
+function checkToDisplayFilters() {
+    var $filterContainer = $("#filterContainer");
+    if ($filterContainer.children(".filterDiv").length > 0) {
+        $filterContainer.show();
+        $("#filtershadowImg").show();
+    }
+}
+
+function setPagerStyles() {
+    var currentPage = parseInt($('#CurrentPageInput').val());
+    var totalPages = parseInt($('#lblTotalpages').text());
+    $('#ctrl_ItemsPerPage').val($("#pageSize").val());
+
+    if (currentPage <= 1) {
+        $('.pagerFirstImage').addClass('disabled');
+        $('.pagerPreviousImage').addClass('disabled');
+        $('#Pager_Top_Prev').addClass('disabled');
+        $('#Pager_Btm_First').addClass('disabled');
+        $('#Pager_Btm_Prev').addClass('disabled');
+    }
+    if (currentPage > 1) {
+        $('.pagerFirstImage').removeClass('disabled');
+        $('.pagerPreviousImage').removeClass('disabled');
+        $('#Pager_Top_Prev').removeClass('disabled');
+        $('#Pager_Btm_First').removeClass('disabled');
+        $('#Pager_Btm_Prev').removeClass('disabled');
+    }
+    if (currentPage >= totalPages || totalPages <= 1) {
+        $('.pagerLastImage').addClass('disabled');
+        $('.pagerNextImage').addClass('disabled');
+        $('#Pager_Top_Next').addClass('disabled');
+        $('#Pager_Btm_Next').addClass('disabled');
+        $('#Pager_Btm_Last').addClass('disabled');
+    }
+    if (totalPages > 1 && currentPage < totalPages) {
+        $('.pagerLastImage').removeClass('disabled');
+        $('.pagerNextImage').removeClass('disabled');
+        $('#Pager_Top_Next').removeClass('disabled');
+        $('#Pager_Btm_Next').removeClass('disabled');
+        $('#Pager_Btm_Last').removeClass('disabled');
+    }
+}
+
+function page(btn, pageType) {
+    if (!btn.hasClass('disabled')) {
+        togglePageButtonDisable(true);
+        var pageChanged = false;
+        var $currentPageInput = $("#CurrentPageInput");
+        if (pageType == "first") {
+            $currentPageInput.val(1);
+            pageChanged = true;
+        }
+        else if (pageType == "prev") {
+            $currentPageInput.val(parseInt($currentPageInput.val()) - 1);
+            pageChanged = true;
+        }
+        else if (pageType == "next") {
+            $currentPageInput.val(parseInt($currentPageInput.val()) + 1);
+            pageChanged = true;
+        }
+        else if (pageType == "last") {
+            $currentPageInput.val(parseInt($('#lblTotalpages').text()));
+            pageChanged = true;
+        }
+
+        if (pageChanged) {
+            pageAndSortGrid();
+        }
+        else {
+            togglePageButtonDisable(false);
+        }
+    }
+}
+
+function togglePageButtonDisable(disable) {
+    if (disable) {
+        $('#Pager_Top_Prev').addClass('disabled');
+        $('#Pager_Btm_First').addClass('disabled');
+        $('#Pager_Btm_Prev').addClass('disabled');
+        $('#Pager_Top_Next').addClass('disabled');
+        $('#Pager_Btm_Next').addClass('disabled');
+        $('#Pager_Btm_Last').addClass('disabled');
+    }
+    else {
+        $('#Pager_Top_Prev').removeClass('disabled');
+        $('#Pager_Btm_First').removeClass('disabled');
+        $('#Pager_Btm_Prev').removeClass('disabled');
+        $('#Pager_Top_Next').removeClass('disabled');
+        $('#Pager_Btm_Next').removeClass('disabled');
+        $('#Pager_Btm_Last').removeClass('disabled');
+    }
+}
+
+function validatePageInput() {
+    var pageIndex = $("#CurrentPageInput").val()
+    if (pageIndex > 0 && pageIndex <= parseInt($('#lblTotalpages').text())) {
+        return true;
+    }
+    else {
+        alert("You have entered an invalid Page number");
+        return false;
+    }
+}
+
+function toggleLoading(show) {
+    var $gridData = $("#gridData");
+    var $loadingouter = $("#loadingouter");
+    var top = $gridData.offset().top;
+    var left = ($gridData.width() / 2) + $gridData.offset().left - ($("#loadinglist").width());
+
+    $loadingouter
+        .css('top', top)
+        .css('left', left)
+
+    if (show) {
+        $gridData.css({ 'filter': 'alpha(opacity = 40)', 'opacity': '.3' });
+        $loadingouter.show();
+    }
+    else {
+        $loadingouter.hide();
+    }
+}
+
+function PayerAutoComplete() {
+    $("#txtPayer").autocomplete({
+        search: function (event, ui) {
+            payerVal = $(event.target).val();
+        },
+        source: function (request, response) {
+            $.ajax({
+                url: PayerAutoCompleteSearchURL,
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    keyword: payerVal
+                }),
+                type: "POST",
+                dataType: "json",
+                accepts: { json: "application/json;" },
+                success: function (data) {
+                    response($.map(data, function (v, i) {
+                        return {
+                            label: v.PayerName + " (" + v.PayerID + ")",
+                            value: v.PayerID
+                        }
+                    }));
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+
+                }
+            });
+        },
+        minLength: 2,
+        delay: 500,
+        select: function (event, ui) {
+            $("#txtPayer").val(ui.item.label);
+            $("#payerIDArg").val(ui.item.value);
+            return false;
+        }
+    });
+}
+
+function AccountAutoComplete() {
+    $("#txtAccount").autocomplete({
+        search: function (event, ui) {
+            accountVal = $(event.target).val();
+        },
+        source: function (request, response) {
+            $.ajax({
+                url: AccountAutoCompleteSearchURL,
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify({
+                    keyword: accountVal
+                }),
+                type: "POST",
+                dataType: "json",
+                accepts: { json: "application/json;" },
+                success: function (data) {
+                    response($.map(data, function (v, i) {
+                        return {
+                            label: v.Account.AccountName + " (" + v.Account.CustId + ")",
+                            value: v.Account.CustId
+                        }
+                    }));
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+
+                }
+            });
+        },
+        minLength: 2,
+        delay: 500,
+        select: function (event, ui) {
+            $("#txtAccount").val(ui.item.label);
+            $("#accountIDArg").val(ui.item.value);
+            return false;
+        }
+    });
+}
+
+function multiSelectDropDownClick(item) {
+    var filterGroup = "";
+    var selection = "";
+    var labelText = "";
+    if ($(item).hasClass("selectAll")) {
+        $(item).siblings().find("input[type='checkbox']:visible").each(function () {
+            $(this).attr('checked', !$(item).find("input[type='checkbox']")[0].checked);
+        });
+        $(item).find("input[type='checkbox']").attr('checked', !$(item).find("input[type='checkbox']")[0].checked);
+
+    }
+    else {
+        var $input = $(item).find("input[type='checkbox'],input[type='radio']");
+        if ($input.attr("type") == "checkbox") {
+            $input.attr('checked', !$(item).find("input[type='checkbox']")[0].checked);
+        }
+        else if ($input.attr("type") == "radio") {
+            if (!$input[0].checked) {
+                $input.attr('checked', true);
+            }
+            $input.trigger('change');
+        }
+    }
+}
+
+function advancedMultiSelectDropDownClick(item) {
+    var filterGroup = "";
+    var selection = "";
+    var labelText = "";
+    var titleText = "";
+    var $input = $(item);
+    var parent = $input.parent().parent();
+
+    if (parent.hasClass("selectAll")) {
+        var checked = $input[0].checked;
+
+        parent.siblings().find("input[type='checkbox']:visible").each(function () {
+            filterGroup = parent.closest("ul.multiSelect").attr("id").split("_")[1];
+            selection = $(this).parent().find("input").val();
+            if (!$(this).is(":checked") && checked) {
+                labelText = $(this).parent().find("span").html().trim();
+                titleText = $(this).parent().attr("title");
+                createTagItItem(selection, labelText, filterGroup, titleText);
+            }
+            else if ($(this).is(":checked") && !checked) {
+                removeTagItItem(filterGroup, selection, null);
+            }
+            $(this).attr('checked', checked);
+        });
+    }
+    else {
+        if ($input.attr("type") == "checkbox") {
+            filterGroup = parent.closest("ul.multiSelect").attr("id").split("_")[1];
+            selection = $input.val();
+            if ($input.is(":checked")) {
+                labelText = parent.find("span").html().trim();
+                titleText = parent.children("label").attr("title");
+                createTagItItem(selection, labelText, filterGroup, titleText);
+            }
+            else {
+                removeTagItItem(filterGroup, selection, null);
+            }
+        }
+        else if ($input.attr("type") == "radio") {
+            if (!$input[0].checked) {
+                $input.attr('checked', true);
+            }
+            $input.trigger('change');
+        }
+    }
+}
+
+function setSessionValues() {
+    $.ajax({
+        url: SessionForFrontEnd,
+        traditional: true,
+        cache: false,
+        type: "POST",
+        success: function (result) {
+            SelectingAll = result.SelectingAll;
+            selectedCount = result.DenialSectionCount;
+        }
+    });
+}
+
+function setUpSorting() {
+    $(".sortableHeader").on("click", function () {
+        var col = $(this).find("img").attr("id");
+
+        if (col == getSortColumn()) {
+            if (getSortDirection() == "Ascending") {
+                setSortDirection("Descending");
+            }
+            else {
+                setSortDirection("Ascending");
+            }
+        }
+        else {
+            setSortColumn(col);
+            setSortDirection("Ascending");
+        }
+        $("#CurrentPageInput").val(1);
+        pageAndSortGrid();
+    });
+}
+function setSortDirection(direction) {
+    $("#WorkcenterArgs_WorkcenterGridArgs_SortDirection").val(direction);
+}
+
+function getSortDirection() {
+    return $("#WorkcenterArgs_WorkcenterGridArgs_SortDirection").val();
+}
+
+function setSortColumn(column) {
+    $("#WorkcenterArgs_WorkcenterGridArgs_SortColumn").val(column);
+}
+
+function getSortColumn() {
+    return $("#WorkcenterArgs_WorkcenterGridArgs_SortColumn").val();
+}
+function advancedSearchModal() {
+    reloadAdvancedSearchPanel().then(function () {
+        $("#advancedSearchModal").dialog({
+            title: "Advanced Search",
+            modal: true,
+            resizable: false,
+            width: 750,
+            height: 720
+        })
+    })
+}
+function selectFilterType(item) {
+    $("#filterCategories ul li").removeClass("selected");
+    var filterType = $(item).data("type");
+    var filterLoaded = $(item).data("loaded");
+    var filterText = $(item).html().trim();
+    $(item).parent().addClass("selected");
+    $("#centerHeaderText").html(filterText);
+    $("#optionContainer ul:visible:not(#customDeniedAmountFields)").hide();
+    hideSearchBoxes();
+    switch (filterType) {
+        case "Stage":
+            $("#Options_WorkflowStage").show();
+            break;
+        case "Category":
+            $("#Options_DenialCategory").show();
+            break;
+        case "PatientName":
+            $("#Options_PatientName").show();
+            break;
+        case "ClaimNumber":
+            $("#Options_ClaimNumber").show();
+            break;
+        case "DenialID":
+            $("#Options_DenialID").show();
+            break;
+        case "BillingProvider":
+            showFilterOptions(item);
+            break;
+        case "RenderingProvider":
+            showFilterOptions(item);
+            break;
+        case "ClaimType":
+            $("#Options_ClaimType").show();
+            break;
+        case "DeniedAmount":
+            $("#Options_DeniedAmount").show();
+            break;
+        case "DenialDate":
+            $("#Options_DenialDate").show();
+            break;
+        case "ServiceDate":
+            $("#Options_ServiceDate").show();
+            break;
+        case "ReminderDate":
+            $("#Options_ReminderDate").show();
+            break;
+        case "FilterPriorityDenials":
+            $("#Options_FilterPriorityDenials").show();
+            break;
+        case "LinkedStatus":
+            $("#Options_LinkedStatus").show();
+            break;
+        case "Payer":
+            toggleSearchBox(true);
+            $("#Options_Payer").show();
+            $("#Options_Payer > li:hidden").show();
+            break;
+        case "Account":
+            toggleSearchBox(true);
+            $("#Options_Account").show();
+            $("#Options_Account > li:hidden").show();
+            break;
+        case "CarcCodes":
+            toggleSearchBoxLateLoad(true);
+            $("#Options_CarcCodes").show();
+            $("#Options_CarcCodes > li:hidden").show();
+            break;
+        case "RarcCodes":
+            toggleSearchBoxLateLoad(true);
+            $("#Options_RarcCodes").show();
+            $("#Options_RarcCodes > li:hidden").show();
+            break;
+        default:
+            break;
+    }
+}
+function hideSearchBoxes() {
+    toggleSearchBox(false);
+    toggleSearchBoxLateLoad(false);
+}
+function toggleSearchBox(show) {
+    if (show == true) {
+        toggleSearchBoxLateLoad(false);
+        $("#optionSearchBox").show();
+        $("#optionSearchBox input[type='text']").val("");
+        $("#optionContainer").css("top", 38);
+    }
+    else {
+        $("#optionSearchBox").hide();
+        $("#optionContainer").css("top", 0);
+    }
+}
+function toggleSearchBoxLateLoad(show) {
+    if (show == true) {
+        toggleSearchBox(false);
+        $("#optionSearchBoxLateLoad").show();
+        $("#optionSearchBoxLateLoad input[type='text']").val("");
+        $("#optionContainer").css("top", 38);
+    }
+    else {
+        $("#optionSearchBoxLateLoad").hide();
+        $("#optionContainer").css("top", 0);
+    }
+}
+function modalSearch(searchBox) {
+    var keyword = $(searchBox).val().toUpperCase();
+    $("#optionContainer > ul:visible > li:not(.selectAll) > label > span").each(function () {
+        var text = $(this).html().trim().toUpperCase();
+        if (text.indexOf(" " + keyword) > -1 ||
+            text.indexOf(keyword) == 0 ||
+            text.indexOf(" (" + keyword) > -1 ||
+            text.indexOf("(" + keyword) > -1) {
+            $(this).parent().parent().show();
+        }
+        else {
+            $(this).parent().parent().hide();
+        }
+    });
+}
+function saveWorkcenterArgsInSession(data) {
+    $.ajax({
+        url: SaveWorkCenterArgsInSessionURL,
+        data: JSON.stringify(data),
+        type: "POST",
+        contentType: 'application/json; charset=utf-8',
+        async: false
+    });
+}
+function clearFiltersClicked() {
+    $.ajax({
+        url: ClearFiltersURL,
+        type: "POST",
+        contentType: 'application/json; charset=utf-8',
+        async: false,
+        success: function () {
+            removeSelectedStyle();
+            reloadWorkcenterGrid();
+            reloadSearchPanel();
+            reloadAdvancedSearchPanel();
+        }
+    });
+}
+function clearSingleFilter(filterType, filterSelection, isFrom) {
+    var data = {
+        filterType: filterType,
+        filterSelection: filterSelection,
+        isFrom: isFrom
+    }
+    $.ajax({
+        url: ClearSingleFilterURL,
+        data: JSON.stringify(data),
+        type: "POST",
+        contentType: 'application/json; charset=utf-8',
+        async: false,
+        success: function () {
+            removeSelectedStyle();
+            reloadWorkcenterGrid();
+            reloadSearchPanel();
+            reloadAdvancedSearchPanel();
+        }
+    })
+}
+function removeFilterSelection(item) {
+    var $groupList = $(item).closest(".filterGroupList");
+    var filterGroup = $groupList.data("filtergroup");
+    var value = $(item).data("selection");
+    var label = $(item).data("label").toString();
+    var isFrom = label.indexOf("From") > -1
+    var toolTipContainer = getToolTipContainer(filterGroup, value);
+
+    if (toolTipContainer.is(":visible")) {
+        toolTipContainer.hide();
+    }
+
+    switch (filterGroup) {
+        case "WorkflowStage":
+            $("#Options_WorkflowStage").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "Payer":
+            $("#Options_Payer").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "Account":
+            $("#Options_Account").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "DenialCategory":
+            $("#Options_DenialCategory").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "PatientName":
+            $("#txtPatientNameModal").val("");
+            $(item).remove();
+            break;
+        case "ClaimNumber":
+            $("#txtClaimNumberModal").val("");
+            $(item).remove();
+            break;
+        case "DenialID":
+            $("#txtDenialIDModal").val("");
+            $(item).remove();
+            break;
+        case "BillingProvider":
+            $("#Options_BillingProvider").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "RenderingProvider":
+            $("#Options_RenderingProvider").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "ClaimType":
+            if (value == "Professional") {
+                $("#WorkcenterArgs_ProfessionalClaimType").attr("checked", false);
+            } else if (value == "Institutional") {
+                $("#WorkcenterArgs_InstitutionalClaimType").attr("checked", false);
+            }
+            $(item).remove();
+            break;
+        case "DeniedAmount":
+            if (isFrom) {
+                $("#WorkcenterArgs_DeniedAmountMin").val("");
+            }
+            else {
+                $("#WorkcenterArgs_DeniedAmountMax").val("");
+            }
+            $("#Options_DeniedAmount > li > input.customDeniedAmount").attr("checked", true);
+            $("#customDeniedAmount").show();
+            $(item).remove();
+            break;
+        case "DenialDate":
+            if (isFrom) {
+                $("#WorkcenterArgs_DenialDateFrom").val("");
+            }
+            else {
+                $("#WorkcenterArgs_DenialDateTo").val("");
+            }
+            $(item).remove();
+            break;
+        case "ServiceDate":
+            if (isFrom) {
+                $("#WorkcenterArgs_ServiceDateFrom").val("");
+            }
+            else {
+                $("#WorkcenterArgs_ServiceDateTo").val("");
+            }
+            $(item).remove();
+            break;
+        case "ReminderDate":
+            $("#modalReminderDate").attr("checked", false);
+            $(item).remove();
+            break;
+        case "FilterPriorityDenials":
+            $("#modalFilterPriorityDenials").attr("checked", false);
+            $(item).remove();
+            break;
+        case "LinkedStatus":
+            if (value == "Linked") {
+                $("#WorkcenterArgs_LinkedDenials").attr("checked", false);
+            } else if (value == "Unlinked") {
+                $("#WorkcenterArgs_UnlinkedDenials").attr("checked", false);
+            }
+            $(item).remove();
+            break;
+        case "CarcCodes":
+            $("#Options_CarcCodes").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "RarcCodes":
+            $("#Options_RarcCodes").children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + value + "']").attr("checked", false);
+            $(item).remove();
+            break;
+        case "FilterEligibilityResponse":
+            $("#modalFilterEligibilityResponse").attr("checked", false);
+            $("#modalFilterCoverageDetectionResponse").attr("checked", false);
+            $(item).remove();
+            break;
+        case "FilterCoverageDetectionResponse":
+            $("#modalFilterCoverageDetectionResponse").attr("checked", false);
+            $("#modalFilterEligibilityResponse").attr("checked", false);
+            $(item).remove();
+            break;
+        default:
+            break;
+    }
+    if ($groupList.find("ul").children().length < 1) {
+        $groupList.hide();
+    }
+}
+function createTagItItem(selection, labelText, filterGroup, titleText) {
+    var li = document.createElement("li");
+    li.setAttribute("class", "tagit-choice hoverToolTip");
+    li.setAttribute("data-selection", selection);
+    li.setAttribute("data-label", labelText);
+    var label = document.createElement("span");
+    label.setAttribute("class", "tagit-label");
+    label.appendChild(document.createTextNode(labelText));
+    var close = document.createElement("span");
+    close.setAttribute("class", "tagit-close");
+    li.appendChild(label);
+    li.appendChild(close);
+    if (titleText != null && titleText != "") {
+        //li.setAttribute("title", titleText);
+        var tooltipContainer = document.createElement("div");
+        tooltipContainer.setAttribute("class", "toolTipContainer");
+        tooltipContainer.setAttribute("data-selection", selection);
+        tooltipContainer.setAttribute("data-filtergroup", filterGroup);
+        var tooltipInner = document.createElement("div");
+        tooltipInner.setAttribute("class", "toolTipInner shadow");
+        tooltipInner.appendChild(document.createTextNode(titleText));
+        var tooltipImg = document.createElement("img");
+        tooltipImg.setAttribute("class", "arrowImg");
+        tooltipImg.setAttribute("src", document.getElementById("ApplicationRoot").href + "Content/images/hint-drop-arrow.png");
+        tooltipContainer.appendChild(tooltipInner);
+        tooltipContainer.appendChild(tooltipImg);
+        $("#advancedSearchModal").append(tooltipContainer);
+    }
+    var filterGroupList = $("#filterSelection li.filterGroupList[data-filtergroup='" + filterGroup + "']");
+    $(filterGroupList).show();
+    $(filterGroupList).find("ul").append(li);
+    $(li).find(".tagit-close").on("click", function () {
+        removeFilterSelection($(this).closest("li"));
+    });
+    setupAdvancedToolTips(filterGroupList);
+}
+
+function removeTagItItem(filterGroup, selection, isFrom) {
+    var $filterGroup = $("#filterSelection li.filterGroupList[data-filtergroup='" + filterGroup + "']");
+    var $selection = null;
+    if (filterGroup == "PatientName" || filterGroup == "ClaimNumber" || filterGroup == "DenialID") {
+        $selection = $filterGroup.find("li.tagit-choice");
+    }
+    else if (filterGroup == "DenialDate" || filterGroup == "ServiceDate" || filterGroup == "DeniedAmount") {
+        if (isFrom == true) {
+            $selection = $filterGroup.find("li.tagit-choice[data-label^='From']");
+        }
+        else {
+            $selection = $filterGroup.find("li.tagit-choice[data-label^='To']");
+        }
+    }
+    else {
+        $selection = $filterGroup.find("li.tagit-choice[data-selection='" + selection + "']");
+    }
+
+    $selection.remove();
+
+    if ($filterGroup.find("ul").children().length < 1) {
+        $filterGroup.hide();
+    }
+}
+
+function confirmDeleteSearch(control, userSavedSearchID) {
+    var currentSelectedSearchControl = $(control).parent().parent().siblings(".selectedSearch");
+    var currentSelectedSearchID = 0;
+
+    if (currentSelectedSearchControl.length > 0)
+        currentSelectedSearchID = currentSelectedSearchControl[0].id.replace("SavedSearch", "");
+
+    $('#areYouSureMessage').text('Are you sure you want to delete this search?');
+
+    $('#areYouSureModal').dialog({
+        modal: true,
+        resizable: false,
+        title: "Confirm Delete",
+        buttons: {
+            "Yes": {
+                click: function () {
+                    $.ajax({
+                        url: DeleteSavedSearchURL,
+                        data: JSON.stringify({ searchIDToDelete: userSavedSearchID, selectedSearchID: currentSelectedSearchID }),
+                        contentType: 'application/json; charset=utf-8',
+                        type: "POST",
+                        success: function (data) {
+                            toggleVisible('savedSearchList');
+                            toggleArrow($('#btnSavedSearchToggle'));
+
+                            var savedSearchDiv = $("#savedSearchDiv");
+                            savedSearchDiv.html(data);
+                        }
+                    });
+
+                    $(this).dialog('close');
+                },
+                text: "Yes"
+            },
+            "No": {
+                click: function () {
+                    $(this).dialog('close')
+                },
+                text: "No"
+            }
+        }
+    });
+
+    return false;
+}
+
+function selectSavedSearch(control, userSavedSearchID) {
+    //SendGoogleAnalyticsEvent(control);
+    applySelectedStyle(control);
+    toggleVisible('savedSearchList');
+    toggleArrow($('#btnSavedSearchToggle'));
+
+    $.ajax({
+        url: SelectSavedSearchURL,
+        data: JSON.stringify({ searchID: userSavedSearchID }),
+        contentType: 'application/json; charset=utf-8',
+        type: "POST",
+        success: function (data) {
+            reloadWorkcenterGrid();
+            reloadSearchPanel();
+        }
+    });
+
+}
+
+function saveCurrentSearch() {
+    var txtSearchName = $('#txtSearchName');
+    if (validateInput(txtSearchName, $('#searchNameRequired'))) {
+        $.ajax({
+            url: SaveCurrentSearchURL,
+            data: JSON.stringify({ searchName: txtSearchName.val() }),
+            contentType: 'application/json; charset=utf-8',
+            type: "POST",
+            success: function (data) {
+                $('#saveSearchModal').dialog('close');
+                $("#savedSearchDiv").html(data);
+            }
+        });
+    }
+}
+
+function reloadSavedSearches() {
+    $.ajax({
+        url: ReloadSavedSearchURL,
+        type: "POST",
+        success: function (data) {
+            $("#savedSearchDiv").html(data);
+        }
+    });
+}
+
+function CarcRarcAutoCompleteSearch(searchBox) {
+    var keyword = $(searchBox).val().toUpperCase();
+    var filterType = $("#optionContainer > ul:visible").attr("id");
+    var filterGroup = filterType.replace("Options_", "");
+
+    if (keyword.length > 0) {
+        $.ajax({
+            url: filterGroup == "CarcCodes" ? CarcSearchURL : RarcSearchURL,
+            contentType: 'application/json; charset=utf-8',
+            data: JSON.stringify({
+                keyword: keyword
+            }),
+            type: "POST",
+            success: function (data) {
+                var options = $("#" + filterType);
+                options.html(data);
+
+                // Set checkboxes to match previously selected filters
+                var selectedFilters = getFiltersForAdvancedSearch(filterGroup);
+                selectedFilters.forEach(function (element) {
+                    options.children("li:not(.selectAll)").children("label").children("input[type='checkbox'][value='" + element + "']").attr("checked", true);
+                });
+
+                options.find("li label input[type='checkbox']").on("click", function (e) {
+                    advancedMultiSelectDropDownClick($(this));
+                });
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+            }
+        });
+    }
+}
+
+function setupAdvancedToolTips(containerElement) {
+    $(".hoverToolTip", containerElement)
+        .hover(
+            function () {
+                var filterGroup = $(this).parents("li").data("filtergroup");
+                var value = $(this).data("selection");
+                var toolTipContainer = getToolTipContainer(filterGroup, value);
+
+                if (!toolTipContainer.is(":visible")) {
+                    showAdvancedToolTip($(this), toolTipContainer);
+                }
+            },
+            function () {
+                var filterGroup = $(this).parents("li").data("filtergroup");
+                var value = $(this).data("selection");
+                var toolTipContainer = getToolTipContainer(filterGroup, value);
+
+                if (toolTipContainer.is(":visible")) {
+                    toolTipContainer.hide();
+                }
+            }
+        );
+}
+
+function showAdvancedToolTip(toolTipButton, toolTipContainer) {
+    if (toolTipContainer.length > 0) {
+        var height = toolTipContainer.height();
+        var width = toolTipContainer.width() / 2;
+        var top = $("#searchModalFilters").position().top + toolTipButton.position().top - height + 20;
+        var left = $("#searchModalFilters").position().left + toolTipButton.position().left + (toolTipButton.width() / 2) - width;
+        toolTipContainer
+            .css('top', top)
+            .css('left', left)
+            .show();
+    }
+}
+
+function getToolTipContainer(filterGroup, value) {
+    return $("#advancedSearchModal").children(".toolTipContainer[data-filtergroup='" + filterGroup + "'][data-selection='" + value + "']");
+}
+
+function showFilterOptions(filterCategoryItem) {
+    var filterType = $(filterCategoryItem).data("type");
+    var filterLoaded = $(filterCategoryItem).data("loaded");
+    var options = $("#Options_" + filterType);
+
+    if (filterLoaded == "False") {
+        var loadingDiv = $("#Options_Loading");
+        loadingDiv.show();
+        $.ajax({
+            url: WorkcenterURL + "/Load" + filterType + "s",
+            contentType: 'application/json; charset=utf-8',
+            type: "POST",
+            success: function (data) {
+                options.html(data);
+
+                options.find("li label input[type='checkbox']").on("click", function (e) {
+                    advancedMultiSelectDropDownClick($(this));
+                });
+
+                loadingDiv.hide();
+                toggleSearchBox(true);
+                options.show();
+                $(filterCategoryItem).data("loaded", "True");
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                loadingDiv.hide();
+            }
+        });
+    }
+    else {
+        toggleSearchBox(true);
+        options.show();
+    }
+}
+
+function setUpWorkgroupDropdown() {
+    $("#reassignWorkgroup").children("option").addClass("workgroupSelectItem");
+    hideCurrentWorkgroup(+$("#WorkcenterArgs_WorkgroupID option:selected").val());
+}
+
+function isNullOrWhitespace(input) {
+    return !input || !input.trim();
+}
+function getGridCount(requestArgs) {
+    var selectors = {
+        upperCntText: '#upResultsCounter',
+        upperHiddenCnt: '#hdnTotalCount',
+        upperItemCnt: '#topPagerLabel span.lblItemCounts:last-child',
+        lowerTotalPages: '#lblTotalpages',
+        lowerItemCnt: '#gridPagerLabel span.lblItemCounts:last-child'
+    };
+
+    //don't need to find counts on a claimNumber search
+    if (isNullOrWhitespace($("#txtClaimNumber").val().trim())) {
+        togglePageButtonDisable(true); //blanket disable paging
+        prepareCountInfo(selectors);
+
+        requestArgs.success = function (data) {
+            setCountInfo(data, selectors);
+            togglePageButtonDisable(false); //blanket enable paging
+            setPagerStyles(); //wisely figure out which paging to allow
+        };
+
+        $.ajax(requestArgs);
+    }
+}
+function setCountInfo(data, selectors) {
+    $(selectors.upperCntText).text(data.RecordCount + " Result" + (data.RecordCount > 0 ? "s" : ""));
+    $(selectors.upperHiddenCnt).val(data.RecordCount);
+    $(selectors.upperItemCnt).text(data.RecordCount);
+    $(selectors.lowerItemCnt).text(data.RecordCount);
+    $(selectors.lowerTotalPages).text(data.PageCount);
+}
+
+function prepareCountInfo(selectors) {
+    $(selectors.upperCntText).text("? Results");
+    $(selectors.upperHiddenCnt).val(0);
+    $(selectors.upperItemCnt).text("?");
+    $(selectors.lowerItemCnt).text("?");
+    $(selectors.lowerTotalPages).text("?");
+}

@@ -1,0 +1,356 @@
+URL: https://denials.zirmed.com/Workcenter/ReloadWorkcenterGrid
+METHOD: POST
+STATUS: 200
+CONTENT-TYPE: text/html; charset=utf-8
+POST: 
+================================================================================
+<div id="gridOuterWrapper">
+    <div id="upperGridContainer">
+        <h3 id="upResultsCounter" class="resultsInfo">1 Result</h3>
+        <input type="hidden" value="1" id="hdnTotalCount" />
+        <div id="right" class="topPagerContainer">
+            <div id="topPagerLabel" class="webPagerDisplayLabel" style="display: inline; float: left; padding-top: 8px;">
+                <span class="lblItemCounts">
+                        <span>1</span>
+                    <span> - </span>
+                    1
+                </span>
+                <span>of</span>
+                <span class="lblItemCounts">1</span>
+            </div>
+            <div class="arrows">
+                <a id="Pager_Top_Prev" class="smallDefaultButton webPagerLeftLink" onclick="page($(this), 'prev'); return false;">
+                    <img id="imgFirstPage" class="pagerPreviousImage" width="16" height="16" alt="first" src="/Content/Images/transparent.gif">
+                </a>
+                <a id="Pager_Top_Next" class="smallDefaultButton webPagerRightLink" onclick="page($(this), 'next'); return false;">
+                    <img id="img1" class="pagerNextImage" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+                </a>
+            </div>
+        </div>
+        <div class="clearfix"></div>
+        <div id="filterContainer" class="filterContainer">
+            <div id="filterHeaderDiv" class="filterHeader">
+                <h4>
+                    <span>Current Filters</span>
+                </h4>
+                <a onclick="showSaveSearchModal(); return false;" id="lbSave" class="smallLink firstLink">Save Search</a>
+                <a id="lbClearFilters" class="clearSearchFilters smallLink" href="#" onclick="clearFiltersClicked(); return false;">Clear All</a>
+            </div>
+            <div class="filterDiv hoverToolTip">
+    <span class="filterButtonLeft" data-filtertype="WorkflowStage" data-filterselection="1">
+        <b>Workflow Stage:</b> New</span>
+    <span class="filterButtonRight">
+        <img class="filter-x" src="/Images/transparent.gif" height="1" width="1" alt="filter" />
+    </span>
+</div><div class="filterDiv hoverToolTip">
+    <span class="filterButtonLeft" data-filtertype="WorkflowStage" data-filterselection="8">
+        <b>Workflow Stage:</b> Updated</span>
+    <span class="filterButtonRight">
+        <img class="filter-x" src="/Images/transparent.gif" height="1" width="1" alt="filter" />
+    </span>
+</div><div class="filterDiv hoverToolTip">
+    <span class="filterButtonLeft" data-filtertype="ReminderDate" data-filterselection="DueOrPastDue">
+        <b>Reminder Date:</b> Due Or Past Due</span>
+    <span class="filterButtonRight">
+        <img class="filter-x" src="/Images/transparent.gif" height="1" width="1" alt="filter" />
+    </span>
+</div>
+        </div>
+        <img id="filtershadowImg" class="filterContainerShadow" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+        <div class="clearfix"></div>
+    </div>
+    <div id="lowerGridContainer">
+        <div id="gridDiv">
+            <div id="thisGrid">
+                <div class="actionBar">
+                    <input id="AppealBatchLimit" type="hidden" value="100" />
+
+                    <input type="button" value="Export" id="btnBulkExport" class="mediumDefaultButton" />
+                        <input type="button" value="Reassign" id="btnBulkReassign" class="mediumDefaultButton" />
+                    <input type="button" value="Close" id="btnBulkClose" class="mediumDefaultButton" />
+                    <input type="button" value="Appeal" id="btnBulkAppeal" class="mediumDefaultButton" />
+                    <span class="headerCheckBox">
+                        <input id="chkExcelFriendlyWC" type="checkbox">
+                        Excel Friendly CSV
+                    </span>
+
+                </div>
+                <div id="gridData">
+                    <table class="gridView" cellspacing="0" border="1" style="border-collapse:collapse;">
+                        <tbody>
+                            <tr class="gridViewHeader">
+                                <th class="headerCheckBox" scope="col">
+                                    <div id="divHeaderCheckBox" class="actionButtonDropMenu">
+                                        <span class="gridHeaderCheckbox">
+                                            <input id="chkGridSelect" type="checkbox" name="sampleGrid$ctl01$chkGridSelect" onclick="CaptureDenialsSelectionDefault($('#chkGridSelect')) ">
+                                        </span>
+                                        <img id="myworkdownarrow" src="/Content/Images/transparent.gif" height="1" width="1" alt="Show Check Options">
+                                        <ul id="headerSelectMenu" class="mainDropMenu shadow" style="top: 186px; left: 223.390625px; display: none;">
+                                            <li>
+                                                <a data-select="true" data-selectiontype="1" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridSelectAll')); return false;" id="sampleGrid_lnkGridSelectAll">
+                                                    Select All
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a data-select="false" data-selectiontype="2" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridUnselectAll')); return false;" id="sampleGrid_lnkGridUnselectAll">
+                                                    Unselect All
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a data-select="true" data-selectiontype="3" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridSelectPage')); return false;" id="sampleGrid_lnkGridSelectPage">
+                                                    Select Page
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a data-select="false" data-selectiontype="4" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridUnselectPage')); return false;" id="sampleGrid_lnkGridUnselectPage">
+                                                    Unselect Page
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        <span class="downArrow"></span>
+                                    </div>
+                                </th>
+                                <input id="WorkcenterArgs_WorkcenterGridArgs_SortColumn" name="WorkcenterArgs.WorkcenterGridArgs.SortColumn" type="hidden" value="DenialDate" />
+<input id="WorkcenterArgs_WorkcenterGridArgs_SortDirection" name="WorkcenterArgs.WorkcenterGridArgs.SortDirection" type="hidden" value="Ascending" />
+
+            <th scope="col">
+                <span>
+                    Account
+                </span>
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Patient Name
+                </span>
+
+                <img id=PatientName class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    POP Score
+                </span>
+
+                <img id=PODScore class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Service Date
+                </span>
+
+                <img id=ServiceDate class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th class="sortableHeader activeHeader" scope="col">
+                <span>
+                    Denial Date
+                </span>
+
+                <img id=DenialDate class=sprite-sort-arrow-asc src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th scope="col">
+                <span>
+                    Rendering Provider
+                </span>
+            </th>
+            <th scope="col">
+                <span>
+                    Payer
+                </span>
+            </th>
+            <th scope="col">
+                <span>
+                    Claim #
+                </span>
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Denied Amount
+                </span>
+
+                <img id=DeniedAmount class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th scope="col">
+                <span>
+                    Denial Category
+                </span>
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Reminder Date
+                </span>
+
+                <img id=ReminderDate class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th scope="col">
+                <span>
+                    Stage
+                </span>
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Days in Stage
+                </span>
+
+                <img id=DaysInPhase class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Level Of Appeal
+                </span>
+
+                <img id=LevelOfAppeal class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th scope="col">
+                <span>
+                    Billing Provider
+                </span>
+            </th>
+            <th scope="col">
+                <span>
+                    Service Facility
+                </span>
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Allowed Amount
+                </span>
+
+                <img id=AllowedAmount class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+            <th class="sortableHeader" scope="col">
+                <span>
+                    Billed Amount
+                </span>
+
+                <img id=BilledAmount class=sprite-sort-arrows-default src="/Images/transparent.gif" height="1" width="1" alt="Sort Column">
+            </th>
+
+                            </tr>
+        <tr class="gridViewRow gridViewExpandableRow" data-denialid="3793709968" data-stage="Updated" data-remitidkey="1211961024.008" data-claimnumber="PV410064197" data-claimid="11208966446" data-claimtype="Professional" data-showmerge="False" data-remitcustid="296638" data-claimscustid="296638" data-instanceid="4796217974" data-reminderdate="4/15/2026" data-origreminderdate="4/15/2026" data-custid="296638" data-workgroupid="41436" data-hide-group = gridMenuMerge data-canresubmit="True" data-underUserActionStr="" data-isElectronicSubmission="False">
+            <td class="mainRowFirst" id="Checkbox_1/3793709968" >
+                <input type="checkbox" class="noExpand rowSelectCheckbox" onclick="CaptureSelectedDenial($(this));" >                
+            </td>
+
+            <td class='gridCell large' id='AccountName_1/3793709968'><span>Physical Therapy of the City P.C.</span>
+</td>
+<td class='gridCell' id='PatientName_1/3793709968'><span>CARMEN AGUAYO</span>
+</td>
+<td class='gridCell podsBottomTier large' id='PODScore_1/3793709968'><span>23 <span class="priorityicon fa fa-star"></span></span>
+</td>
+<td class='gridCell large' id='ServiceDate_1/3793709968'><span>03/03/26</span><span> - </span>
+<br />
+<span>03/03/26</span>
+</td>
+<td class='gridCell' id='DenialDate_1/3793709968'><span>04/09/26</span>
+</td>
+<td class='gridCell large' id='RenderingProvider_1/3793709968'><span>NASSER, AHMED (1356049258)</span>
+</td>
+<td class='gridCell large' id='PayerName_1/3793709968'><span>BCBS New York Empire (SB803)</span><br /></td>
+<td class='gridCell' id='ClaimNumber_1/3793709968'><span>PV410064197</span>
+</td>
+<td class='gridCell' id='DeniedAmount_1/3793709968'><span>$120.00</span>
+</td>
+<td class='gridCell large' id='DenialCategory_1/3793709968'><span>Medical Necessity</span></td>
+<td class='gridCell' id='ReminderDate_1/3793709968'><span class='red'>04/15/26</span><br />
+</td>
+<td class='gridCell' id='Stage_1/3793709968' style='display:grid'><span style='min-width: 65px;'>Updated</span>
+</td>
+<td class='gridCell' id='DaysInPhase_1/3793709968'><span>69</span>
+</td>
+<td class='gridCell' id='LevelOfAppeal_1/3793709968'><span>Level 1</span>
+</td>
+<td class='gridCell large' id='PayeeNPI_1/3793709968'><span>PHYSICAL THERAPY OF THE CITY PC (1265940399)</span>
+</td>
+<td class='gridCell' id='ServiceFacility_1/3793709968'><span>11</span>
+</td>
+<td class='gridCell' id='AllowedAmount_1/3793709968'><span>$120.00</span>
+</td>
+<td class='gridCell last-child' id='BilledAmount_1/3793709968'><span>$250.00</span>
+</td>
+
+
+        </tr>
+        <tr class="tagRow" data-denialid="3793709968" data-canresubmit="True" data-underUserActionStr="">
+            <td colspan=19 class="bottomHack" id="Tag_1/3793709968">
+
+                <div class="tagRowIcons">
+                        <img src='/Content/Images/transparent.gif' class='sprite-notes noExpand' height='1' width='1' alt='Has Notes' title='Has Notes'>
+<img src='/Content/images/eligibility-disabled-icon.png' class='hide-content noExpand elg-icon elg-pending' height='16' width='16' alt='Sending inquiry...' data-denialid='3793709968' data-elgheader='' data-elgstatus='Sending inquiry...' title='Sending inquiry...'>
+
+                </div>
+                    <div class='lastNote'><span>Last Note: (  5/4/2026) </span>Denial moved to workgroup: Mohamed Hussain's Denial Group</div>
+
+                
+            </td>
+        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="pagerDiv" class="webPagerDiv">
+                    <div id="InnerPagerDiv">
+                        <div id="webPager_RightContainer" class="webPager_Right">
+                            <div style="padding-bottom: 5px;">
+                                <span class="webPagerDisplayLabel">Per Page:</span>
+                            </div>
+                            <input type="hidden" value="10" id="pageSize" />
+                            <select id="ctrl_ItemsPerPage" onchange="$('#CurrentPageInput').val(1); pageAndSortGrid(); return false;" name="ctrl_ItemsPerPage">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div id="gridPagerLabel" class="webPagerDisplayLabel" style="display: inline; float: left; padding-top: 8px;">
+                            <span>Results</span>
+                            <span class="lblItemCounts">
+                                    <span>1</span>
+                                <span> - </span>
+                                1
+                            </span>
+                            <span>of</span>
+                            <span class="lblItemCounts">1</span>
+                        </div>
+                        <div id="btmPager" style="display:inline-block;padding-top: 2px;">
+                            <div id="btmPager_pagerContainer">
+                                <table id="btmPager_tblPager" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                                    <tbody>
+                                        <tr>
+                                            <td id="samplePager_tcControls">
+                                                <div class="arrows">
+                                                    <a id="Pager_Btm_First" class="smallDefaultButton webPagerLeftLink" onclick="page($(this), 'first'); return false;">
+                                                        <img id="imgFirstPage" class="pagerFirstImage sprite-arrowleft-firstpage" width="16" height="16" alt="first" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                    <a id="Pager_Btm_Prev" class="smallDefaultButton webPagerRightLink" onclick="page($(this), 'prev'); return false;">
+                                                        <img id="imgPrevPage" class="pagerPreviousImage" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                </div>
+                                            </td>
+                                            <td style="width:10px;"></td>
+                                            <td class="PageCountClass webPagerPageCount" style="width:120px;white-space:nowrap;">
+                                                &nbsp;Page&nbsp;
+                                                <input id="CurrentPageInput" name="CurrentPageInput" type="text" value=1 maxlength="6" size="3" style="font-size: 9pt;">
+                                                &nbsp;of&nbsp;
+                                                <span id="lblTotalpages">1</span>
+                                            </td>
+                                            <td style="width:10px;"></td>
+                                            <td>
+                                                <div class="arrows">
+                                                    <a id="Pager_Btm_Next" class="smallDefaultButton webPagerLeftLink" onclick="page($(this), 'next'); return false;">
+                                                        <img id="imgNextPage" class="pagerNextImage" width="16" height="16" alt="first" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                    <a id="Pager_Btm_Last" class="smallDefaultButton webPagerRightLink" onclick="page($(this), 'last'); return false;">
+                                                        <img id="imgLastPage" class="pagerLastImage sprite-arrowright-lastpage" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

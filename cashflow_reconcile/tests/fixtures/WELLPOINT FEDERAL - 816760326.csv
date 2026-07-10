@@ -1,0 +1,15 @@
+Electronic EOB Detail for PV4 
+PV4 - PV4 - Physical Therapy of The City
+Check Number 816760326 
+WELLPOINT FEDERAL
+06/01/2026 - 07/02/2026
+EOB Date 07/02/2026
+07/03/2026 10:39:47 AM
+4 records
+
+
+Patient ID,First Name,Last Name,Date of Service,CPT,Mod1,Mod2,Units,Billed Amount,Allowed Amount,Paid Amount,Adjustment Amount,Deductible Amount,CARC
+"10548941","ALEJANDRO","MARTINEZ","06/11/2026","97163","GP",,"1","$150.00","$110.15","$86.36","$39.85","$0.00","CO-45"
+"10548941","ALEJANDRO","MARTINEZ","06/11/2026","97163",,,"0","$0.00","$0.00","$0.00","$1.76","$0.00","CO-253"
+"10548941","ALEJANDRO","MARTINEZ","06/11/2026","97163",,,"0","$0.00","$0.00","$0.00","$0.00","$0.00","PR-2"
+"10548941","ALEJANDRO","MARTINEZ","06/11/2026","97110","GP",,"2","$120.00","$49.50","$38.81","$54.20","$0.00","CO-45"

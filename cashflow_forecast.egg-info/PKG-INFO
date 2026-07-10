@@ -1,0 +1,61 @@
+Metadata-Version: 2.4
+Name: cashflow_forecast
+Version: 0.1.0
+Summary: Cash flow forecasting for PT of the City RCM pilot
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=2.0
+Requires-Dist: PyYAML>=6.0
+Requires-Dist: streamlit>=1.28
+Requires-Dist: plotly>=5.18
+
+# Cash Flow Forecast — Pilot
+
+## Quick start
+
+**Important:** run commands from the **repo root** (`D:\cashflow\code`), not from inside `cashflow_forecast/`.
+
+### Option A — repo root (recommended)
+
+```powershell
+cd D:\cashflow\code
+
+# venv (once)
+python -m venv cashflow_forecast\venv
+.\cashflow_forecast\venv\Scripts\activate
+pip install -e .
+
+# Build
+python -m cashflow_forecast build `
+  --data-dir webpt_edco_scraper/output/jun_jul_2026 `
+  --output-dir webpt_edco_scraper/output/jun_jul_2026/forecast `
+  --as-of 2026-07-09
+
+# Dashboard
+streamlit run cashflow_forecast/dashboard.py
+```
+
+### Option B — from `cashflow_forecast/` folder (your current setup)
+
+```powershell
+cd D:\cashflow\code\cashflow_forecast
+.\venv\Scripts\activate
+pip install -r requirements.txt
+.\run.ps1 build
+.\run.ps1 dashboard
+```
+
+### Payer SLA only
+
+```powershell
+cd D:\cashflow\code
+python -m cashflow_forecast sla `
+  --reconciliation-dir webpt_edco_scraper/output/jun_jul_2026/reconciliation `
+  --output webpt_edco_scraper/output/jun_jul_2026/forecast/payer_sla.csv
+```
+
+## Design rules
+
+- **Outcome** (`paid|on_track|overdue|rejected|denied|zero_pay`) ≠ **Risk** (`audit_cpt|audit_icd|unsubmitted`)
+- Loaders under `loaders/` each read one source only
+- Audit↔Waystar linking uses numeric `match_score` (0–100), not High/Medium/Low

@@ -15,6 +15,7 @@ from config import (
     GATEWAY_GRAPHQL_URL,
     GET_NEW_PATIENTS_URL,
     LOGIN_ENTRY_URL,
+    SCHEDULER_INDEX_URL,
     STORAGE_STATE_PATH,
     WebPTConfig,
 )
@@ -102,6 +103,8 @@ async def dismiss_already_signed_in_prompt(page: Page) -> bool:
             await page.wait_for_load_state("domcontentloaded", timeout=30000)
         except Exception:
             pass
+        if not _is_on_app_domain(page.url):
+            await _wait_for_app_domain(page, timeout_ms=60000)
         await asyncio.sleep(1)
         log.info("Dismissed 'already signed in' prompt")
         return True
@@ -112,6 +115,88 @@ async def dismiss_already_signed_in_prompt(page: Page) -> bool:
 
 async def _settle_app_page(page: Page) -> None:
     await dismiss_already_signed_in_prompt(page)
+
+
+def _is_on_app_domain(url: str) -> bool:
+    return "app.webpt.com" in (url or "").lower()
+
+
+def _is_post_login_interstitial_url(url: str) -> bool:
+    u = (url or "").lower()
+    return "/redirect/" in u or "delegator.webpt.com" in u
+
+
+async def _wait_for_app_domain(page: Page, *, timeout_ms: int = 60000) -> bool:
+    """Wait until the browser lands on app.webpt.com."""
+    if _is_on_app_domain(page.url):
+        return True
+    try:
+        await page.wait_for_url(
+            re.compile(r"https?://app\.webpt\.com/", re.I),
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return _is_on_app_domain(page.url)
+
+
+async def _wait_for_dashboard(page: Page, *, timeout_ms: int = 90000) -> None:
+    """Wait for Auth0 post-login redirects to settle on dashboard.php."""
+    deadline = time.monotonic() + timeout_ms / 1000
+    url = page.url.lower()
+
+    if "dashboard.php" in url and _is_on_app_domain(page.url):
+        try:
+            remaining = max(1000, int((deadline - time.monotonic()) * 1000))
+            await page.wait_for_load_state("domcontentloaded", timeout=remaining)
+        except Exception:
+            pass
+        return
+
+    await _settle_app_page(page)
+
+    if _is_post_login_interstitial_url(page.url) or not _is_on_app_domain(page.url):
+        log.info("Waiting for post-login redirect (current: %s)", page.url)
+        while time.monotonic() < deadline:
+            await _settle_app_page(page)
+            current = page.url.lower()
+            if _is_on_app_domain(current) and "dashboard.php" in current:
+                log.info("Redirect complete (%s)", page.url)
+                try:
+                    await page.wait_for_load_state("domcontentloaded", timeout=30000)
+                except Exception:
+                    pass
+                return
+            if _is_on_app_domain(current):
+                break
+            await asyncio.sleep(0.5)
+
+    if _is_on_app_domain(page.url) and "dashboard.php" in page.url.lower():
+        return
+
+    remaining_ms = max(1000, int((deadline - time.monotonic()) * 1000))
+    log.info("Navigating to dashboard from %s", page.url)
+    try:
+        await page.goto(DASHBOARD_URL, wait_until="domcontentloaded", timeout=remaining_ms)
+    except Exception as exc:
+        msg = str(exc)
+        if "ERR_ABORTED" in msg and "dashboard.php" in page.url.lower():
+            log.info("Dashboard navigation aborted but already on dashboard (%s)", page.url)
+            return
+        if "ERR_ABORTED" in msg:
+            for _ in range(30):
+                await asyncio.sleep(0.5)
+                if "dashboard.php" in page.url.lower() and _is_on_app_domain(page.url):
+                    log.info("Dashboard reached after aborted navigation (%s)", page.url)
+                    return
+        raise
+
+    await _wait_for_app_domain(page, timeout_ms=max(1000, remaining_ms))
+    if "dashboard.php" not in page.url.lower():
+        try:
+            await page.goto(DASHBOARD_URL, wait_until="domcontentloaded", timeout=30000)
+        except Exception:
+            pass
 
 
 def _page_needs_auth(page: Page) -> bool:
@@ -158,6 +243,41 @@ async def create_context(
         kwargs["storage_state"] = str(state_path)
         log.info("Loading storage state from %s", state_path)
     return await browser.new_context(**kwargs)
+
+
+async def safe_close_context(context: BrowserContext) -> None:
+    try:
+        await context.close()
+    except Exception as exc:
+        log.warning("Browser cleanup failed (ignored): %s", exc)
+
+
+async def restart_browser(
+    playwright,
+    config: WebPTConfig,
+    *,
+    old_context: BrowserContext,
+    clinic: ClinicInfo | None = None,
+    reason: str = "driver connection lost",
+) -> tuple[BrowserContext, Page, SessionState]:
+    log.warning("Restarting browser (%s)", reason)
+    await safe_close_context(old_context)
+    context = await create_context(playwright, config)
+    page = await context.new_page()
+    session = await ensure_authenticated(page, context, config)
+    if clinic is not None:
+        await switch_clinic(
+            page,
+            company_id=clinic.company_id,
+            facility_id=clinic.facility_id,
+        )
+        await page.goto(
+            SCHEDULER_INDEX_URL,
+            wait_until="domcontentloaded",
+            timeout=30000,
+        )
+        session = await ensure_authenticated(page, context, config)
+    return context, page, session
 
 
 async def save_storage_state(context: BrowserContext, path: Path | None = None) -> None:
@@ -383,16 +503,28 @@ async def _auth0_complete_password_step(page: Page, config: WebPTConfig) -> bool
         log.warning("Auth0: failed to submit password: %s", exc)
         return False
 
-    deadline = time.monotonic() + 90
+    deadline = time.monotonic() + 120
     while time.monotonic() < deadline:
-        if "app.webpt.com" in page.url and not _is_auth_redirect_url(page.url):
-            await _settle_app_page(page)
+        if _is_on_app_domain(page.url) and not _is_auth_redirect_url(page.url):
             log.info("Auth0: redirected to app (%s)", page.url)
+            await _wait_for_dashboard(page)
+            await _settle_app_page(page)
             return True
+        if _is_post_login_interstitial_url(page.url):
+            await _settle_app_page(page)
         await asyncio.sleep(0.5)
 
-    if not _is_auth_redirect_url(page.url):
-        return True
+    if _is_post_login_interstitial_url(page.url) or (
+        not _is_auth_redirect_url(page.url) and not _is_on_app_domain(page.url)
+    ):
+        log.info(
+            "Auth0: still on interstitial after poll — waiting for dashboard (%s)",
+            page.url,
+        )
+        await _wait_for_dashboard(page)
+        await _settle_app_page(page)
+        return _is_on_app_domain(page.url)
+
     log.warning("Auth0: login timed out (still on %s)", page.url)
     return False
 
@@ -496,6 +628,7 @@ async def login(
 
     if await _try_automated_auth0_login(page, config):
         log.info("Automated Auth0 login succeeded")
+        await _wait_for_dashboard(page)
         await _settle_app_page(page)
         return
 
@@ -506,6 +639,21 @@ async def login(
         )
 
     await wait_for_manual_login(page, context, timeout_sec=300)
+
+
+async def _log_session_failure_diagnostics(
+    page: Page, context: BrowserContext
+) -> None:
+    has_cookies = await _has_session_cookies(context)
+    probe_ok = await _probe_session(context) if has_cookies else False
+    csrf_state = await refresh_csrf(context, page)
+    log.error(
+        "Session validation failed: url=%s cookies=%s probe=%s csrf=%s",
+        page.url,
+        has_cookies,
+        probe_ok,
+        bool(csrf_state.csrf_token),
+    )
 
 
 async def ensure_authenticated(
@@ -524,7 +672,7 @@ async def ensure_authenticated(
 
     log.info("Session invalid or missing — performing login")
     await login(page, context, config, fresh=fresh_login)
-    await page.goto(DASHBOARD_URL, wait_until="networkidle", timeout=90000)
+    await _wait_for_dashboard(page)
     await _settle_app_page(page)
     try:
         await page.wait_for_function(
@@ -534,8 +682,19 @@ async def ensure_authenticated(
     except Exception:
         log.warning("Timed out waiting for CSRF markers after login")
     if not await _has_session_cookies(context):
+        await _log_session_failure_diagnostics(page, context)
         raise SessionExpiredError("Login completed but session cookies are missing")
-    if not await _session_ready(page, context):
+
+    ready_deadline = time.monotonic() + 30
+    session_ready = False
+    while time.monotonic() < ready_deadline:
+        if await _session_ready(page, context):
+            session_ready = True
+            break
+        await asyncio.sleep(1)
+
+    if not session_ready:
+        await _log_session_failure_diagnostics(page, context)
         raise SessionExpiredError(
             "Login completed but session is not valid (CSRF token missing)"
         )

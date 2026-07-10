@@ -1,0 +1,557 @@
+# CPT billing rules by insurance (from CPT codes guid).
+# match_patterns: case-insensitive regex against WebPT insurance_name.
+# Order matters: first match wins — put more specific rules before broader ones.
+
+strapping_codes:
+  - "29200"
+  - "29240"
+  - "29260"
+  - "29280"
+  - "29520"
+  - "29530"
+  - "29540"
+  - "29799"
+  - "29582"
+
+timed_treatment_codes:
+  - "97110"
+  - "97112"
+  - "97116"
+  - "97140"
+  - "97530"
+  - "97124"
+
+eval_codes:
+  - "97161"
+  - "97162"
+  - "97163"
+
+reeval_code: "97164"
+massage_code: "97124"
+therapeutic_activity_code: "97530"
+estim_97014: "97014"
+estim_g0283: "G0283"
+
+rules:
+  # --- Healthfirst (all products): o14, no strapping, no re-eval ---
+  - name: Healthfirst
+    match_patterns:
+      - "health\\s*first"
+      - "healthfirst"
+    estim: "97014"
+    strapping: forbidden
+    reeval: forbidden
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Emblem Medicaid (before broader Emblem patterns) ---
+  - name: Emblem Medicaid
+    match_patterns:
+      - "emblem\\s*medicaid"
+      - "emblem[-\\s]?cmo"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Emblem GHI / NYCE PPO: strapping required, no massage ---
+  - name: Emblem-GHI / NYCE PPO
+    match_patterns:
+      - "nyce"
+      - "emblem[-\\s]?ghi"
+      - "^ghi$"
+      - "\\bghi\\b"
+    estim: "97014"
+    strapping: required
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: true
+
+  # --- Emblem HIP / HCP / Connecticare ---
+  - name: Emblem HIP/HCP
+    match_patterns:
+      - "emblem[-\\s]?hip"
+      - "emblem[-\\s]?hcp"
+      - "emblem\\s+hcp"
+      - "emblem\\s*health"
+      - "connecticare"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- BCBS Health Plus: o14, no strapping ---
+  - name: BCBS-Health Plus
+    match_patterns:
+      - "bcbs[-\\s]?health\\s*plus"
+      - "bcbs\\s+health\\s+plus"
+      - "health\\s*plus"
+    estim: "97014"
+    strapping: forbidden
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- BCBS Integra (guide: integra = G-Code) ---
+  - name: Integra
+    match_patterns:
+      - "integra"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- BCBS general (HMO/PPO/Somos/Federal/Medicare under BCBS): o14, no strapping ---
+  - name: BCBS
+    match_patterns:
+      - "bcbs"
+      - "blue\\s*cross"
+      - "empire\\s*blue"
+    estim: "97014"
+    strapping: forbidden
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Fidelis: G-Code, strapping required ---
+  - name: Fidelis
+    match_patterns:
+      - "fidelis"
+      - "fiedelis"
+    estim: "G0283"
+    strapping: required
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Aetna ---
+  - name: Aetna
+    match_patterns:
+      - "aetna"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- UHC Community Plan: therapeutic activities ---
+  - name: United Healthcare Community Plan
+    match_patterns:
+      - "united\\s*health\\s*care\\s*community"
+      - "unitedhealthcare\\s*community"
+      - "uhc\\s*community"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: therapeutic_activities
+    prefer_manual_over_massage: false
+
+  # --- UHC Choice Plus: G-Code, prefer manual over massage ---
+  - name: United Healthcare Choice Plus
+    match_patterns:
+      - "choice\\s*plus"
+      - "uhc\\s*choice"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: true
+
+  # --- UHC commercial / Dual / Surest / Nexus / Student / AARP UHC ---
+  - name: United Healthcare Commercial
+    match_patterns:
+      - "uhc\\s*commercial"
+      - "uhc\\s*medicare"
+      - "uhc\\s*dual"
+      - "uhc\\s*nexus"
+      - "united\\s*healthcare\\s*dual"
+      - "united\\s*health\\s*care\\s*dual"
+      - "united\\s*healthcare\\s*surest"
+      - "united\\s*healthcare\\s*student"
+      - "united\\s*health\\s*care\\s*choice"
+      - "aarp\\s*uhc"
+      - "unitedhealthcare"
+      - "united\\s*healthcare"
+      - "united\\s*health\\s*care"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Oxford ---
+  - name: Oxford
+    match_patterns:
+      - "oxford"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Oscar ---
+  - name: Oscar
+    match_patterns:
+      - "oscar"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- MultiPlan ---
+  - name: MultiPlan
+    match_patterns:
+      - "multi\\s*plan"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- VNS Medicaid: therapeutic activities ---
+  - name: VNS Medicaid
+    match_patterns:
+      - "vns\\s*medicaid"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: therapeutic_activities
+    prefer_manual_over_massage: false
+
+  # --- VNS Medicare ---
+  - name: VNS Medicare
+    match_patterns:
+      - "vns\\s*medicare"
+      - "vns\\s*-\\s*nsipa"
+      - "^vnsny$"
+      - "^vns\\b"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Straight Medicaid (not Emblem/Healthfirst/Fidelis): therapeutic activities ---
+  - name: Medicaid
+    match_patterns:
+      - "^medicaid\\b"
+      - "^medicaid\\s"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: therapeutic_activities
+    prefer_manual_over_massage: false
+
+  # --- Village Care Max ---
+  - name: Village Care Max
+    match_patterns:
+      - "village\\s*care"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Partner Health / NorthWell Direct ---
+  - name: Partner Health Plans
+    match_patterns:
+      - "partner\\s*health"
+      - "northwell"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Centerlight ---
+  - name: Centerlight
+    match_patterns:
+      - "centerlight"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Amida Care ---
+  - name: Amida Care
+    match_patterns:
+      - "amida"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- CHAMPVA / Tricare / US Family ---
+  - name: CHAMPVA / Tricare
+    match_patterns:
+      - "champva"
+      - "tricare"
+      - "us\\s*family\\s*health"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Elderplan Homefirst: therapeutic activities, o14 ---
+  - name: Elderplan Homefirst
+    match_patterns:
+      - "elderplan"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: therapeutic_activities
+    prefer_manual_over_massage: false
+
+  # --- Empire Plan ---
+  - name: Empire Plan
+    match_patterns:
+      - "empire\\s*plan"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Humana ---
+  - name: Humana
+    match_patterns:
+      - "humana"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Medicare (traditional NGS / bare Medicare): G-Code, no strapping, no re-eval ---
+  - name: Medicare
+    match_patterns:
+      - "medicare\\s*new\\s*york"
+      - "railroad\\s*medicare"
+      - "^medicare$"
+      - "^medicare\\s"
+      - "ngs\\s*medicare"
+    estim: "G0283"
+    strapping: forbidden
+    reeval: forbidden
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Wellcare ---
+  - name: Wellcare
+    match_patterns:
+      - "well\\s*care"
+      - "wellcare"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Senior Whole Health ---
+  - name: Senior Whole Health
+    match_patterns:
+      - "senior\\s*whole"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Centers Plan for Healthy Living: therapeutic activities ---
+  - name: Centers Plan for Healthy Living
+    match_patterns:
+      - "centers\\s*plan"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: therapeutic_activities
+    prefer_manual_over_massage: false
+
+  # --- Cigna ---
+  - name: Cigna
+    match_patterns:
+      - "cigna"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Metroplus ---
+  - name: Metroplus
+    match_patterns:
+      - "metro\\s*plus"
+      - "metroplus"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Progressive / No Fault style ---
+  - name: Progressive
+    match_patterns:
+      - "progressive"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Affinity ---
+  - name: Affinity
+    match_patterns:
+      - "affinity"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- UMR ---
+  - name: UMR
+    match_patterns:
+      - "^umr\\b"
+      - "\\bumr\\b"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- AARP (non-UHC labeled) ---
+  - name: AARP
+    match_patterns:
+      - "^aarp\\b"
+      - "\\baarp\\b"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Anthem commercial ---
+  - name: Anthem Commercial
+    match_patterns:
+      - "anthem"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- 1199 ---
+  - name: "1199"
+    match_patterns:
+      - "1199"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- GEICO / No Fault ---
+  - name: GEICO
+    match_patterns:
+      - "geico"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- State Farm ---
+  - name: State Farm
+    match_patterns:
+      - "state\\s*farm"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Magnacare / Magnacomp ---
+  - name: Magnacare
+    match_patterns:
+      - "magna\\s*care"
+      - "magnacare"
+      - "magnacomp"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Sedgwick ---
+  - name: Sedgwick Claims Management
+    match_patterns:
+      - "sedgwick"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- NYC Law / FDNY / Sanitation / Police / WC carriers ---
+  - name: Workers Comp / No Fault
+    match_patterns:
+      - "nyc\\s*law"
+      - "fire\\s*department"
+      - "fdny"
+      - "sanitation"
+      - "nyc\\s*police"
+      - "nysif"
+      - "workers'?\\s*comp"
+      - "liberty\\s*mutual"
+      - "corvel"
+      - "travelers"
+      - "gallagher"
+      - "broadspire"
+      - "amtrust"
+      - "ccmsi"
+      - "care\\s*iq"
+      - "acs\\s*claims"
+      - "esis"
+      - "sentry"
+      - "american\\s*group"
+      - "fcs\\s*administrators"
+      - "all\\s*state"
+      - "national\\s*general"
+      - "american\\s*equity"
+      - "gcg"
+      - "wcop"
+    estim: "97014"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Meritain / Centivo / PHCS (multiplan-like commercial) ---
+  - name: Meritain / Centivo / PHCS
+    match_patterns:
+      - "meritain"
+      - "centivo"
+      - "phcs"
+      - "optimed"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false
+
+  # --- Hamaspik ---
+  - name: Hamaspik
+    match_patterns:
+      - "hamaspik"
+    estim: "G0283"
+    strapping: accepted
+    reeval: allowed
+    timed_codes: standard_4cpt
+    prefer_manual_over_massage: false

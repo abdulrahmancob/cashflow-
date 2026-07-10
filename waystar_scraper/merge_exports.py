@@ -15,12 +15,19 @@ EXPORT_JSON_PATTERN = re.compile(r"^(batch|checkpoint)_(\d+)\.json$", re.IGNOREC
 
 
 def claim_key(row: dict) -> tuple[str, str]:
+    if row.get("denial_id"):
+        suffix = ""
+        if row.get("line_num"):
+            suffix = f"{row.get('remit_instance_id', '')}-{row.get('line_num', '')}"
+        return (str(row.get("denial_id", "")), suffix)
     return (str(row.get("claim_id", "")), str(row.get("instance_id", "")))
 
 
 def merged_output_names(export_dir: Path) -> tuple[Path, Path]:
     name = export_dir.name
-    if name.startswith("claims_rejected"):
+    if name.startswith("denials_"):
+        base = "denials_merged"
+    elif name.startswith("claims_rejected"):
         base = "claims_rejected_merged"
     elif name.startswith("claims_90d"):
         base = "claims_90d_merged"
@@ -96,11 +103,14 @@ def merge_json_batches(export_dir: Path, output_path: Path, summary: dict) -> No
     all_claims: dict[tuple[str, str], dict] = {}
     meta: dict = {}
 
+    record_key = "claims"
     for kind, export_num, json_path in exports:
         payload = json.loads(json_path.read_text(encoding="utf-8"))
         if not meta:
-            meta = {k: v for k, v in payload.items() if k != "claims"}
-        for claim in payload.get("claims", []):
+            if payload.get("denials"):
+                record_key = "denials"
+            meta = {k: v for k, v in payload.items() if k not in ("claims", "denials")}
+        for claim in payload.get(record_key, payload.get("claims", [])):
             all_claims[claim_key(claim)] = claim
         log.info("Read %s_%03d.json (%s)", kind, export_num, json_path.name)
 

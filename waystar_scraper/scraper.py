@@ -44,7 +44,7 @@ from config import (
     SESSION_EXTEND_EVERY_PAGES,
     WaystarConfig,
 )
-from human import HumanSettings, human_scroll
+from human import HumanSettings, human_scroll, human_pause, maybe_idle_action
 from logging_config import get_logger, mask_secret, setup_logging
 from parser import parse_search_result_html
 
@@ -391,7 +391,7 @@ async def scrape_claims(
                 log.info("Resuming pagination from page %s", start_page)
 
             while True:
-                await human.delay()
+                await human_pause(human)
                 form_body = build_search_form(
                     token=token,
                     cust_id=cust_id,
@@ -488,8 +488,9 @@ async def scrape_claims(
 
                 current_page += 1
                 if page_delay_sec > 0:
-                    log.debug("Waiting %.2fs before next page", page_delay_sec)
-                    await asyncio.sleep(page_delay_sec)
+                    log.debug("Human pause before page %s (base=%.2fs)", current_page, page_delay_sec)
+                    await human_pause(human, page_delay_sec)
+                await maybe_idle_action(page, human)
 
                 token = await refresh_verification_token(page, human, retry=network_retry)
 

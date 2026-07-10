@@ -1,0 +1,25 @@
+URL: https://denials.zirmed.com/Scripts/header-setup.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+
+$(document).ready(function () {
+    var titleDiv = $('[class$=page_title_wrapper]');
+    if (titleDiv.length == 1) {
+    	var link = '<div class="denial-search-link-panel">';
+    	link += '<span class="icon-search denial-search-icon"></span>';
+    	link += '<a id="domainSearchLink">Denial Search</a></div>';
+    	titleDiv.append(link);
+
+    	$('[id$=domainSearchLink]').click(function () {
+    		if (Browser == 'InternetExplorer' || Browser == 'IE') {
+    			window.open(DenialSearchURL, "_blank", "width=1050,height=750,scrollbars=yes,resizable=yes,menubar=yes,toolbar=yes,location=yes,directories=yes");
+    		}
+    		else {
+    			window.open(DenialSearchURL);
+    		}
+    	});
+		}
+});

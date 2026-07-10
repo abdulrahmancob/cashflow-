@@ -1,0 +1,12 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+venv/
+output/
+storage_state.json
+gmail_token.json
+credentials.json
+.playwright/
+_transcript_extract.txt
+_paths.txt

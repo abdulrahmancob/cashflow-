@@ -1,0 +1,370 @@
+# WebPT ins_name / insurance_note pattern -> RevFlow payor name(s)
+mappings:
+  - patterns:
+      - "aetna commercial"
+      - "aetna-ppo"
+      - "aetna ppo"
+      - "^aetna$"
+    payors:
+      - "AETNA"
+      - "AETNA BETTER HEALTH OF NEW YORK"
+
+  - patterns:
+      - "emblem-hip"
+      - "emblem hip"
+    payors:
+      - "EMBLEMHEALTH - HIP"
+
+  - patterns:
+      - "emblem"
+    payors:
+      - "EMBLEMHEALTH"
+      - "EMBLEMHEALTH - HIP"
+
+  - patterns:
+      - "healthfirst"
+    payors:
+      - "HEALTHFIRST"
+      - "HEALTHFIRST PHSP, INC."
+
+  - patterns:
+      - "medicare new york ngs"
+      - "^medicare$"
+      - "railroad medicare"
+    payors:
+      - "PGBA,LLC"
+      - "PALMETTO GBA - RAILROAD MEDICARE"
+
+  - patterns:
+      - "metroplus"
+      - "metro plus"
+    payors:
+      - "METROPLUS HEALTH PLAN"
+      - "METROPLUS ESSENTIAL PLAN"
+
+  - patterns:
+      - "fidelis"
+      - "ambetter"
+    payors:
+      - "FIDELIS CARE"
+      - "AMBETTER FROM FIDELIS CARE"
+
+  - patterns:
+      - "1199"
+    payors:
+      - "1199SEIU"
+
+  - patterns:
+      - "oxford"
+    payors:
+      - "OXFORD HEALTH INSURANCE INC"
+
+  - patterns:
+      - "united healthcare"
+      - "unitedhealthcare"
+      - "uhc"
+      - "nyce ppo"
+    payors:
+      - "UNITEDHEALTHCARE OF NEW YORK INC"
+      - "UNITEDHEALTHCARE INSURANCE COMPANY AND AFFILIATES"
+      - "UHC SUREST"
+
+  - patterns:
+      - "cigna"
+      - "greatwest"
+    payors:
+      - "CIGNA HEALTH AND LIFE INSURANCE COMPANY"
+      - "GREATWESTHEALTHCARE-CIGNA"
+
+  - patterns:
+      - "humana"
+    payors:
+      - "HUMANA INC."
+
+  - patterns:
+      - "wellpoint"
+      - "anthem"
+    payors:
+      - "WELLPOINT FEDERAL"
+      - "ANTHEM HP, LLC"
+      - "ANTHEM HEALTHCHOICE ASSURANCE"
+
+  - patterns:
+      - "bcbs"
+      - "blue cross"
+      - "bluecross"
+    payors:
+      - "BCBS FEP"
+      - "BCBS"
+
+  - patterns:
+      - "nysif"
+      - "workers.? comp"
+      - "workers comp"
+    payors:
+      - "NEW YORK STATE INSURANCE FUND"
+
+  - patterns:
+      - "aarp"
+    payors:
+      - "AARP SUPPLEMENTAL HEALTH PLANS FROM UNITEDHEALTHCARE"
+
+  - patterns:
+      - "american specialty"
+      - "ash"
+    payors:
+      - "AMERICAN SPECIALTY HEALTH"
+
+  - patterns:
+      - "vns choice"
+      - "elderplan"
+      - "village care"
+    payors:
+      - "VNS CHOICE"
+      - "ELDERPLAN INC"
+      - "VILLAGE CARE MAX"
+
+  - patterns:
+      - "molina"
+    payors:
+      - "MOLINA HEALTHCARE OF NEW YORK, INC."
+
+  - patterns:
+      - "centivo"
+    payors:
+      - "CENTIVO"
+
+  - patterns:
+      - "umr"
+    payors:
+      - "UMR"
+
+  - patterns:
+      - "oscar"
+    payors:
+      - "OSCAR"
+
+  - patterns:
+      - "cna"
+    payors:
+      - "CNA INSURANCE"
+
+  - patterns:
+      - "allstate"
+      - "all state"
+    payors:
+      - "ALLSTATE"
+      - "ALLSTATE INSURANCE COMPANY"
+
+  - patterns:
+      - "^ghi$"
+      - "ghi "
+      - " ghi"
+    payors:
+      - "EMBLEMHEALTH"
+      - "EMBLEMHEALTH - HIP"
+
+  - patterns:
+      - "wellcare"
+    payors:
+      - "FIDELIS CAREWELLCARE BY FIDELIS CARE"
+      - "FIDELIS CARE"
+
+  - patterns:
+      - "vns medicare"
+      - "vns medicaid"
+      - "vnsny"
+      - "visiting nurse"
+    payors:
+      - "VNS CHOICE"
+      - "VISITING NURSE SERVICE OF NY"
+      - "HEALTHFIRST MEDICARE"
+
+  - patterns:
+      - "affinity"
+    payors:
+      - "HEALTHFIRST PHSP, INC."
+      - "METROPLUS HEALTH PLAN"
+      - "FIDELIS CARE"
+
+  - patterns:
+      - "^medicaid"
+      - "medicaid provider"
+    payors:
+      - "HEALTHFIRST PHSP, INC."
+      - "METROPLUS HEALTH PLAN"
+      - "FIDELIS CARE"
+      - "MOLINA HEALTHCARE OF NEW YORK, INC."
+      - "AMBETTER FROM FIDELIS CARE"
+
+  - patterns:
+      - "magnacare"
+      - "magnacomp"
+    payors:
+      - "NEW YORK NETWORK IPA"
+      - "HEALTHCARE PARTNERS, IPA"
+      - "INTEGRATED PRODUCTS"
+      - "NEW YORK STATE INSURANCE FUND"
+
+  - patterns:
+      - "senior whole health"
+    payors:
+      - "SENIOR WHOLE HEALTH OF NEW YORK"
+      - "SENIOR HEALTH PARTNERS"
+
+  - patterns:
+      - "meritain"
+    payors:
+      - "MERITAIN HEALTH"
+
+  - patterns:
+      - "tricare"
+    payors:
+      - "TRICARE TDEFIC"
+
+  - patterns:
+      - "^integra$"
+    payors:
+      - "INTEGRATED PRODUCTS"
+
+  - patterns:
+      - "sedgwick"
+    payors:
+      - "SEDGWICK CLAIMS MANAGEMENT"
+
+  - patterns:
+      - "ccmsi"
+    payors:
+      - "CCMSI"
+
+  - patterns:
+      - "liberty mutual"
+    payors:
+      - "LIBERTY MUTUAL INSURANCE COMPANY"
+
+  - patterns:
+      - "gallagher bassett"
+    payors:
+      - "GALLAGHER BASSETT"
+      - "BROADSPIRE SERVICES, INC."
+
+  - patterns:
+      - "allied welfare"
+    payors:
+      - "ALLIED BENEFIT - BPO"
+      - "ALLIED BENEFIT - CBS"
+      - "LOCAL 272 WELFARE FUND"
+
+  - patterns:
+      - "amtrust"
+    payors:
+      - "AMTRUST FINANCIAL SERVICES"
+
+  - patterns:
+      - "centers plan"
+    payors:
+      - "CENTERS PLAN FOR HEALTHY LIVING-DSNP"
+      - "CENTERS PLAN FOR HEALTHY LIVING-MAP"
+      - "CENTERS PLAN FOR HEALTHY LIVING-MLTC"
+
+  - patterns:
+      - "nyce hmo"
+    payors:
+      - "NYC EMPLOYEES PPO PLAN"
+
+  - patterns:
+      - "geico"
+    payors:
+      - "AIU INSURANCE CO"
+      - "ALLSTATE INSURANCE COMPANY"
+      - "AMERICAN ZURICH INSURANCE CO"
+
+  - patterns:
+      - "corvel"
+    payors:
+      - "BROADSPIRE SERVICES, INC."
+      - "GALLAGHER BASSETT"
+      - "AMTRUST FINANCIAL SERVICES"
+
+  - patterns:
+      - "travelers insurance"
+      - "travelers wc"
+    payors:
+      - "HARTFORD ACCIDENT"
+      - "HARTFORD INSURANCE COMPANY OF THE SOUTHEAST"
+      - "CNA INSURANCE"
+
+  - patterns:
+      - "national general"
+      - "sentry insurance"
+    payors:
+      - "AIU INSURANCE CO"
+      - "SECURITY NATIONAL INSURANCE CO"
+      - "STARSTONE NATIONAL INSURANCE COMPANY"
+      - "ALLSTATE INSURANCE COMPANY"
+
+  - patterns:
+      - "fire department of new york"
+      - "fdny"
+    payors:
+      - "GLOBE LIFE INSURANCE COMPANY OF NEW YORK"
+      - "CHARTER OAK FIRE INS COMPANY"
+      - "THE CHARTER OAK FIRE INS CO"
+      - "NEW YORK STATE INSURANCE FUND"
+
+  - patterns:
+      - "nyc law department"
+      - "nyc dept of sanitation"
+      - "nyc police department"
+    payors:
+      - "NEW YORK STATE INSURANCE FUND"
+
+  - patterns:
+      - "amida care"
+    payors:
+      - "FIDELIS CARE"
+      - "METROPLUS HEALTH PLAN"
+      - "HEALTHFIRST PHSP, INC."
+
+  - patterns:
+      - "care iq"
+      - "esis"
+    payors:
+      - "SEDGWICK CLAIMS MANAGEMENT"
+      - "BROADSPIRE SERVICES, INC."
+      - "GALLAGHER BASSETT"
+
+  - patterns:
+      - "centerlight"
+    payors:
+      - "ELDERPLAN INC"
+      - "VILLAGE CARE MAX"
+      - "SENIOR WHOLE HEALTH OF NEW YORK"
+
+  - patterns:
+      - "phcs"
+      - "optimed"
+      - "multi plan"
+    payors:
+      - "INTEGRATED PRODUCTS"
+      - "INDEPENDENCE ADMINISTRATORS"
+      - "IMAGINE360 ADMINISTRATORS"
+
+  - patterns:
+      - "us family health"
+    payors:
+      - "TRICARE TDEFIC"
+      - "GOVERNMENT EMPLOYEES HEALTH ASSOCIATION"
+
+  - patterns:
+      - "choice plus"
+      - "uhc choice"
+    payors:
+      - "UNITEDHEALTHCARE OF NEW YORK INC"
+      - "UNITEDHEALTHCARE INSURANCE COMPANY AND AFFILIATES"
+      - "UHC SUREST"
+
+  - patterns:
+      - "self pay"
+      - "self-pay"
+    payors: []

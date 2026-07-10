@@ -1,0 +1,37 @@
+line_key,denial_id,claim_id,claim_number,remit_instance_id,line_num,proc_code,modifiers,carc_codes,carc_category,adjustment_amount,adjustment_status,is_actionable_line,recoverable_amount_line,final_outcome,recommended_action_line
+3813659435|4764041873|1,3813659435,,PV410056305,4764041873,1,97010,GP,CO-119,Benefit maximum / limit reached,20.00,Active,True,20.00,Pending,Appeal
+3813659435|4764041873|2,3813659435,,PV410056305,4764041873,2,97014,GP,CO-119,Benefit maximum / limit reached,30.00,Active,True,30.00,Pending,Appeal
+3813659435|4764041873|3,3813659435,,PV410056305,4764041873,3,97140,GP,CO-119,Benefit maximum / limit reached,60.00,Active,True,60.00,Pending,Appeal
+3813659435|4764041873|4,3813659435,,PV410056305,4764041873,4,97112,GP,CO-119,Benefit maximum / limit reached,70.00,Active,True,70.00,Pending,Appeal
+3813659435|4764041873|5,3813659435,,PV410056305,4764041873,5,97530,GP,CO-119,Benefit maximum / limit reached,70.00,Active,True,70.00,Pending,Appeal
+3813659435|4764041873|6,3813659435,,PV410056305,4764041873,6,97110,GP,CO-119,Benefit maximum / limit reached,120.00,Active,True,120.00,Pending,Appeal
+3813659435|4764041874|1,3813659435,,PV410056305,4764041874,1,97010,GP,OA-A1,Denied / remark required,-20.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041874|2,3813659435,,PV410056305,4764041874,2,97014,GP,OA-A1,Denied / remark required,-30.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041874|3,3813659435,,PV410056305,4764041874,3,97140,GP,OA-A1,Denied / remark required,-60.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041874|4,3813659435,,PV410056305,4764041874,4,97112,GP,OA-A1,Denied / remark required,-70.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041874|5,3813659435,,PV410056305,4764041874,5,97530,GP,OA-A1,Denied / remark required,-70.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041874|6,3813659435,,PV410056305,4764041874,6,97110,GP,OA-A1,Denied / remark required,-65.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041872|1,3813659435,,PV410056305,4764041872,1,97010,GP,CO-119,Benefit maximum / limit reached,20.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041872|2,3813659435,,PV410056305,4764041872,2,97014,GP,CO-119,Benefit maximum / limit reached,30.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041872|3,3813659435,,PV410056305,4764041872,3,97140,GP,CO-119,Benefit maximum / limit reached,60.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041872|4,3813659435,,PV410056305,4764041872,4,97112,GP,CO-119,Benefit maximum / limit reached,70.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041872|5,3813659435,,PV410056305,4764041872,5,97530,GP,CO-119,Benefit maximum / limit reached,70.00,Inactive,False,0.00,Superseded,No Action
+3813659435|4764041872|6,3813659435,,PV410056305,4764041872,6,97110,GP,CO-119,Benefit maximum / limit reached,120.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042197|1,3813659436,,PV410056305,4764042197,1,97010,GP,CO-119,Benefit maximum / limit reached,20.00,Active,True,20.00,Pending,Appeal
+3813659436|4764042197|2,3813659436,,PV410056305,4764042197,2,97014,GP,CO-119,Benefit maximum / limit reached,30.00,Active,True,30.00,Pending,Appeal
+3813659436|4764042197|3,3813659436,,PV410056305,4764042197,3,97140,GP,CO-119,Benefit maximum / limit reached,60.00,Active,True,60.00,Pending,Appeal
+3813659436|4764042197|4,3813659436,,PV410056305,4764042197,4,97530,GP,CO-119,Benefit maximum / limit reached,70.00,Active,True,70.00,Pending,Appeal
+3813659436|4764042197|5,3813659436,,PV410056305,4764042197,5,97112,GP,CO-119,Benefit maximum / limit reached,70.00,Active,True,70.00,Pending,Appeal
+3813659436|4764042197|6,3813659436,,PV410056305,4764042197,6,97110,GP,CO-119,Benefit maximum / limit reached,120.00,Active,True,120.00,Pending,Appeal
+3813659436|4764042196|1,3813659436,,PV410056305,4764042196,1,97010,GP,OA-A1,Denied / remark required,-20.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042196|2,3813659436,,PV410056305,4764042196,2,97014,GP,OA-A1,Denied / remark required,-30.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042196|3,3813659436,,PV410056305,4764042196,3,97140,GP,OA-A1,Denied / remark required,-60.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042196|4,3813659436,,PV410056305,4764042196,4,97530,GP,OA-A1,Denied / remark required,-70.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042196|5,3813659436,,PV410056305,4764042196,5,97112,GP,OA-A1,Denied / remark required,-70.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042196|6,3813659436,,PV410056305,4764042196,6,97110,GP,OA-A1,Denied / remark required,-65.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042195|1,3813659436,,PV410056305,4764042195,1,97010,GP,CO-119,Benefit maximum / limit reached,20.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042195|2,3813659436,,PV410056305,4764042195,2,97014,GP,CO-119,Benefit maximum / limit reached,30.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042195|3,3813659436,,PV410056305,4764042195,3,97140,GP,CO-119,Benefit maximum / limit reached,60.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042195|4,3813659436,,PV410056305,4764042195,4,97530,GP,CO-119,Benefit maximum / limit reached,70.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042195|5,3813659436,,PV410056305,4764042195,5,97112,GP,CO-119,Benefit maximum / limit reached,70.00,Inactive,False,0.00,Superseded,No Action
+3813659436|4764042195|6,3813659436,,PV410056305,4764042195,6,97110,GP,CO-119,Benefit maximum / limit reached,120.00,Inactive,False,0.00,Superseded,No Action

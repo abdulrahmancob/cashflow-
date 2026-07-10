@@ -1,0 +1,89 @@
+URL: https://denials.zirmed.com/Scripts/joyridetour.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+$(function () {
+    setupLearnMoreClick();
+    checkToLoadTour();
+});
+
+function setupLearnMoreClick() {
+    $('#learnMore').on('click', function (e) {
+        if ($(this).attr('data-resources-loaded') != 1) {
+            $(this).attr('data-resources-loaded', '1');
+            loadTourResources();
+        }
+        else {
+            if ($('#tourName').val() == "AppealFormsTour") {
+                ShowAddAppealLettter();
+            }
+            $(tourList).joyride('restart');
+        }
+        if ($('#tourName').val() == "ReviewTour") {
+            ShowFirstReviewTab();
+        }
+        e.preventDefault();
+    });
+}
+
+function checkToLoadTour() {
+    if ($('#showTour').val() != "") {
+        $('#learnMore').attr('data-resources-loaded', '1');
+        loadTourResources();
+    }
+}
+
+function loadTour() {
+    if (typeof $.fn.joyride == 'function') {
+        if ($('#tourName').val() == "AppealFormsTour") {
+            ShowAddAppealLettter();
+        }
+        $(tourList).joyride({
+            autoStart: true,
+            'postRideCallback': markRead
+        });
+    }
+}
+
+function markRead() {
+    var tourName = $('#tourName').val();
+    if (tourName == "AppealFormsTour") {
+        HideAddAppealForm();
+    }
+    $.ajax({
+        url: MarkTourReadURL,
+        data: JSON.stringify({ tourType: tourName }),
+        contentType: 'application/json; charset=utf-8',
+        type: "POST"
+    });
+}
+
+function loadTourResources() {
+
+    loadCss(staticSiteURL + '/Joyride/Content/joyride-2.1.css');
+    loadCss(staticSiteURL + '/Joyride/Content/zirmed-tour.css');
+    $.getScript(staticSiteURL + '/Joyride/Scripts/modernizr.mq.js', function () {
+        $.getScript(staticSiteURL + '/Joyride/Scripts/jquery.joyride-2.1.js', function () {
+            $.getScript(staticSiteURL + '/Joyride/Scripts/zirmedtour.js', function () {
+                loadTour();
+            });
+        });
+    });
+}
+
+function loadCss(cssUrl) {
+    if (document.createStyleSheet) {
+        try { document.createStyleSheet(cssUrl); } catch (e) { }
+    }
+    else {
+        var css;
+        css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.type = 'text/css';
+        css.media = "all";
+        css.href = cssUrl;
+        document.getElementsByTagName("head")[0].appendChild(css);
+    }
+}

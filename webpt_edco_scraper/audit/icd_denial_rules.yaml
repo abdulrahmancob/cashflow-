@@ -1,0 +1,110 @@
+# ICD-10 denial conflict rules from ICD10_Denial_Management.xlsx Denial Matrix.
+# Each rule fires when ALL of its conditions match the note's diagnosis set.
+
+rules:
+  - id: clinical_redundancy_lbp_disc
+    category: "1. Clinical Redundancy"
+    severity: error
+    description: "Billing LBP (M54.5x) alongside a definitive disc diagnosis (M51.*)."
+    correct_approach: "Drop the symptom code. Only bill the definitive disc diagnosis (e.g. M51.26)."
+    all_of:
+      - any_prefix: ["M54.5"]
+      - any_prefix: ["M51."]
+
+  - id: clinical_redundancy_cervicalgia_weakness
+    category: "1. Clinical Redundancy"
+    severity: error
+    description: "Cervicalgia (M54.2) billed with muscle weakness (M62.81)."
+    correct_approach: "Drop the symptom code; keep the definitive diagnosis only."
+    all_of:
+      - exact: ["M54.2"]
+      - exact: ["M62.81"]
+
+  - id: clinical_redundancy_knee_pain_oa
+    category: "1. Clinical Redundancy"
+    severity: error
+    description: "Knee pain (M25.56x) billed with knee osteoarthritis (M17.*)."
+    correct_approach: "Drop the pain code. Bill the OA diagnosis only (e.g. M17.11)."
+    all_of:
+      - any_prefix: ["M25.56"]
+      - any_prefix: ["M17."]
+
+  - id: clinical_redundancy_weakness_cervicalgia
+    category: "1. Clinical Redundancy"
+    severity: error
+    description: "General weakness (R53.1) billed with cervicalgia (M54.2)."
+    correct_approach: "Drop the symptom code. Only bill the definitive diagnosis."
+    all_of:
+      - exact: ["R53.1"]
+      - exact: ["M54.2"]
+
+  - id: vestibular_redundancy
+    category: "2. Vestibular Redundancy (H-R Conflict)"
+    severity: error
+    description: "Definitive vestibular disorder (H81*) combined with dizziness/gait symptom codes."
+    correct_approach: "Bill the H-code only. Dizziness and gait issues are integral symptoms of vestibular disorders."
+    all_of:
+      - any_prefix: ["H81"]
+      - any_of_groups:
+          - exact: ["R42"]
+          - any_prefix: ["R26"]
+
+  - id: status_vs_acute_prosthetic_knee
+    category: "3. Status vs. Acute Conflict"
+    severity: error
+    description: "Knee pain (M25.56x) billed with artificial knee joint status (Z96.65*)."
+    correct_approach: "Do not add the Z-code if treating for standard pain. If the Z-code is present, payers expect a T-series complication code."
+    all_of:
+      - any_prefix: ["M25.56"]
+      - any_prefix: ["Z96.65"]
+
+  - id: lateralization_unspecified_with_side
+    category: "4. Lateralization Example"
+    severity: error
+    description: "Unspecified-side code (...9) billed alongside specific left/right codes with the same stem."
+    correct_approach: "Stop using the '9' (unspecified) code. Bill only the side-specific codes."
+    check: lateralization_unspecified
+
+  - id: bilateral_oa_split
+    category: "5. Bilateral Combination Codes"
+    severity: error
+    description: "Separate unilateral OA codes (M17.11 + M17.12) where bilateral M17.0 exists."
+    correct_approach: "Use the bilateral code M17.0 instead of separate R/L codes."
+    all_of:
+      - exact: ["M17.11"]
+      - exact: ["M17.12"]
+
+  - id: anatomical_overlap_sciatica_lbp
+    category: "6. Anatomical Overlap"
+    severity: error
+    description: "Sciatica (M54.4*) billed with LBP (M54.5*)."
+    correct_approach: "Bill Sciatica (M54.4x) only; it covers the associated back pain."
+    all_of:
+      - any_prefix: ["M54.4"]
+      - any_prefix: ["M54.5"]
+
+  - id: anatomical_overlap_sciatica_leg_pain
+    category: "6. Anatomical Overlap"
+    severity: error
+    description: "Sciatica (M54.4*) billed with leg pain (M79.6*)."
+    correct_approach: "Bill Sciatica (M54.4x) only; it covers referred extremity pain."
+    all_of:
+      - any_prefix: ["M54.4"]
+      - any_prefix: ["M79.6"]
+
+  - id: anatomical_overlap_radiculopathy_sciatica
+    category: "6. Anatomical Overlap"
+    severity: error
+    description: "Lumbar radiculopathy (M54.16) billed with sciatica nerve codes (G57*)."
+    correct_approach: "Bill Radiculopathy (M54.16) or Sciatica only — not both."
+    all_of:
+      - exact: ["M54.16"]
+      - any_prefix: ["G57"]
+
+  - id: retired_m54_5
+    category: "8. Retired Codes"
+    severity: error
+    description: "Retired code M54.5 used instead of M54.50 / M54.51 / M54.59."
+    correct_approach: "Replace M54.5 with a current valid alternate (M54.50, M54.51, or M54.59)."
+    all_of:
+      - exact: ["M54.5"]

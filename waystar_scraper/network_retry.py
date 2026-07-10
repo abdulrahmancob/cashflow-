@@ -1,4 +1,5 @@
 import asyncio
+import random
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TypeVar
@@ -11,6 +12,9 @@ from logging_config import get_logger
 log = get_logger("network")
 
 T = TypeVar("T")
+
+RATE_LIMIT_STATUSES = {403, 429, 503}
+DEFAULT_RATE_LIMIT_BASE_DELAY_SEC = 15.0
 
 TRANSIENT_MARKERS = (
     "ERR_CONNECTION_TIMED_OUT",
@@ -33,6 +37,49 @@ class RetrySettings:
 def is_transient_error(exc: BaseException) -> bool:
     message = str(exc)
     return any(marker in message for marker in TRANSIENT_MARKERS)
+
+
+class RateLimitError(Exception):
+    def __init__(self, status: int, body: str = "") -> None:
+        self.status = status
+        self.body = body
+        super().__init__(f"HTTP {status}")
+
+
+def is_rate_limited_status(status: int) -> bool:
+    return status in RATE_LIMIT_STATUSES
+
+
+async def retry_rate_limited(
+    coro_factory: Callable[[], Awaitable[T]],
+    *,
+    label: str,
+    max_attempts: int = 3,
+    base_delay_sec: float = DEFAULT_RATE_LIMIT_BASE_DELAY_SEC,
+) -> T:
+    last_exc: BaseException | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return await coro_factory()
+        except RateLimitError as exc:
+            last_exc = exc
+            if attempt >= max_attempts:
+                raise
+            delay = base_delay_sec * (2 ** (attempt - 1)) + random.uniform(0, 5)
+            log.warning(
+                "%s rate-limited (%s) attempt %s/%s — retrying in %.0fs",
+                label,
+                exc.status,
+                attempt,
+                max_attempts,
+                delay,
+            )
+            await asyncio.sleep(delay)
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"{label} failed with no exception recorded")
 
 
 async def retry_transient(

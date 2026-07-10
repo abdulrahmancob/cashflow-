@@ -20,6 +20,23 @@ PERFORM_SEARCH_URL = (
 GET_CHILD_CUSTS_URL = "https://claims.zirmed.com/Dashboard/Overview/GetChildCusts"
 VIEW_CLAIM_PDF_URL = "https://claims.zirmed.com/Claims/History/ViewClaimPDF"
 
+WORKCENTER_ENTRY_URL = (
+    "https://claims.zirmed.com/WorkCenter/WorkCenterMessage.aspx?TabAppID=40&Error=1"
+)
+DENIALS_WORKCENTER_URL = "https://denials.zirmed.com/Workcenter?appid=41"
+DENIALS_REVIEW_URL_TEMPLATE = (
+    "https://denials.zirmed.com/Review"
+    "?denialID={denial_id}&appId=41&tabAppId=40&returnToWorkCenter=True"
+)
+DENIALS_APP_ID = "41"
+DENIALS_TAB_APP_ID = "40"
+DENIALS_PER_PAGE = 50
+DEFAULT_SAMPLE_DENIAL_ID = "3652667586"
+CATCH_ALL_WORKGROUP_ID = "41435"
+CATCH_ALL_WORKGROUP_NAME = "Catch-All"
+DEFAULT_DENIAL_DATE_FROM_2026 = "1/1/2026"
+DEFAULT_DENIAL_DATE_TO_2026 = "12/31/2026"
+
 CLAIMS_PER_PAGE = 30
 DEFAULT_TRANSACTION_DAYS = 30
 DEFAULT_PAGE_DELAY_SEC = 2.0

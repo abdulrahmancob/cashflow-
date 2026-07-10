@@ -1,0 +1,392 @@
+URL: https://denials.zirmed.com/Scripts/denials-common.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+var quickLinkView = "#quickLinkView";
+var quickLinkNotes = "#quickLinkNotes";
+var quickLinkEOB = "#quickLinkEOB";
+var container = ".controlContainer";
+
+/* this is so we can enable the indexOf functionality for Array's in IE 8 - really, Microsoft? */
+if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (elt /*, from*/) {
+        var len = this.length >>> 0;
+
+        var from = Number(arguments[1]) || 0;
+        from = (from < 0)
+             ? Math.ceil(from)
+             : Math.floor(from);
+        if (from < 0)
+            from += len;
+
+        for (; from < len; from++) {
+            if (from in this &&
+                this[from] === elt)
+                return from;
+        }
+        return -1;
+    };
+}
+
+function triggerSearch() {
+    // does nothing, simply defined so a javascript error isn't thrown
+    // from a webcontrols call to this method
+}
+
+/* Common methods used in validating char input */
+
+function isAllowableControlKey(e, allowDecimalNotation) {
+
+    var allowableControlKeys = new Array(46, 8, 9, 27, 13);
+
+    if (allowDecimalNotation) {
+        allowableControlKeys.push(188);
+        allowableControlKeys.push(190);
+        allowableControlKeys.push(110);
+    }
+
+    return $.inArray(e.keyCode, allowableControlKeys) !== -1
+        // Allow: Ctrl+A
+        || (e.keyCode == 65 && e.ctrlKey === true)
+        // Allow: home, end, left, right
+        || (e.keyCode >= 35 && e.keyCode <= 39)
+        // Allow: Ctrl+V
+        || (e.keyCode === 86 && e.ctrlKey === true)
+        // Allow: Ctrl+C
+        || (e.keyCode === 67 && e.ctrlKey === true);
+}
+
+function configureAlphaInput(e) {
+    var key = e.keyCode;
+
+    var isValidKey = key >= 65 && key <= 90;
+
+    if (isValidKey || isAllowableControlKey(e)) return;
+
+    e.preventDefault();
+}
+
+function configureNumericInput(e) {
+
+    if (isAllowableControlKey(e, false)) return;
+
+    ensureNumericInput(e);
+}
+
+function configureAmountInput(e) {
+
+    if (isAllowableControlKey(e, true)) return;
+
+    ensureNumericInput(e);
+}
+
+function configureAlphaNumericInput(e) {
+    var key = e.keyCode;   
+
+    var isValidKey = (!e.shiftKey && (key >= 48 && key <= 57) || (key >= 65 && key <= 90) || (key >= 96 && key <= 105));
+
+    if (isValidKey || isAllowableControlKey(e)) return;
+
+    e.preventDefault();
+}
+
+function configureAlphaNumericSpaceInput(e) {
+    var key = e.keyCode;
+
+    var isValidKey = (!e.shiftKey && (key >= 48 && key <= 57) || (key >= 65 && key <= 90) || (key >= 96 && key <= 105) || (key == 32));
+
+    if (isValidKey || isAllowableControlKey(e)) return;
+
+    e.preventDefault();
+}
+
+function configureAlphaNumericSpaceHyphenApostropheInput(e) {
+    var key = e.keyCode;
+
+    var isValidKey = (!e.shiftKey && (key >= 48 && key <= 57) || (key >= 65 && key <= 90) || (key >= 96 && key <= 105) ||
+        (key == 32) || (!e.shiftKey && key == 222) || (!e.shiftKey && key == 189) || (key == 109));
+
+    if (isValidKey || isAllowableControlKey(e)) return;
+
+    e.preventDefault();
+}
+
+function ensureNumericInput(e) {
+    // Ensure that it is a number and stop the keypress
+    if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+        e.preventDefault();
+    }
+}
+
+//To handle AjaxErrors
+function handleAjaxError(jqXHR, textStatus, errorThrown) {
+
+    var statusCode = jqXHR.status;
+    var responseText = jqXHR.responseText;
+
+    if (statusCode == 400 && (responseText == "reason=sessiontimeout" || responseText == "Bad Request")) {
+        alert("Your session has timed out. Click OK to log in again.");
+        location.reload();
+    }
+    else {
+        alert("An error occurred while processing your request.");
+    }
+
+}
+
+$(function () {
+    configureQuickLinkButtonFunctions();
+    setupHoverToolTips($(container));
+
+    setMsgTimeouts();
+    
+});
+
+function setMsgTimeouts() {
+    setTimeout(function () {
+        $("#savedMessage").fadeOut(1000, function () {
+            $("#notificationWrapper").slideUp(700);
+        });
+    }, 3000);
+
+    setTimeout(function () {
+        $("#errorMessage").fadeOut(1000, function () {
+            $("#notificationWrapper").slideUp(700);
+        });
+    }, 3000);
+}
+
+function configureQuickLinkButtonFunctions() {
+    $(quickLinkView).on("click", function () {
+        onQLViewBtnClick($(this));
+    });
+
+    $(quickLinkNotes).on("click", function () {
+        onQLNoteBtnClick($(this));
+    });
+
+    $(quickLinkEOB).on("click", function () {
+        onQLEobBtnClick($(this));
+    });
+
+}
+
+function setupHoverToolTips(containerElement) {
+    $(".hoverToolTip", containerElement)
+        .hover(
+            function () {
+                if (!$(this).children('.toolTipContainer').is(':visible')) {
+                    showToolTip($(this));
+                }
+            },
+            function () {
+                if ($(this).children('.toolTipContainer').is(':visible')) {
+                    hideToolTip($(this));
+                }
+            }
+        );
+}
+
+function onQLViewBtnClick(link) {
+    var claimNumber = link.attr('data-claimNumber');
+    var appId = link.attr('data-claimtype');
+    var denialId = link.attr('data-denialid');
+    var claimCustID = link.attr('data-claimcustid');
+    
+    
+    if (claimNumber != '' && denialId > 0 && claimCustID > 0) {
+        
+        if (window.IsDemo === "false") {
+            setClaimCustInSession(claimCustID);
+
+            viewClaim(denialId);        
+        }
+        else if (window.IsDemo === "true") {
+            var remitIDKey = link.attr('data-remitidkey');
+            var url = window.DemoClaimUrl + "?denialID=" + denialId + "&remitIDKey=" + remitIDKey;
+            window.open(url, "ViewDemoClaim");
+        }
+        
+    } else {    
+        alert("The Claim view is not available at this time.");
+    }
+    return false;
+}
+
+// SET CLAIMS CUST SESSION
+function setClaimCustInSession(custID) {
+
+    var data = {
+        'custid': custID
+    };
+
+    $.ajax({
+        type: "POST",
+        url: SetClaimsCustInSessionURL,
+        data: data,
+        cache: false,
+        async: false,
+        traditional: false,
+        success: function (data) {            
+            return true;
+        }
+    });
+
+    return true;
+}
+
+
+function viewClaim(denialId) {   
+    window.open(ViewClaimURL + "/" + denialId, "ViewClaim", "scrollbars=1,resizable=1");
+}
+
+// NOTES MODAL //
+function onQLNoteBtnClick(link) {
+    var denialId = link.attr('data-denialId');
+    if (denialId > 0) {
+        getNotes(denialId, false);
+    } else {
+        alert("The notes are not available at this time.");
+    }
+
+    return false;
+}
+
+function getNotes(denialId, fromActionBar) {
+    var data = {
+        'denialId': denialId
+    };
+
+    $.ajax({
+        type: "POST",
+        url: NotesModal,
+        data: data,
+        cache: false,
+        traditional: false,
+        success: function (data) {
+            $('#notesModal').html(data);
+            showDialogNotesForDenial(fromActionBar);
+        }
+    });
+}
+
+function showDialogNotesForDenial(fromActionBar) {
+    var count = $("#hdnNotesCount").val();
+    $('#notesModal').dialog({
+        title: "Notes (" + count + ")",
+        modal: true,
+        draggable: true,
+        resizable: false,
+        width: 405,
+        close: function () {
+        }
+    });
+}
+
+// EOB //
+function onQLEobBtnClick(link, usePopupInAllBrowsers) {
+    var remitIDKey = link.attr('data-remitidkey');    
+    var denialId = link.attr('data-denialId');
+    
+    if (remitIDKey != "") {
+        if (window.IsDemo === "false") {
+            viewEOB(remitIDKey, usePopupInAllBrowsers);
+        }
+        else if (window.IsDemo === "true") {
+            var url = window.DemoUrl + "?id=" + denialId + "&rem=" + remitIDKey;
+            if (usePopupInAllBrowsers) {
+							window.open(url, "ViewDemoEob", "width=1050,height=750,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,directories=no");
+						}
+            else {
+							window.open(url, "ViewDemoEob");
+						}
+        }
+    } else {
+        alert("The EOB is not available at this time.");
+    }
+    return false;
+}
+
+function viewEOB(remitIDKey, usePopupInAllBrowsers) {
+    
+    var url = RemitsSiteURL + "ViewEOB.aspx?ID=" + remitIDKey;
+
+    if (usePopupInAllBrowsers || Browser == 'InternetExplorer' || Browser == 'IE') {
+        window.open(url, "ViewDemoEob", "width=1050,height=750,scrollbars=yes,resizable=yes,menubar=no,toolbar=no,location=no,directories=no");
+    }
+    else {
+        window.open(url, "ViewDemoEob");
+    }
+    
+    trackUserActivity(remitIDKey, 'DenialsEOB')    
+}
+
+function trackUserActivity(id, type, id2) {
+
+    if (id2 == undefined) {
+        id2 = 0;
+    }
+
+    var data = {
+        'id': id,
+        'type': type,
+        'id2' : id2
+    };
+
+    $.ajax({
+        url: userActivityTrackingUrl,
+        data: data,
+        cache: false,
+        traditional: false,
+        type: "POST",
+        success: function (data) {
+
+        }
+    });
+}
+
+
+/////
+function validateDate(dateInput, allowEmpty) {
+    var valid = true;
+    if (dateInput != undefined) {
+        dateInput = $.trim(dateInput.val());
+        if (allowEmpty) {
+            valid = (dateInput != 'mm/dd/yyyy');
+        }
+        else {
+            valid = (dateInput != 'mm/dd/yyyy' && dateInput != '');
+        }
+    }
+    else valid = false;
+    return valid;
+}
+
+
+function openAppealPackageFile(fileId) {
+    var url = globalUrl_ViewAttachment + '?id=' + fileId;
+
+    trackUserActivity(fileId, 'DenialsAppealPackage')
+
+    showModal(800, 600, url, "Appeal Package", true);
+}
+
+function isValidDate(dateField) {
+
+    var date = $(dateField).val();
+
+    if (date.length > 0 && date != 'mm/dd/yyyy') {
+        var m = date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/), d = (m) ? new Date(m[3], m[2] - 1, m[1]) : null;
+
+        if (m == null) {
+            dateField.val("");
+        }
+    }
+
+}
+
+function HideModal(n) {
+	$("#" + n).dialog("close");
+}

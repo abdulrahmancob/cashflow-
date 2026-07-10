@@ -1,0 +1,1180 @@
+URL: https://denials.zirmed.com/Workcenter?appid=41
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/html; charset=utf-8
+POST: 
+================================================================================
+
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Denied Claims - Denial Management</title>
+    
+
+    <link type="text/css" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.2/themes/smoothness/jquery-ui.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Titillium+Web:400,700" rel="stylesheet">
+    <link type="text/css" href="https://www.zirmed.com/Static/WaystarHeader/1.0/CSS/WaystarHeader.min.css" rel="stylesheet">
+        <link type="text/css" href="https://www.zirmed.com/Static/CSS/body.css" rel="stylesheet">
+
+
+    
+    <link type="text/css" href="https://www.zirmed.com/Static/WebControls/2.0/CSS/WebControls.css" rel="stylesheet" />
+
+    
+    <link type="text/css" href="/Content/denials-common.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/workcenter.min.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/pager.min.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/font-awesome.min.css" rel="stylesheet" />
+    <link type="text/css" href="/Content/denials-add-activity-modal.css" rel="stylesheet" />
+    <link id="ApplicationRoot" href="/" rel="home" />
+
+
+    <link type="text/css" href="/Content/header-setup.css" rel="stylesheet" />
+
+</head>
+<body>
+
+
+
+<div id='waystarHeader' class="">
+    
+
+<div id='headerTop'>
+    <div id='headerTopLeft'>
+        <input type="hidden" id="waystarHeaderCustId" value="296638" />
+                    <img id='headerLogo' src='https://www.zirmed.com/Static/Images/transparent.gif' height='1' width='1' />
+                <div id="headerAccount" class="">
+                    
+<div class="header-account-search-container">
+    <input type="hidden" class="header-account-search-usr" value="1834705" />
+            <div class="header-account-no-child-account">
+            <label>Account</label>
+            <span title="Physical Therapy of the City P.C. (296638)">Physical Therapy of the City P.C. (296638)</span>
+        </div>
+    <div class="clearfix"></div>
+    </div>
+
+                </div>
+
+    </div>
+
+    <div id='headerTopRight'>
+        <div>
+            <span id='headerWelcome'>Welcome, Abdelrahman Hamdy</span>
+            <a href='https://general.zirmed.com//Accounts/NotificationBrowser.aspx' id='headerNotification'>
+                <span class="icon-envelope"></span>
+                    <span id='headerNotificationCount'>17</span>
+            </a>
+                <span class='notification separator'></span>
+                <a href='https://general.zirmed.com//logout2.aspx'>Log off</a>
+        </div>
+        <div>
+            <span id='headerWhatsNew' class="">
+                What's New
+                <span id="whatsNewFlyout" data-whats-new-flyout-url="https://mgmt.zirmed.com/ExternalUserManagement/WhatsNew/Flyout"></span>
+            </span>
+                <span class='separator waystar-support-spacer'></span>
+                <a class="waystar-support-link" href='#' onclick="return waystarHeader.LaunchSupportCenter('https://general.zirmed.com//Help/LaunchCustomerSupportCenter.aspx');">Support and Training</a>
+            <span class='separator waystar-system-status-spacer'></span>
+            <a href='#' class="waystar-system-status" data-popup-position="bottom" data-popup-title="Check System Status" data-popup-content-text="Waystar has added a way to check for system-level issues. You can click here to check Waystar's system status, and you may also subscribe to system issue alerts as they are posted." onclick="return waystarHeader.OpenSystemStatus();">System Status</a>
+        </div>
+    </div>
+    <div class='clear-fix'></div>
+</div>
+
+    <div id="headerTabsContainer">
+        
+<div id='headerTabs'>
+                <div>
+                    <a class="selected-tab" href="https://claims.zirmed.com/WorkCenter/MyWork.aspx?appid=0">My Work</a>
+                </div>
+                <div class="header-menu">
+                    <a class="" href="#">Claims Processing</a>
+                    <div class="header-flyout hidden">
+                        <ul>
+                                    <li>
+                                        <a href="#">Professional Claims</a>
+                                        <div class="hidden">
+                                            <span>Professional Claims</span>
+                                                    <a href="https://claims.zirmed.com/Dashboard/Overview/Index?appid=1">Dashboard</a>
+                                                    <a href="https://claims.zirmed.com/AutomationCenter/AutomationCenter/Index?appid=1">Automation Center</a>
+                                                    <a href="https://claims.zirmed.com/Claims/Listing/Index?appid=1">Claims</a>
+                                                    <a href="https://claims.zirmed.com/Batches/Listing/Index?appid=1">Batches</a>
+                                                    <a href="https://www.zirmed.com/Shared/Matching/matching.aspx?appid=1">Name Matching</a>
+                                                    <a href="https://www.zirmed.com/Shared/Providers/Prov.aspx?appid=1">Providers</a>
+                                                    <a href="https://claims.zirmed.com/Reports/Listing/Index?appid=1">Reports</a>
+                                                    <a href="https://claims.zirmed.com/Exports/Index?appid=1">Exports</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/PayerSearch.aspx?appid=1">Payers</a>
+                                                    <a href="https://claims.zirmed.com/CodingTools/CodeSearch?appid=1">Coding Tools</a>
+                                                    <a href="https://claims.zirmed.com/Settings/settings.aspx?appid=1">Settings</a>
+                                                    <a href="https://claims.zirmed.com/ClaimAttachments/ViewAttachments.aspx?appid=1">Attachments (40)</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Institutional Claims</a>
+                                        <div class="hidden">
+                                            <span>Institutional Claims</span>
+                                                    <a href="https://claims.zirmed.com/Dashboard/Overview/Index?appid=14">Dashboard</a>
+                                                    <a href="https://claims.zirmed.com/AutomationCenter/AutomationCenter/Index?appid=14">Automation Center</a>
+                                                    <a href="https://claims.zirmed.com/Claims/Listing/Index?appid=14">Claims</a>
+                                                    <a href="https://claims.zirmed.com/Batches/Listing/Index?appid=14">Batches</a>
+                                                    <a href="https://www.zirmed.com/Shared/Matching/matching.aspx?appid=14">Name Matching</a>
+                                                    <a href="https://www.zirmed.com/Shared/Providers/Prov.aspx?appid=14">Providers</a>
+                                                    <a href="https://claims.zirmed.com/Reports/Listing/Index?appid=14">Reports</a>
+                                                    <a href="https://claims.zirmed.com/Exports/Index?appid=14">Exports</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/payersearch.aspx?appid=14">Payers</a>
+                                                    <a href="https://claims.zirmed.com/CodingTools/CodeSearch?appid=14">Coding Tools</a>
+                                                    <a href="https://claims.zirmed.com/Settings/settings.aspx?appid=14">Settings</a>
+                                                    <a href="https://claims.zirmed.com/ClaimAttachments/ViewAttachments.aspx?appid=14">Attachments (40)</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Remits</a>
+                                        <div class="hidden">
+                                            <span>Remits</span>
+                                                    <a href="https://remits.zirmed.com/Dashboard?appid=13">Dashboard</a>
+                                                    <a href="https://remits.zirmed.com/PayerDownloads_NoDX.aspx?appid=13">Downloads</a>
+                                                    <a href="https://remits.zirmed.com/Payments?appid=13">Payments</a>
+                                                    <a href="https://remits.zirmed.com/Remittances_NoDX.aspx?appid=13">Remits</a>
+                                                    <a href="https://remits.zirmed.com/Reports/Dashboard?appid=13">Reports</a>
+                                                    <a href="https://remits.zirmed.com/Exports/Index?appid=13">Exports</a>
+                                                    <a href="https://remits.zirmed.com/Uploads_NoDX.aspx?appid=13">Uploads</a>
+                                                    <a href="https://www.zirmed.com/Shared/Payers/payersearch.aspx?appid=13">Payers</a>
+                                                    <a href="https://remits.zirmed.com/Settings/Notification?appid=13">Settings</a>
+
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <a href="#">Denial Management</a>
+                                        <div class="hidden">
+                                            <span>Denial Management</span>
+                                                    <a href="https://denials.zirmed.com/?appid=41">Dashboard</a>
+                                                    <a href="https://denials.zirmed.com/Denials?appid=41">Denial Listing</a>
+                                                    <a href="https://denials.zirmed.com/Appeals/Listing?appid=41">Appeals</a>
+                                                    <a href="https://denials.zirmed.com/Reports/PayerSummary?appid=41">Reports</a>
+                                                    <a href="https://denials.zirmed.com/Exports?appid=41">Exports</a>
+                                                    <a href="https://denials.zirmed.com/DataSync/BatchClose?appid=41">Data Sync</a>
+                                                    <a href="https://denials.zirmed.com/Settings/Workgroups?appid=41">Settings</a>
+
+                                        </div>
+                                    </li>
+
+                        </ul><div class='link-panel hidden'></div>
+                    </div>
+                </div>
+                <div>
+                    <a class="" href="https://general.zirmed.com/Accounts/AccountSummaryCheck.aspx?ScreenVersion=AccountSummary">Account</a>
+                </div>
+
+    <div class='clear-fix'></div>
+</div>
+    </div>
+</div>
+
+
+<div id="waystarSubnav">
+    <div id="waystarSubnavHeader">
+
+        <h1>
+            Work Centers
+        </h1>
+                <a id="headerSearchLink" class="header-right-link" href="/DenialSearch" target=&quot;_blank&quot;>
+                    <i class="icon-search"></i>
+                    Denial Search
+                </a>
+                <div class='clear-fix'></div>
+
+    </div>
+    <ul>
+                    <li class="">
+                        <a href="https://claims.zirmed.com/WorkCenter/MyWork.aspx?appid=0">Rejected Claims</a>
+                    </li>
+                    <li class="selected">
+                        <a href="https://denials.zirmed.com/Workcenter?appid=41">Denied Claims</a>
+                    </li>
+
+    </ul>
+        <div class="subnav-line"></div>
+</div>
+
+
+    <script>
+var _gaq = _gaq || [];
+_gaq.push(['_setCustomVar', '1', 'App', '']);
+    </script>
+
+    
+
+
+
+
+
+<div id="workcenterContainer" class="controlContainer">
+    <input type="hidden" id="isNewWorkcenter" value="True" />
+    <form id="workcenterForm" class="mainForm outer_grow_right" name="WorkcenterArgs" style="display: block;" onsubmit="return false;">
+        <div id="loadingouter" class=""><div id="loadinglist"><div class="loading-image"></div><div class="loading-text"><p><strong>Please Wait</strong></p><p>Processing...</p></div></div></div>
+        <a href="#" id="learnMore" style="padding-right:280px;padding-top:2px;float:right;color:#631d76;"><span id="helpQuestionMark" style="margin-right:5px;color:#fff;background-color:#631d76;padding:2px 5px;border-radius:25px;font-weight:bold;">?</span>Learn more about this page</a>
+        <div class="leftContainer" id="leftSide">
+                <div class="workgroupSelection">
+                    <label class="label dropDownLabel">Workgroup:</label>
+                    <select id="WorkcenterArgs_WorkgroupID" name="WorkcenterArgs.WorkgroupID"><option selected="selected" value="41436">Mohamed Hussain&#39;s Denial Group</option>
+<option value="41437">Sherif&#39;s Denial Group</option>
+<option value="41443">Bassem&#39;s Denial Group</option>
+<option value="41444">Mohamed Hany Denial Group</option>
+<option value="41445">Abdelrahman&#39;s Denial Group</option>
+<option value="41446">Bassil&#39;s Denial Group</option>
+<option value="41447">Rouvan&#39;s Denial Group</option>
+<option value="41451">Salma&#39;s Patients collection Group</option>
+<option value="41477">Historical Denials</option>
+<option value="41676">Ganna&#39;s Denial Group</option>
+<option value="42066">Rashwan&#39;s Denial Group</option>
+<option value="42069">Boda&#39;s Denial Group</option>
+<option value="42384">NYCE</option>
+<option value="42427">BCBS</option>
+<option value="42444">Abdelmola&#39; Workgroup</option>
+<option value="41435">Catch-All</option>
+</select>
+                </div>
+            <div id="savedSearchDiv">
+                <div id="updateSavedSearches">
+    <button id="btnSavedSearchToggle" type="button" onclick="showSavedSearchList(); toggleArrow($('#btnSavedSearchToggle')); return false;"
+            class="mediumDefaultButton savedSearchButton">
+        Saved Searches <span class="savedSearchCount">(0)</span>
+        <img class="downArrow" src="/Images/transparent.gif" height="1" width="1" alt="Show Saved Searches" />
+    </button>
+    <div id="savedSearchList" class="savedSearchList">
+        <div>
+            <table class="userSearchGridview" id="gvSearches" style="border-collapse: collapse;" border="1" rules="all" cellspacing="0">
+                <tbody>
+                    <tr class="savedSearchHeader">
+                        <th align="left" scope="col">
+                            Search Name
+                        </th>
+                        <th align="right" scope="col">
+                            Action
+                        </th>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div id="emptySavedSearchList" class="savedSearchList">
+        <span>You currently have no saved searches.</span>
+        <p>After running a search, you can save your criteria by clicking the "Save Search" link where your filters appear.</p>
+    </div>
+</div>
+
+            </div>
+            <div id="searchPanel">
+                <form>
+    <ul class="searchPanel">
+        <li>
+            <span class="searchTitle lFloat">SEARCH</span>
+            <span id="moreFilters" class="advancedSearchLink rFloat"><a href="#" onclick="advancedSearchModal(); return false;">More Filters</a></span>
+            <div class="clearfix"></div>
+        </li>
+        <li>
+            <span class="fieldHeader">Patient Name</span>
+            <input class="textInput" id="txtPatientName" maxlength="100" name="WorkcenterArgs.PatientName" placeholder="Example: John Smith" type="text" value="" />
+        </li>
+        <li>
+            <span class="fieldHeader">Claim Number</span>
+            <input class="textInput" id="txtClaimNumber" maxlength="100" name="WorkcenterArgs.ClaimNumber" type="text" value="" />
+        </li>
+        <li>
+            <span class="fieldHeader">Payer</span>
+            <input class="textInput" id="txtPayer" name="WorkcenterArgs.Payer" placeholder="Type a payer name or ID" size="50" type="text" value="" />
+            <input type="hidden" id="payerIDArg" value="" />
+        </li>
+        <li>
+            <span class="fieldHeader">Account</span>
+            <input class="textInput" id="txtAccount" name="WorkcenterArgs.Account" placeholder="Type an account name or ID" type="text" value="" />
+            <input type="hidden" id="accountIDArg" value="" />
+        </li>
+        <li>
+            <span class="fieldHeader">Workflow Stage</span>
+            <div class="multiSelectDropDown actionButton actionButtonDropMenu" id="workflowStageDropDown">
+    <span id="workflowStageDropDown + 'Span'">Multiple Selected</span>
+    <ul class="shadow mainDropMenu">
+        <li class="selectAll">
+            <input type="checkbox"  />
+            <a href="#" onclick="return false;">Select All</a>
+        </li>
+            <li>
+                <input type="checkbox" value="8" checked=&#39;checked&#39;/>
+                <a href="#" onclick="return false;">Updated</a>
+            </li>
+            <li>
+                <input type="checkbox" value="1" checked=&#39;checked&#39;/>
+                <a href="#" onclick="return false;">New</a>
+            </li>
+            <li>
+                <input type="checkbox" value="3" />
+                <a href="#" onclick="return false;">Awaiting Payer</a>
+            </li>
+            <li>
+                <input type="checkbox" value="6" />
+                <a href="#" onclick="return false;">Appeal Draft</a>
+            </li>
+            <li>
+                <input type="checkbox" value="4" />
+                <a href="#" onclick="return false;">In Appeal</a>
+            </li>
+            <li>
+                <input type="checkbox" value="10" />
+                <a href="#" onclick="return false;">Internal Hold</a>
+            </li>
+            <li>
+                <input type="checkbox" value="5" />
+                <a href="#" onclick="return false;">Pending Approval</a>
+            </li>
+            <li>
+                <input type="checkbox" value="2" />
+                <a href="#" onclick="return false;">Resubmitted</a>
+            </li>
+            <li>
+                <input type="checkbox" value="9" />
+                <a href="#" onclick="return false;">Reviewed</a>
+            </li>
+            <li>
+                <input type="checkbox" value="12" />
+                <a href="#" onclick="return false;">Requires Approval</a>
+            </li>
+    </ul>
+</div>
+
+        </li>
+        <li>
+            <span class="fieldHeader">Category</span>
+            <div class="multiSelectDropDown actionButton actionButtonDropMenu" id="categoryDropDown">
+    <span id="categoryDropDown + 'Span'">- Choose One -</span>
+    <ul class="shadow mainDropMenu">
+        <li class="selectAll">
+            <input type="checkbox"  />
+            <a href="#" onclick="return false;">Select All</a>
+        </li>
+            <li>
+                <input type="checkbox" value="177538" />
+                <a href="#" onclick="return false;">Authorization</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177539" />
+                <a href="#" onclick="return false;">Benefits</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177540" />
+                <a href="#" onclick="return false;">Coding</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177541" />
+                <a href="#" onclick="return false;">Coordination of Benefits</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177542" />
+                <a href="#" onclick="return false;">Demographics</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177543" />
+                <a href="#" onclick="return false;">Diagnosis</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177544" />
+                <a href="#" onclick="return false;">Duplicate</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177545" />
+                <a href="#" onclick="return false;">Eligibility</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177546" />
+                <a href="#" onclick="return false;">Fee Schedule</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177548" />
+                <a href="#" onclick="return false;">Medical Necessity</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177547" />
+                <a href="#" onclick="return false;">Missing or Invalid Data</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177549" />
+                <a href="#" onclick="return false;">Patient Responsibility</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177550" />
+                <a href="#" onclick="return false;">Payer Guidelines</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177551" />
+                <a href="#" onclick="return false;">Property and Casualty</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177552" />
+                <a href="#" onclick="return false;">Timely Filing</a>
+            </li>
+            <li>
+                <input type="checkbox" value="177553" />
+                <a href="#" onclick="return false;">Uncategorized</a>
+            </li>
+    </ul>
+</div>
+
+        </li>
+        <li>
+            <span class="fieldHeader">Reminder date</span>
+            <input checked="checked" id="WorkcenterArgs_ReminderDateDueOrPastDue" name="WorkcenterArgs.ReminderDateDueOrPastDue" type="checkbox" value="true" /><input name="WorkcenterArgs.ReminderDateDueOrPastDue" type="hidden" value="false" />
+            <span>Due or Past Due</span>
+        </li>
+        <li>
+            <span class="fieldHeader">Show Only</span>
+            <input id="WorkcenterArgs_FilterPriorityDenials" name="WorkcenterArgs.FilterPriorityDenials" type="checkbox" value="true" /><input name="WorkcenterArgs.FilterPriorityDenials" type="hidden" value="false" />
+            <span class="priorityicon fa fa-star"></span>
+            <span>High Priority</span>
+        </li>
+        <li>
+            <input id="searchButton" type="submit" class="mediumDefaultButton" value="Search" onclick="searchButtonClick(); return false;" />
+        </li>
+    </ul>
+</form>
+            </div>
+        </div>
+        <div class="rightContainer" id="rightSide">
+            <div id="gridOuterWrapper">
+    <div id="upperGridContainer">
+        <h3 id="upResultsCounter" class="resultsInfo">1 Result</h3>
+        <input type="hidden" value="1" id="hdnTotalCount" />
+        <div id="right" class="topPagerContainer">
+            <div id="topPagerLabel" class="webPagerDisplayLabel" style="display: inline; float: left; padding-top: 8px;">
+                <span class="lblItemCounts">
+                        <span>1</span>
+                    <span> - </span>
+                    0
+                </span>
+                <span>of</span>
+                <span class="lblItemCounts">1</span>
+            </div>
+            <div class="arrows">
+                <a id="Pager_Top_Prev" class="smallDefaultButton webPagerLeftLink" onclick="page($(this), 'prev'); return false;">
+                    <img id="imgFirstPage" class="pagerPreviousImage" width="16" height="16" alt="first" src="/Content/Images/transparent.gif">
+                </a>
+                <a id="Pager_Top_Next" class="smallDefaultButton webPagerRightLink" onclick="page($(this), 'next'); return false;">
+                    <img id="img1" class="pagerNextImage" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+                </a>
+            </div>
+        </div>
+        <div class="clearfix"></div>
+        <div id="filterContainer" class="filterContainer">
+            <div id="filterHeaderDiv" class="filterHeader">
+                <h4>
+                    <span>Current Filters</span>
+                </h4>
+                <a onclick="showSaveSearchModal(); return false;" id="lbSave" class="smallLink firstLink">Save Search</a>
+                <a id="lbClearFilters" class="clearSearchFilters smallLink" href="#" onclick="clearFiltersClicked(); return false;">Clear All</a>
+            </div>
+            
+        </div>
+        <img id="filtershadowImg" class="filterContainerShadow" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+        <div class="clearfix"></div>
+    </div>
+    <div id="lowerGridContainer">
+        <div id="gridDiv">
+            <div id="thisGrid">
+                <div class="actionBar">
+                    <input id="AppealBatchLimit" type="hidden" value="100" />
+
+                    <input type="button" value="Export" id="btnBulkExport" class="mediumDefaultButton" />
+                        <input type="button" value="Reassign" id="btnBulkReassign" class="mediumDefaultButton" />
+                    <input type="button" value="Close" id="btnBulkClose" class="mediumDefaultButton" />
+                    <input type="button" value="Appeal" id="btnBulkAppeal" class="mediumDefaultButton" />
+                    <span class="headerCheckBox">
+                        <input id="chkExcelFriendlyWC" type="checkbox">
+                        Excel Friendly CSV
+                    </span>
+
+                </div>
+                <div id="gridData">
+                    <table class="gridView" cellspacing="0" border="1" style="border-collapse:collapse;">
+                        <tbody>
+                            <tr class="gridViewHeader">
+                                <th class="headerCheckBox" scope="col">
+                                    <div id="divHeaderCheckBox" class="actionButtonDropMenu">
+                                        <span class="gridHeaderCheckbox">
+                                            <input id="chkGridSelect" type="checkbox" name="sampleGrid$ctl01$chkGridSelect" onclick="CaptureDenialsSelectionDefault($('#chkGridSelect')) ">
+                                        </span>
+                                        <img id="myworkdownarrow" src="/Content/Images/transparent.gif" height="1" width="1" alt="Show Check Options">
+                                        <ul id="headerSelectMenu" class="mainDropMenu shadow" style="top: 186px; left: 223.390625px; display: none;">
+                                            <li>
+                                                <a data-select="true" data-selectiontype="1" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridSelectAll')); return false;" id="sampleGrid_lnkGridSelectAll">
+                                                    Select All
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a data-select="false" data-selectiontype="2" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridUnselectAll')); return false;" id="sampleGrid_lnkGridUnselectAll">
+                                                    Unselect All
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a data-select="true" data-selectiontype="3" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridSelectPage')); return false;" id="sampleGrid_lnkGridSelectPage">
+                                                    Select Page
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a data-select="false" data-selectiontype="4" onclick="CaptureDenialsSelection($('#chkGridSelect'), $('#sampleGrid_lnkGridUnselectPage')); return false;" id="sampleGrid_lnkGridUnselectPage">
+                                                    Unselect Page
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        <span class="downArrow"></span>
+                                    </div>
+                                </th>
+                                <input id="WorkcenterArgs_WorkcenterGridArgs_SortColumn" name="WorkcenterArgs.WorkcenterGridArgs.SortColumn" type="hidden" value="DenialDate" />
+<input id="WorkcenterArgs_WorkcenterGridArgs_SortDirection" name="WorkcenterArgs.WorkcenterGridArgs.SortDirection" type="hidden" value="Ascending" />
+
+
+                            </tr>
+                                    <tr class="gridViewEmpty">
+                                        <td colspan=1>
+                                            <div>
+                                                <img id="emptyGrid" class="emptyGrid sprite-grid-graphic" src="/Content/Images/transparent.gif"
+                                                     height="1" width="1" alt="No Results" title="No Results" />
+                                            </div>
+                                            <div>
+                                                <span id="emptyGridHeader">Your search returned no results</span>
+                                                <span id="emptyGridSubText">Adjust your Reminder Date or Workflow Stage filters to show more results.</span>
+                                                <br />
+                                                <span id="emptyGridSubText">Broaden your search scope with <a href="/DenialSearch" id="gridDenialSearchLink" target="_blank">Denial Search.</a></span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="pagerDiv" class="webPagerDiv">
+                    <div id="InnerPagerDiv">
+                        <div id="webPager_RightContainer" class="webPager_Right">
+                            <div style="padding-bottom: 5px;">
+                                <span class="webPagerDisplayLabel">Per Page:</span>
+                            </div>
+                            <input type="hidden" value="10" id="pageSize" />
+                            <select id="ctrl_ItemsPerPage" onchange="$('#CurrentPageInput').val(1); pageAndSortGrid(); return false;" name="ctrl_ItemsPerPage">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div id="gridPagerLabel" class="webPagerDisplayLabel" style="display: inline; float: left; padding-top: 8px;">
+                            <span>Results</span>
+                            <span class="lblItemCounts">
+                                    <span>1</span>
+                                <span> - </span>
+                                0
+                            </span>
+                            <span>of</span>
+                            <span class="lblItemCounts">1</span>
+                        </div>
+                        <div id="btmPager" style="display:inline-block;padding-top: 2px;">
+                            <div id="btmPager_pagerContainer">
+                                <table id="btmPager_tblPager" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                                    <tbody>
+                                        <tr>
+                                            <td id="samplePager_tcControls">
+                                                <div class="arrows">
+                                                    <a id="Pager_Btm_First" class="smallDefaultButton webPagerLeftLink" onclick="page($(this), 'first'); return false;">
+                                                        <img id="imgFirstPage" class="pagerFirstImage sprite-arrowleft-firstpage" width="16" height="16" alt="first" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                    <a id="Pager_Btm_Prev" class="smallDefaultButton webPagerRightLink" onclick="page($(this), 'prev'); return false;">
+                                                        <img id="imgPrevPage" class="pagerPreviousImage" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                </div>
+                                            </td>
+                                            <td style="width:10px;"></td>
+                                            <td class="PageCountClass webPagerPageCount" style="width:120px;white-space:nowrap;">
+                                                &nbsp;Page&nbsp;
+                                                <input id="CurrentPageInput" name="CurrentPageInput" type="text" value=1 maxlength="6" size="3" style="font-size: 9pt;">
+                                                &nbsp;of&nbsp;
+                                                <span id="lblTotalpages">1</span>
+                                            </td>
+                                            <td style="width:10px;"></td>
+                                            <td>
+                                                <div class="arrows">
+                                                    <a id="Pager_Btm_Next" class="smallDefaultButton webPagerLeftLink" onclick="page($(this), 'next'); return false;">
+                                                        <img id="imgNextPage" class="pagerNextImage" width="16" height="16" alt="first" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                    <a id="Pager_Btm_Last" class="smallDefaultButton webPagerRightLink" onclick="page($(this), 'last'); return false;">
+                                                        <img id="imgLastPage" class="pagerLastImage sprite-arrowright-lastpage" width="16" height="16" alt="last" src="/Content/Images/transparent.gif">
+                                                    </a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        </div>
+    </form>
+    
+<div class="gridActionMenu">
+    <div class="innerGridActionDiv">
+        <a id="gridMenuHistory"> Review </a>
+        <a id="gridAddActivity"> Take Action </a>
+            <a id="gridMenuEdit"> Resubmit </a>
+        <a id="gridMenuAppeal"> Appeal </a>
+        <a id="gridMenuClose"> Close Denial </a>
+            <a id="gridMenuReassign"> Reassign </a>
+            </div>
+</div>
+
+<div id="appealLimitModal" class="modalDiv modalButtonCenter">
+    <span>
+        <span class="icon-warning"></span>
+        Please limit your selection to 100 denials.
+    </span>
+</div>
+
+<div id="reassignModal" class="modalDiv ui-dialog-content ui-widget-content">  
+    <input name="hdnReassignWorkgroupDenialId" id="hdnReassignWorkgroupDenialId" type="hidden">
+
+    <div class="lFloat subLabelRight dropDownLabel">
+        Workgroup
+    </div>
+    <div class="lFloat selectContainer">
+        <select id="reassignWorkgroup" name="ReassignDropDown"><option value="">- Select Workgroup -</option>
+<option value="41436">Mohamed Hussain&#39;s Denial Group</option>
+<option value="41437">Sherif&#39;s Denial Group</option>
+<option value="41443">Bassem&#39;s Denial Group</option>
+<option value="41444">Mohamed Hany Denial Group</option>
+<option value="41445">Abdelrahman&#39;s Denial Group</option>
+<option value="41446">Bassil&#39;s Denial Group</option>
+<option value="41447">Rouvan&#39;s Denial Group</option>
+<option value="41451">Salma&#39;s Patients collection Group</option>
+<option value="41477">Historical Denials</option>
+<option value="41676">Ganna&#39;s Denial Group</option>
+<option value="42066">Rashwan&#39;s Denial Group</option>
+<option value="42069">Boda&#39;s Denial Group</option>
+<option value="42384">NYCE</option>
+<option value="42427">BCBS</option>
+<option value="42444">Abdelmola&#39; Workgroup</option>
+<option value="41435">Catch-All</option>
+</select>
+    </div>
+    <div class="clearfix"></div>
+    <div class="lFloat subLabelRight">
+        Notes
+    </div>
+    <div class="lFloat">
+        <textarea rows="2" cols="20" id="notes_txtReassignNewNote" class="NewNote hintText resizable" data-hinttext="Begin typing your note here..."></textarea>
+    </div>
+    <div class="clearfix"></div>
+
+    <div class="modalBtnContainer">
+        <button class="mediumDefaultButton" id="btnReassignWorkgroup" >Reassign</button>
+        <a id="cancelReassign" class="Link" href="#">Cancel</a>
+    </div>
+</div>
+<div id="reprocessRequestedModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <input name="hdnReprocessRequestedDenialId" id="hdnReprocessRequestedDenialId" type="hidden">
+    <input name="hdnReprocessRequestedCurrentStage" id="hdnReprocessRequestedCurrentStage" type="hidden">
+    <div class="lFloat subLabelRight">
+        Notes
+    </div>
+    <div class="lFloat">
+        <textarea rows="2" cols="20" id="notes_txtReprocessRequestedNewNote" class="NewNote hintText" data-hinttext="Begin typing your note here..."></textarea>
+    </div>
+    <div class="clearfix"></div>
+
+    <div class="modalBtnContainer">
+        <button class="mediumDefaultButton" id="btnReprocessRequested">Save</button>
+        <a id="cancelReprocessRequested" class="Link" href="#" >Cancel</a>
+    </div>
+</div>
+
+<div class="modalDiv" id="framedUrlModalWindow">
+    <iframe id="urlModalFrame" frameborder="0" scrolling="no" src="about:blank"></iframe>
+</div>
+
+<div id="approveCloseModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <input name="hdnApproveCloseDenialId" id="hdnApproveCloseDenialId" type="hidden">
+    <div class="lFloat subLabelRight">
+        Notes
+    </div>
+    <div class="lFloat">
+        <textarea rows="2" cols="20" id="notes_txtApproveCloseNewNote" class="NewNote hintText" data-hinttext="Begin typing your note here..."></textarea>
+    </div>
+    <div class="clearfix"></div>
+
+    <div class="modalBtnContainer">
+        <button class="mediumDefaultButton" id="btnApproveClose">Approve</button>
+        <a id="cancelApproveClose" class="Link" href="#">Cancel</a>
+    </div>
+</div>
+
+
+
+
+<input id="ReminderDate" name="ReminderDate" type="hidden" value="7/14/2026" />
+<input id="activityDenialID" name="activityDenialID" type="hidden" value="0" />
+<input id="activityInstanceID" name="activityInstanceID" type="hidden" value="0" />
+<input id="activityTypeHdn" name="activityTypeHdn" type="hidden" value="None" />
+<input id="awaitingPayerReasonsCountHdn" name="awaitingPayerReasonsCountHdn" type="hidden" value="0" />
+<input id="internalHoldReasonsCountHdn" name="internalHoldReasonsCountHdn" type="hidden" value="0" />
+
+<div id="addActivityModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <div class="title">Notes </div>
+    <div class="optional">(Optional)</div>
+    <div class="addActivityNote">
+        <textarea rows="10" cols="25" id="addActivityNoteText" class="NewNote" name="addActivityNoteText"></textarea>
+    </div>
+    <div class="activitiesContainer">
+        <div class="headings">
+            Status
+        </div>
+        <div class="multiSelectDropDown actionButton actionButtonDropMenu" id="activityTypeDropDown">
+            <span id="activityType"> Change Status </span>
+            <ul class="shadow mainDropMenu activityTypeDropMenu" style="display:none;">
+                <li onclick="activityTypeSelect('None', 'None');">
+                    <div>None</div>
+                </li>
+                <li onclick="activityTypeSelect('Resubmitted', 'Resubmitted');">
+                    <div>Resubmitted</div>
+                </li>
+                <li onclick="activityTypeSelect('Internal Hold', 'InternalHold');">
+                    <div>Internal Hold</div>
+                </li>
+                <li onclick="activityTypeSelect('Awaiting Payer', 'AwaitingPayer');">
+                    <div>Awaiting Payer</div>
+                </li>
+                <li onclick="activityTypeSelect('In Appeal', 'InAppeal');">
+                    <div>In Appeal</div>
+                </li>
+            </ul>
+        </div>
+
+
+
+        <div class="headings">
+            Additional Actions
+        </div>
+        <div class="multiSelectDropDown actionButton actionButtonDropMenu additional1 additionalActivityDropDown" id="additionalActivityDropDown">
+            <span class="additionalActivity"> None </span>
+            <ul class="shadow mainDropMenu additionalActivityDropMenu" style="display:none;">
+                <li onclick="additionalActivitySelect('None');">
+                    <div>None</div>
+                </li>
+                <li onclick="additionalActivitySelect('Reassign');">
+                    <div>Reassign</div>
+                </li>
+                <li onclick="additionalActivitySelect('Close Denial');">
+                    <div>Close Denial</div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="multiSelectDropDown actionButton actionButtonDropMenu additional2 additionalActivityDropDown" id="additionalActivityDropDown" style="display:none;">
+            <span class="additionalActivity"> Close Denial </span>
+            <ul class="shadow mainDropMenu additionalActivityDropMenu" style="display:none;">
+                <li onclick="additionalActivitySelect('Close Denial');">
+                    <div>Close Denial</div>
+                </li>
+                    <li onclick="additionalActivitySelect('Reassign');">
+                        <div>Reassign</div>
+                    </li>
+                    <li onclick="additionalActivitySelect('None');">
+                        <div>None</div>
+                    </li>
+                </ul>
+        </div>
+
+            <div id="workgroupSelectList">
+                <select class="workgroupSelect">
+                    <option selected hidden value="0">- Workgroup -</option>
+                        <option class="workgroupSelectItem" value="41436">Mohamed Hussain&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41437">Sherif&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41443">Bassem&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41444">Mohamed Hany Denial Group</option>
+                        <option class="workgroupSelectItem" value="41445">Abdelrahman&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41446">Bassil&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41447">Rouvan&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="41451">Salma&#39;s Patients collection Group</option>
+                        <option class="workgroupSelectItem" value="41477">Historical Denials</option>
+                        <option class="workgroupSelectItem" value="41676">Ganna&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="42066">Rashwan&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="42069">Boda&#39;s Denial Group</option>
+                        <option class="workgroupSelectItem" value="42384">NYCE</option>
+                        <option class="workgroupSelectItem" value="42427">BCBS</option>
+                        <option class="workgroupSelectItem" value="42444">Abdelmola&#39; Workgroup</option>
+                        <option class="workgroupSelectItem" value="41435">Catch-All</option>
+                </select>
+            </div>
+
+            <div id="closeTypeSelectList">
+                <select class="closeTypeSelect">
+                    <option selected hidden value="NoType">- Close Type -</option>
+                                <option value="Paid">Payment Received</option>
+                                <option value="WriteOff">Informational Write-Off</option>
+                                <option value="PatientResponsibility">Patient Responsibility</option>
+                                <option value="WorkableWriteOff">Workable Write-Off</option>
+                </select>
+            </div>
+
+        <div class="headings">
+            Reminder Date
+        </div>
+            <div class="datePicker">
+                <input id="editActivityReminder" type="text" value="7/14/2026" data-maxdate="01/01/2100" data-mindate="01/01/1900" data-hinttext="mm/dd/yyyy">
+            </div>
+
+
+        <div id="addActivityError" class="errorText" style="display:none;"></div>
+
+        <div class="applyCancel">
+            <button id="applyNewActivity" class="primaryButton mediumDefaultButton"> Apply</button>
+            <span class="cancel">
+                <a id="cancelModal">Cancel</a>
+            </span>
+        </div>
+    </div>
+</div>
+<div id="denialUnderActionModal" class="modalDiv ui-dialog-content ui-widget-content">
+    <div class="modalContainer">
+        <div class="modalSpacer"></div>
+        <div id="denialUnderActionModalText">
+            Currently Open by:
+        </div>
+        <div class="modalSpacer"></div>
+        <div class="denialUnderActionModalBtnContainer">
+            <button id="btnContinueUserUnderAction" class="primaryButton mediumDefaultButton"> Continue </button>
+            <span class="cancel">
+                <a id="cancelDenialUnderActionModal">Cancel</a>
+            </span>
+        </div>
+        <div class="modalSpacer"></div>
+    </div>
+</div>
+
+<link type="text/css" href="/Content/denials-modal-denialunderuseraction.min.css" rel="stylesheet" />
+
+</div>
+
+<div id = "bulkReassignModal" class="modalDiv modalButtonCenter">
+    <h3 id="bulkReassignSelectedCount"></h3>
+    <div class="page-notification" id="bulkReassignNotification_Error">
+        <span class="notification-message"></span>
+        <span class="close-alert">x</span>
+    </div>
+    <div>
+        Every selected denial will be Reassigned to the selected workgroup.
+    </div>
+    <br />
+    <div class="clearfix"></div>
+    <div id="bulkReassignWorkgroupSelectLabel" class="lFloat subLabelRight dropDownLabel">
+        Workgroup:
+    </div>
+    <div class="lFloat selectContainer">
+        <select id="ddl_bulkReassignWorkGroup" name="ReassignDropDown"><option value="41436">Mohamed Hussain&#39;s Denial Group</option>
+<option value="41437">Sherif&#39;s Denial Group</option>
+<option value="41443">Bassem&#39;s Denial Group</option>
+<option value="41444">Mohamed Hany Denial Group</option>
+<option value="41445">Abdelrahman&#39;s Denial Group</option>
+<option value="41446">Bassil&#39;s Denial Group</option>
+<option value="41447">Rouvan&#39;s Denial Group</option>
+<option value="41451">Salma&#39;s Patients collection Group</option>
+<option value="41477">Historical Denials</option>
+<option value="41676">Ganna&#39;s Denial Group</option>
+<option value="42066">Rashwan&#39;s Denial Group</option>
+<option value="42069">Boda&#39;s Denial Group</option>
+<option value="42384">NYCE</option>
+<option value="42427">BCBS</option>
+<option value="42444">Abdelmola&#39; Workgroup</option>
+<option value="41435">Catch-All</option>
+</select>
+    </div>
+    <div class="clearfix"></div>
+    <div class="lFloat">
+        Optional Reassign Note:
+    </div>
+    <div class="lFloat">
+        <textarea rows="2" cols="20" id="bulkReassignNoteTextArea" class="NewNote resizable"></textarea>
+    </div>
+</div>
+
+<div id="bulkCloseModal" class="modalDiv modalButtonCenter">
+    <h3 id="bulkCloseWorkgroupName" style="text-transform:uppercase; font-weight:bold"></h3>
+    <h3 id="bulkCloseSelectedCount"></h3>
+    <div class="page-notification" id="bulkCloseNotification_Error">
+        <span class="notification-message"></span>
+        <span class="close-alert">x</span>
+    </div>
+    <p>
+        Every selected denial will have all Active Adjustments closed to a single Close Type.
+    </p>
+    <p id="closeTypeSelectLabel">
+        Select Close Type:
+    </p>
+    
+<div class="closeTypeDD">
+
+
+    <select class="closeTypesDD_ALL" dataAdjID="" dataOrigVal="" id="closeTypesDD_" name="AdjClosings[&#39;ALL&#39;].CloseTypesDD"><option selected="selected" value="">Select</option>
+<option value="WriteOff">Informational Write-Off</option>
+<option value="PatientResponsibility">Patient Responsibility</option>
+<option value="WorkableWriteOff">Workable Write-Off</option>
+<option value="Paid">Payment Received</option>
+</select>
+
+</div>
+
+
+    <p>
+        Optional Close Note:
+    </p>
+    <textarea id="closeNoteTextArea"></textarea>
+</div>
+
+<div id="advancedSearchModal" class="modalDiv"></div>
+
+<div id="bulkCloseLoadingPanel" class="loadingPanel"><img src="/Content/images/loading.gif"")" /><div></div></div>
+
+<input type="hidden" id="tourName" value="DenialsWorkcenterTour" />
+<input type="hidden" id="showTour" />
+
+<ol class="tour-container" style="display:none;" id="DenialsWorkcenterTour">
+    <li data-button="Next" data-options="modal:true;">
+        <h4>Welcome to the new My Work Screen!</h4>
+        <p>
+            Welcome to the new My Work Screen! We’ve redesigned the screen to display ALL results within a workgroup,
+            no matter how large the workgroup. Additional changes include a simplified Search & Filter section and a more
+            robust 'More Filters' section for advanced filtering.
+        </p>
+    </li>
+    <li data-id="upResultsCounter" data-button="Next">
+        <h4>Results</h4>
+        <p>
+            The My Work page now displays ALL results within the workgroup, not just the top 1,000 based on the current sort.
+            In addition, all Search or Filter options will include all denials within the workgroup.
+        </p>
+    </li>
+    <li data-id="searchPanel" data-button="Next">
+        <h4>Search/Filter</h4>
+        <p>
+            The Search & Filter control is simpler, highlighting the most frequently used search options (Patient Name & Claim #)
+            and the most used filters (Payer, Account, Workflow Stage and Category).
+        </p>
+        <p>
+            The Payer and Account filters utilize type-ahead
+            technology to find the correct result. The Workflow Stage and Category filters contain static drop downs, but do allow
+            multiple selections.
+        </p>
+    </li>
+    <li data-id="moreFilters" data-button="Next">
+        <h4>More Filters</h4>
+        <p>
+            If there is a filter or search that you cannot access on the page, please reference the "More Filters" link for a
+            comprehensive list of available options.
+        </p>
+        <p>
+            When you click on "More Filters" all Search and Filter options will be present on this screen. Certain options include
+            a new 'Search' feature, which helps quickly identify the desired value.
+        </p>
+    </li>
+    <li data-id="btnBulkAppeal" data-button="Okay">
+        <h4>Batch Appeals</h4>
+        <p>
+            Denials can now be submitted for appeal in groups of up to 100 denials. The Appeal Wizard was redesigned from the
+            ground up to handle multiple appeals at the same time.
+        </p>
+    </li>
+</ol>
+
+
+<div id="areYouSureModal" class="modalDiv modalButtonCenter">
+    <h3 id="areYouSureMessage"></h3>
+</div>
+
+<div id="appealPayersModal" class="modalDiv modalButtonCenter"></div>
+<div id="existingDraftsModal" class="modalDiv modalButtonCenter"></div>
+
+<div id="saveSearchModal" class="modalDiv" title="Save Search">
+    <div>
+        <span class="searchModalText">Search Name:</span>
+        <div class="displayIBlock">
+            <input name="txtSearchName" type="text" id="txtSearchName" class="SearchNameTextBoxStyle" maxlength="500" />
+        </div>
+        <div class="searchModalValidationDiv">
+            <span id="searchNameRequired" class="savedSearchValidator failedValidation">Search Name is required.</span>
+        </div>
+    </div>
+    <div class="searchModalDivButtons ui-dialog-buttonpane">
+        <button name="btnSaveAndSearch" id="btnSaveAndSearch" onclick="saveCurrentSearch();" class="mediumDefaultButton">Save</button>
+        <span class="cancel">
+            <a id="cancelModal" onclick="HideModal('saveSearchModal');">Cancel</a>
+        </span>
+    </div>
+</div>
+
+
+
+
+
+
+    <div class="clear-fix"></div>
+<div id="waystarFooter" class="">
+    <div>
+                <a href="#" class="waystar-support-link" onclick="return waystarHeader.LaunchSupportCenter('https://general.zirmed.com//Help/LaunchCustomerSupportCenter.aspx');">Support &amp; Training</a>
+                <span class='separator waystar-support-spacer'></span>
+                <a href="https://general.zirmed.com//logout2.aspx">Logoff</a>
+
+    </div>
+            <div>
+                &copy; 1999 - 2026 Waystar&trade; All rights reserved
+            </div>
+
+</div>
+    
+        <script>var TitleSelector = '';</script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+    <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.9.0/jquery-ui.min.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/WaystarHeader/1.0/Javascript/WaystarHeader.min.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/JavaScript/SmartSearch.js"></script>
+
+
+    <script>
+        (function(apiKey){
+            (function (p, e, n, d, o) {
+                var v, w, x, y, z; o = p[d] = p[d] || {}; o._q = o._q || [];
+                v = ['initialize', 'identify', 'updateOptions', 'pageLoad', 'track']; for (w = 0, x = v.length; w < x; ++w)(function (m) {
+                    o[m] = o[m] || function () { o._q[m === v[0] ? 'unshift' : 'push']([m].concat([].slice.call(arguments, 0))); };
+                })(v[w]);
+                y = e.createElement(n); y.async = !0; y.src = 'https://cdn.pendo.io/agent/static/' + apiKey + '/pendo.js';
+                z = e.getElementsByTagName(n)[0]; z.parentNode.insertBefore(y, z);
+            })(window, document, 'script', 'pendo');
+            pendo.initialize({
+                visitor: {
+                    id: 'abdelrahman.hamdy@cobsolution.com',
+                    name: 'Abdelrahman Hamdy',
+                    csrep: 'False',
+                    usrid: '1834705'
+                    },
+                account: {
+                    id: 'Physical Therapy of the City P.C.',
+                    city: 'New York',
+                    state: 'NY',
+                    custid: '296638',
+                    domainid: '296638'
+                    }
+             });
+        })('dacd24e3-3f6d-4ee4-40d6-1fc5a8db8cb5');
+    </script>
+
+
+
+    
+    <script type="text/javascript">
+            var globalUrl_ViewAttachment = '/Files/ViewFile';
+            var SetClaimsCustInSessionURL = "/Denials/SetClaimsCustInSession";
+            var DenialSearchURL = '/DenialSearch';
+            var userActivityTrackingUrl = '/Denials/AuditUserActivityTracking';
+            var Browser = 'Chrome';
+    </script>
+
+    <script type="text/javascript" src="/Scripts/jquery.watermark.min.js" async></script>
+    <script type="text/javascript" src="/Scripts/jquery.iframe-transport.js"></script>
+    <script type="text/javascript" src="/Scripts/header-setup.js"></script>
+    <script type="text/javascript" src="https://www.zirmed.com/Static/WebControls/2.0/Javascript/WebControls.js"></script>
+
+    
+
+    <script type="text/javascript">
+        var SaveWorkCenterArgsInSessionURL = '/Workcenter/SaveWorkCenterArgsInSession';
+        var ReloadWorkcenterGridURL = '/Workcenter/ReloadWorkcenterGrid';
+        var ReloadWorkcenterGridCountURL = '/Workcenter/ReloadWorkcenterGridCount';
+        var ReloadSearchPanelURL = '/Workcenter/ReloadSearchPanel';
+        var AdvancedSearchModalURL = '/Workcenter/AdvancedSearchModal';
+        var PageAndSortGridURL = '/Workcenter/PageAndSortGrid';
+        var ChangeWorkgroupURL = '/Workcenter/ChangeWorkgroup';
+        var ChangeWorkgroupCountURL = '/Workcenter/ChangeWorkgroupGridCount';
+        var ClearFiltersURL = '/Workcenter/ClearFilters';
+        var ClearSingleFilterURL = '/Workcenter/ClearSingleFilter';
+        var CaptureSelectedDenialURL = '/Workcenter/CaptureSelectedDenial';
+        var CaptureDenialsSelectionURL = '/Workcenter/CaptureDenialsSelection';
+        var PurgeDenialSelectionURL = '/Workcenter/PurgeDenialSelection';
+        var SessionForFrontEnd = '/Workcenter/SessionDataForFrontEnd';
+        var CheckMultiplePayersURL = '/Appeals/CheckForMultiplePayers';
+        var CheckExistingDraftsURL = '/Appeals/CheckExistingDrafts';
+        var CheckAppealStepURL = '/Appeals/CheckAppealStep';
+        var SaveCurrentSearchURL = '/Workcenter/SaveCurrentSearch';
+        var DeleteSavedSearchURL = '/Workcenter/DeleteSavedSearch';
+        var SelectSavedSearchURL = '/Workcenter/SelectSavedSearch';
+        var ReloadSavedSearchURL = '/Workcenter/SavedSearches';
+
+        var ValidateDenialsToWorkURL = '/Workcenter/ValidateDenialsToWork';
+        var BulkExportURL = '/Workcenter/Export';
+        var ReassignURL = '/Workcenter/Reassign';
+        var CloseURL = '/Workcenter/Close';
+        var PollForPendingClosingsURL = '/Workcenter/PollForPendingClosings';
+        var DenialsToAppealURL = '/Workcenter/DenialsToAppeal';
+        var SaveActivityURL = '/Denials/SaveActivity';
+        var CheckActivityDateURL = '/Denials/CheckActivityDate';
+
+        var SelectingAll = false;
+        var selectedCount = 0;
+        var CurrentEnvironment = "5";
+        var IsDemo = 'false';
+        var PayerAutoCompleteSearchURL = '/Workcenter/PayerAutoCompleteSearch';
+        var AccountAutoCompleteSearchURL = '/Workcenter/AccountAutoCompleteSearch';
+        var CheckDenialUnderUserActionURL = '/Denials/CheckDenialUnderUserAction';
+        var DemoEditClaimUrl = '/Demo/EditClaim';
+        var NotesModal = '/Denials/NotesModal';
+        var ReassignWorkgroupURL = '/Workcenter/ReassignWorkgroup';
+        var ReprocessRequestedURL = '/Denials/ReprocessRequested';
+        var RemitsSiteURL = "https://remits.zirmed.com/";
+        var ApproveCloseURL = '/Denials/ApproveClose';
+        var CloseDenialURL = "/Denials/CloseDenial";
+        var ClaimsSiteURL = "https://claims.zirmed.com/";
+        var AppealURL = "/Appeals";
+        var BuildAppealURL = "/Appeals/BuildAppeal";
+        var IsWorkcenter = true;
+        var DenialHistoryURL = "/Denials/DeniedClaimHistory";
+        
+        var ClaimQueuedForResubmitURL = '/Denials/ClaimQueuedForResubmit';
+        var EligibilityInquiryURL = "/Denials/EligibilityInquiry";
+        var CarcSearchURL = '/Workcenter/CarcAutoComplete';
+        var RarcSearchURL = '/Workcenter/RarcAutoComplete';
+        var WorkcenterURL = '/Workcenter';
+        var MinAllowedDateForDenialSearch = new Date(2023,07-1,09);
+    </script>
+
+    <script type="text/javascript" src="Scripts/denials-common.js" async></script>
+    <script type="text/javascript" src="Scripts/denials-add-activity-modal.js"></script>
+    <script type="text/javascript" src="Scripts/denials-modal-denialunderuseraction.js" async></script>
+    <script type="text/javascript" src="Scripts/workcenter.js" async></script>
+    <script type="text/javascript" src="Scripts/denials-grid-actionbar.js" async></script>
+
+    <script type="text/javascript">
+        var MarkTourReadURL = '/Workcenter/MarkTourRead';
+        var tourList = $("#DenialsWorkcenterTour");
+        var staticSiteURL = 'https://www.zirmed.com/Static';
+</script>
+
+<script type="text/javascript" src="/Scripts/joyridetour.js" async></script>
+
+
+
+
+</body>
+</html>

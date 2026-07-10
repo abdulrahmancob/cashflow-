@@ -8,7 +8,7 @@ from playwright.async_api import Error as PlaywrightError
 
 from auth import extend_session
 from config import CLAIMS_LISTING_URL, DEFAULT_PDF_TIMEOUT_SEC, PDF_EXTEND_SESSION_EVERY, VIEW_CLAIM_PDF_URL
-from human import HumanSettings
+from human import HumanSettings, human_pause
 from logging_config import get_logger
 
 log = get_logger("pdf")
@@ -168,10 +168,8 @@ async def download_pdfs_for_claims(
         if index > 0 and index % PDF_EXTEND_SESSION_EVERY == 0:
             await extend_session(page)
 
-        if human and index > 0:
-            await asyncio.sleep(pdf_delay_sec)
-        elif index > 0 and pdf_delay_sec > 0:
-            await asyncio.sleep(pdf_delay_sec)
+        if index > 0 and pdf_delay_sec > 0:
+            await human_pause(human or HumanSettings(), pdf_delay_sec)
 
         await download_claim_pdf(
             page,

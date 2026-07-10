@@ -1,0 +1,798 @@
+URL: https://denials.zirmed.com/Scripts/denials-grid-actionbar.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+var denialView = "#gridMenuView";
+var denialEdit = "#gridMenuEdit";
+var denialReprocessRequested = "#gridMenuReprocessRequested";
+var denialAppeal = "#gridMenuAppeal";
+var denialNotes = "#gridMenuNotes";
+var denialHistory = "#gridMenuHistory";
+var denialEOB = "#gridMenuEOB";
+var denialReassign = "#gridMenuReassign";
+var denialClose = "#gridMenuClose";
+var denialMergeDenial = "#gridMenuMergeDenial";
+var denialUnlinkedDenial = "#gridMenuUnlinkedDenial";
+var denialUnlinkedViewClaim = "#gridMenuUnlinkedViewClaim";
+var denialApproveClose = ".approveCloseLink";
+var denialReminderDate = ".reminderDateLink";
+var addActivtyBtn = "#gridAddActivity";
+var denialEligibility = "#gridMenuEligibility";
+var eligibilityIcon = ".elg-icon";
+var eligibilityPendingIcon = ".elg-pending";
+var isNewWorkcenter = "#isNewWorkcenter";
+
+$(function () {
+    
+    initializeWorkcenterScripts();
+});
+
+function initializeWorkcenterScripts() {
+
+    configureActionMenuButtonFunctions();
+    configureGridColumnLinks();
+    configureEligibilityIcons();
+}
+
+function configureActionMenuButtonFunctions() {
+    $(denialView).off("click").on("click", function (e) {
+        e.preventDefault();
+        onViewBtnClick();
+    });
+
+    $(denialEdit).off("click").on("click", function (e) {
+        e.preventDefault();
+        onEditBtnClick();
+    });
+
+    $(denialAppeal).off("click").on("click", function (e) {
+        e.preventDefault();
+        onAppealBtnClick();
+    });
+
+    $(denialHistory).off("click").on("click", function (e) {
+        e.preventDefault();
+        onHistoryBtnClick();
+    });
+
+    $(denialReassign).off("click").on("click", function (e) {
+        e.preventDefault();
+        onReassignBtnClick();
+    });
+
+    $(denialClose).off("click").on("click", function (e) {
+        e.preventDefault();
+        onCloseBtnClick();
+    });
+
+    $(denialMergeDenial).off("click").on("click", function (e) {
+        e.preventDefault();
+        this.disabled = true;
+        onMergeDenialBtnClick();
+    });
+
+    $(addActivtyBtn).off("click").on("click", function (e) {
+        e.preventDefault();
+        onAddActivtyBtnClick($(this));
+    });
+
+    $(denialUnlinkedDenial).off("click").on("click", function (e) {
+        e.preventDefault();
+        onUnlinkedDenialBtnClick();
+    });
+
+    $(denialUnlinkedViewClaim).off("click").on("click", function (e) {
+        e.preventDefault();
+        onUnlinkedViewClaimBtnClick();
+    });
+
+    $(denialEligibility).off("click").on("click", function (e) {
+        e.preventDefault();
+        onEligibilityBtnClick();
+    });
+
+    $('.gridViewRow').mouseover(function () {
+        ActionButtonVisibility($(rowLastHovered).attr('data-canresubmit'));
+        updateAppealButtonText();
+    });
+
+    $('.tagRow').mouseover(function () {
+        ActionButtonVisibility($(rowLastHovered).attr('data-canresubmit'));
+        updateAppealButtonText();
+    });
+}
+
+function ActionButtonVisibility(canresubmit) {
+    if (!canresubmit) {
+        return;
+    }
+
+    if (canresubmit.toLowerCase() == 'true') {
+        $("#gridMenuEdit").show();
+    }
+    else {
+        $("#gridMenuEdit").hide();
+    }
+}
+
+function updateAppealButtonText() {
+    var isElectronicSubmission = $(rowLastHovered).attr('data-iselectronicsubmission');
+
+    if (isElectronicSubmission.toLowerCase() === 'true') {
+        $('#gridMenuAppeal').text(' Dispute ');
+    } else {
+        $('#gridMenuAppeal').text(' Appeal ');
+    }
+}
+
+function configureGridColumnLinks() {
+    $(denialApproveClose, $(".controlContainer")).on("click", function () {
+        onApproveCloseDenialLinkClick();
+    });
+}
+
+function configureEligibilityIcons()
+{
+    $(eligibilityPendingIcon).on("click", function ()
+    {
+        $("#elgModal").dialog({
+            title: "Eligibility Inquiry: Pending",
+            modal: true,
+            resizable: false,
+            width: 450,
+            height: 120,
+            close: function ()
+            {
+               
+            }
+        });
+    });
+
+    $(".elig-view-inquiry").on("click", function () {
+
+        var urlString = $(this).attr('href');
+
+        var key = 'InquiryID=';
+
+        var startingIndex = urlString.indexOf(key);
+        
+        var inquiryId = urlString.substring(startingIndex + key.length);
+
+        var denialId = $(this).find('img').data('denialid');
+
+        trackUserActivity(denialId, 'DenialsEligibilityInquiry', inquiryId)
+        
+        return true;
+    });
+
+    $(eligibilityIcon).each(function ()
+    {
+        var elgHeader = $(this).data("elgheader");
+        var elgStatus = $(this).data("elgstatus");
+        var tooltipText = elgStatus;
+        if (elgHeader != "")
+        {
+            tooltipText = "<strong>" + elgHeader + "</strong><br>" + tooltipText;
+        }
+
+        $(this).tooltip({
+            content: tooltipText,
+            tooltipClass: "elg-tooltip"
+        });
+    });
+}
+
+/***********************
+     ACTION BAR MENU
+************************/
+
+// VIEW MODAL //
+function onViewBtnClick() {
+    var claimNumber = $(rowLastHovered).attr('data-claimNumber');
+    var appId = $(rowLastHovered).attr('data-claimtype');
+    var denialId = $(rowLastHovered).attr('data-denialId');
+    var claimcustID = $(rowLastHovered).attr('data-claimscustid');
+    
+    if (denialId > 0 && claimcustID > 0) {
+
+        setClaimCustInSession(claimcustID);
+
+        viewClaim(denialId);
+
+    } else {
+        alert("The Claim view is not available at this time.");
+    }
+    return false;
+}
+
+var denialQueuedId;
+
+// EDIT MODAL //
+function onEditBtnClick() {
+
+    var claimID = $(rowLastHovered).attr('data-claimID');
+    var claimType = $(rowLastHovered).attr('data-claimtype');
+    var claimcustID = $(rowLastHovered).attr('data-claimscustid');
+    var isDraft = "N"; // hard-coded to be false ("N")...    
+    var denialId = $(rowLastHovered).attr('data-denialid');
+    var custId = $(rowLastHovered).attr('data-custid');
+
+    denialQueuedId = denialId;
+
+    if (IsDemo != "true" && IsDemo != "True") {
+        if (claimID > 0 && claimType != "" && claimcustID > 0) {                    
+
+            setClaimCustInSession(claimcustID);
+
+            OpenClaimEditor(claimID, claimType, isDraft);                                       
+        }
+        else {
+            alert("The Claim editor is not available at this time");
+        }
+    } else {
+        var denialId = $(rowLastHovered).attr('data-denialId');
+        
+        window.open(DemoEditClaimUrl + "/" + denialId, "_blank", "width=1050, height=750");        
+    }
+
+    return false;
+}
+
+// CLAIM EDITOR POPUP //
+
+function OpenClaimEditor(claimID, claimType, isDraft)
+{
+    if (typeof claimsInterval === 'undefined') {
+        var scrollbars;
+        if (screen.availWidth <= 1024)
+        {
+            scrollbars = 'scrollbars=1,';
+        } else
+        {
+            scrollbars = '';
+        }
+
+        if (claimType == "Professional")
+        {
+            winEdit = open(ClaimsSiteURL + 'Editor/V5010/Professional/Main.aspx?sec=0&draft=' + isDraft + '&editclaimid=' + claimID, 'Edit', 'height=700,width=1010,' + scrollbars + 'resizable=1,status=0,location=0, menubar=0,top=0,left=0');
+        }
+        else
+        {
+            winEdit = open(ClaimsSiteURL + 'Editor/V5010/Institutional/Main.aspx?sec=0&draft=' + isDraft + '&editclaimid=' + claimID, 'Edit', 'height=700,width=1010,' + scrollbars + ' resizable=1,status=0,location=0, menubar=0,top=0,left=0');
+        }
+
+        // polls to check if the resubmit window has been closed
+        claimsInterval = setInterval(hasUserClosedEditor, 100);
+    }
+}
+
+var attemptsCheckedForClaimQueue = 0;
+
+function hasUserClosedEditor() {                        
+
+    if (winEdit.closed) {                        
+
+        clearInterval(claimsInterval);        
+        claimsInterval = undefined;
+        attemptsCheckedForClaimQueue = 0;
+
+        // very likely it won't be done right away.  pause before hitting server
+        setTimeout(isClaimQueuedForResubmission, 100);        
+    }
+}
+
+function isClaimQueuedForResubmission() {                    
+    
+    var data = {
+        'denialId': denialQueuedId
+    };        
+
+    $.ajax({
+        type: "POST",
+        url: ClaimQueuedForResubmitURL,
+        data: data,        
+        cache: false,
+        traditional: false,
+        success: function (data) { 
+
+            if (data.queued) {
+
+                updateStatusToQueued(denialQueuedId);
+                                
+                attemptsCheckedForClaimQueue = 0;
+
+            } else if (attemptsCheckedForClaimQueue < 10) {
+
+                setTimeout(isClaimQueuedForResubmission, 1500);
+
+                attemptsCheckedForClaimQueue++;
+            }
+        }
+    });       
+}
+
+function updateStatusToQueued(denialId) {
+
+    // the stage column can be in different places in workcenter, so this finds the index of the column first
+    var headerColumns = $(".gridViewHeader th");
+
+    var stageIndex = headerColumns.index($(".gridViewHeader th:contains('Stage')").not(':contains("Days in")'));
+
+    var stageElement = $(".gridViewExpandableRow[data-denialid=" + denialId + "] td")[stageIndex];    
+
+    $(stageElement).html("Queue'd for Resubmission");
+
+    return false;
+}
+
+// CHECK DENIAL UNDER ACTION USER BEFORE ACTIONS //
+function checkDenialUnderAction(func) {
+    var denialUnderActionStr = $(rowLastHovered).attr("data-underUserActionStr");
+    // if the user does not know someone is currently working the denial, alert them
+    if (denialUnderActionStr) {
+        func();
+    } else {
+        var denialID = $(rowLastHovered).data("denialid");
+        onCheckDenialUnderUserAction(denialID, func);
+    }
+}
+
+// APPEAL MODAL //
+function onAppealBtnClick() {
+    checkDenialUnderAction(continueAppealBtnClick);
+}
+
+function continueAppealBtnClick() {
+    var denialID = $(rowLastHovered).attr('data-denialId');
+    $.ajax({
+        url: CheckMultiplePayersURL + "?denialIDs=" + denialID,
+        type: "POST",
+        success: function (data) {
+            if (data == "") {
+                routeToAppeals(denialID, null);
+            }
+            else {
+                $("#appealPayersModal").html(data);
+                openAppealPayerSelectModal(denialID);
+            }
+        }
+    });
+}
+
+function routeToAppeals(denialID, payerID) {
+    var url = AppealURL + "?id=" + denialID;
+    
+    if (IsWorkcenter) {
+        url += "&appId=41&tabAppId=40&returntoworkcenter=true";
+    }
+    else if (IsDenialSearch)
+    	url += "?returntodenialsearch=true";
+
+    if (payerID != null) {
+        url += "&payerID=" + payerID;
+    }
+
+    var isElectronicSubmission = $(rowLastHovered).attr('data-iselectronicsubmission');
+    if (isElectronicSubmission && isElectronicSubmission.toLowerCase() === 'true') {
+        url += "&electronicSubmission=true";
+    }
+
+    window.location.href = url;
+    return false;
+}
+
+function openAppealPayerSelectModal(denialID) {
+    $(".payerSelectButton").on("click", function (){
+        var payerID = $(this).closest(".payerBox").data("payerid");
+        routeToAppeals(denialID, payerID);
+    });
+    $("#appealPayersModal").dialog({
+        title: "Select Your Payer",
+        modal: true,
+        resizable: false,
+        width: 500,
+        close: function () {
+            $("#appealPayersModal").empty();
+        }
+    });
+}
+
+
+// HISTORY MODAL //
+function onHistoryBtnClick() {
+    checkDenialUnderAction(continueHistoryBtnClick);
+}
+
+function continueHistoryBtnClick() {
+    var url = DenialHistoryURL + "/" + $(rowLastHovered).attr('data-denialId');
+    if (IsWorkcenter) {
+        url += "?appId=41&tabAppId=40&returntoworkcenter=true";
+    }
+    else if (IsDenialSearch)
+        url += "?returntodenialsearch=true";
+    window.location.href = url;
+    return false;
+}
+
+
+// REASSIGN MODAL //
+function onReassignBtnClick() {
+    $("#hdnReassignWorkgroupDenialId").val($(rowLastHovered).attr('data-denialId'));
+    $("#notes_txtReassignNewNote").watermark("Begin typing your note here...");
+    $("#reassignModal").dialog({
+        title: "Reassign Denial",
+        modal: true,
+        draggable: true,
+        resizable: false,
+        width: 420,
+        close: function () {
+            $('#notes_txtReassignNewNote').val("");
+        },
+        open: function () {
+            $("#btnReassignWorkgroup").off('click').on("click", function () {
+                ReassignWorkgroup($(this));
+            });
+            $("#cancelReassign").off('click').on("click", function () {
+                $('#reassignModal').dialog('close');
+            });
+        }
+    });
+    return false;
+}
+
+function ReassignWorkgroup(btn) {
+    btn.attr('disabled', 'disabled');
+
+    var denialId = $('#hdnReassignWorkgroupDenialId').val();
+    var workgroupId;
+    if ($(isNewWorkcenter).val() == "True") {
+        workgroupId = $("#reassignWorkgroup").val();
+    }
+    else {
+        workgroupId = $("#ddl_reassignWorkGroup").val();
+    }
+
+    var notes = $("#notes_txtReassignNewNote").val();
+    var hintText = $('#notes_txtReassignNewNote').attr('data-hinttext');
+
+    if (hintText == notes) {
+        notes = "";
+    }
+
+    if (workgroupId > 0) {
+        var data = {
+            'denialId': denialId,
+            'workgroupId': workgroupId,
+            'reassignText': notes
+        };
+
+        if ($(isNewWorkcenter).val() == "True") {
+            $.ajax({
+                url: ReassignWorkgroupURL,
+                data: data,
+                type: "POST",
+                cache: false,
+                traditional: false,
+                success: function () {
+                    $('#reassignModal').dialog('close');
+                    reloadWorkcenterGrid();
+                    btn.removeAttr('disabled');
+                }
+            })
+        }
+        else {
+            postMyWorkAjax(ReassignWorkgroupURL, data, ContentDiv);
+        }
+
+    } else {
+        alert("Please select a workgroup.");
+        btn.removeAttr('disabled');
+    }
+
+}
+
+
+// CLOSE MODAL //
+function onCloseBtnClick() {
+    checkDenialUnderAction(continueCloseBtnClick);
+}
+
+function continueCloseBtnClick() {
+    var url = CloseDenialURL + "/" + $(rowLastHovered).attr('data-denialId');
+    if (IsWorkcenter) {
+        url += "?appId=41&tabAppId=40&returntoworkcenter=true";
+    }
+    else if (IsDenialSearch)
+    	url += "?returntodenialsearch=true";
+		window.location.href = url;
+    return false;
+}
+
+// ELIGIBILITY INQUIRY //
+
+function onEligibilityBtnClick()
+{
+    $("#loadingouter").show();
+
+    $(denialEligibility).attr("disabled", true);
+
+    var denialID = $(rowLastHovered).data("denialid");
+    var eligibilityURL = "";
+    var tokenID = 0;
+
+    var data =
+    {
+        'denialID': denialID
+    };
+
+    $.ajax({
+        type: "POST",
+        url: EligibilityInquiryURL,
+        data: data,
+        cache: false,
+        traditional: false,
+        success: function (data)
+        {
+            tokenID = data.tokenID;
+            eligibilityURL = data.url;
+
+            if (tokenID > 0 && eligibilityURL != null && eligibilityURL != "")
+            {
+                var denialRow = $(".tagRow[data-denialid=" + denialID + "]");
+                $(denialRow).attr("data-tokenid", tokenID);
+
+                if (CurrentEnvironment != null && parseInt(CurrentEnvironment) > 1)
+                {
+                    //document.domain = "zirmed.com";
+                    document.domain = getDocumentDomain(true);
+                }
+
+                /// 368099 Adding event listener since latest Chrome disallows modifying document.domain with scripts (on Elig side).
+                /// https://developer.chrome.com/blog/document-domain-setter-deprecation/
+
+                var FromDenials = window.open(eligibilityURL, "FromDenials", "width=1050,height=750,scrollbars=1,resizable=1,menubar=0,toolbar=1,status=1");
+                $(denialEligibility).removeAttr("disabled");
+
+                FromDenials.addEventListener('message', (event) => {
+
+                    // Reject all messages except ones from eligibility.
+                    if (!event.origin.includes("eligibility.zirmed.com")) return;
+
+                    // Filter success messages. Eligibility will return the TokenID which is an integer.
+                    if (Number.isInteger(event.data)) {
+                        elgCallback(event.data);
+                    }
+                });
+
+            }
+
+            setTimeout(function () {
+                $("#loadingouter").hide();
+            }, 250);
+
+            // use timeout below to test callback function...
+
+            //setTimeout(function () {
+            //    elgCallback(tokenID);
+            //}, 5000);
+        }
+    });
+
+    return false;
+}
+
+function elgCallback(tokenID)
+{
+    var elgPending = $(".tagRow[data-tokenid=" + tokenID + "] .elg-pending");
+    elgPending.removeClass("hide-content");
+}
+
+
+/*************************
+     GRID COLUMN LINKS
+**************************/
+
+// APPROVE CLOSE MODAL //
+function onApproveCloseDenialLinkClick() {
+    $("#hdnApproveCloseDenialId").val($(rowLastHovered).attr('data-denialId'));
+    $("#notes_txtApproveCloseNewNote").watermark("Begin typing your note here...");
+    if ($(rowLastHovered).attr('data-stage') == "Pending Approval") {
+        $("#approveCloseModal").dialog({
+            title: "Approve Close Denial",
+            modal: true,
+            draggable: true,
+            resizable: false,
+            width: 420,
+            close: function () {
+                $('#notes_txtApproveCloseNewNote').val("");
+            },
+            open: function () {
+                $("#btnApproveClose").off('click').on("click", function () {
+                    ApproveCloseDenial($(this));
+                });
+                $("#cancelApproveClose").off('click').on("click", function () {
+                    $('#approveCloseModal').dialog('close');
+                });
+            }
+        });
+        return false;
+    } else {
+        alert("This denial is not in a Pending Approve stage.");
+    }
+}
+
+function ApproveCloseDenial(btn) {
+    btn.attr('disabled', 'disabled');
+
+    var denialId = $("#hdnApproveCloseDenialId").val();
+    var notes = $("#notes_txtApproveCloseNewNote").val();
+    var hintText = $('#notes_txtApproveCloseNewNote').attr('data-hinttext');
+    notes = $.trim(notes);
+    if (hintText == notes) {
+        notes = "";
+    }
+
+    var data = {
+        'denialId': denialId,
+        'approveCloseText': notes
+    };
+
+    $.ajax({
+        type: "POST",
+        url: ApproveCloseURL,
+        data: data,
+        cache: false,
+        traditional: false,
+        success: function (data) {
+            btn.removeAttr('disabled');
+            $("#notes_txtApproveCloseNewNote").val("");
+            $('#approveCloseModal').dialog('close');
+            if ($(isNewWorkcenter).val() == "True") {
+                reloadWorkcenterGrid();
+            }
+            else {
+                refreshGrid();
+            }
+        }
+    });
+}
+
+// ADD ACTIVITY MODAL //
+function onAddActivtyBtnClick() {
+    $("#hdnAddNewActivityDenialId").val($(rowLastHovered).attr('data-denialid'));
+    $('#hdnAddNewActivityDenialInstanceId').val($(rowLastHovered).attr('data-instanceid'));
+    $("#inputAddActivityReminderDate").val($(rowLastHovered).attr('data-reminderdate'));
+    $("#hdnAddActivityOrigReminderDate").val($(rowLastHovered).attr('data-origreminderdate'));
+    $("#hdnAddNewActivityCustId").val($(rowLastHovered).attr('data-custid'));
+
+
+    var stage = $(rowLastHovered).attr('data-stage');
+    $("#currentStageName").text(stage);
+
+    if (stage == 'Resubmitted') { $("#ResubmittedDiv").hide(); }
+    if (stage == 'Internal Hold') { $("#InternalHoldDiv").hide(); }
+    if (stage == 'Awaiting Payer') { $("#AwaitingPayerDiv").hide(); }
+    if (stage == 'In Appeal') { $("#InAppealDiv").hide(); }
+
+    $("#addActivityModal").dialog({
+        title: "Take Action",
+        modal: true,
+        draggable: false,
+        resizable: false,
+        width: 450,
+        close: function () {
+                $("#addActivityNoteText").removeAttr("style");
+                $("#addActivityNoteText").val('');
+                $(".additionalActivity").html("None");
+                $("#activityType").html(" Change Status ");
+                $("#editActivityReminder").val($("#ReminderDate").val());
+                $("#activityTypeHdn").val("New");
+                clearDDs();
+        },
+        open: function () {
+            bindOnClicks();
+            var denialid = $(rowLastHovered).attr('data-denialid');
+            var custid = $(rowLastHovered).attr('data-custid');
+            var workgroupid = $(rowLastHovered).attr('data-workgroupid');
+            hideCurrentWorkgroup(+workgroupid);
+            var denialinstanceid = $(rowLastHovered).attr('data-instanceid');
+                $("#activityDenialID").val($(rowLastHovered).attr('data-denialid'));
+                $("#activityInstanceID").val($(rowLastHovered).attr('data-instanceid'));
+                $("#editActivityReminder").datepicker('setDate', $(rowLastHovered).attr('data-reminderdate')).removeClass("hintText");
+                $("#applyNewActivity").off().on('click', function ()
+                {
+                    toggleActivityModalError(false);
+                    var isErrored = ValidateClosingType();
+                    if (!isErrored && ValidateReminderDate(false))
+					{
+						var result = SaveNewActivity();
+						if (result == true) {
+						    $("#addActivityModal").dialog('close');
+						    reloadGridsForActivity();
+						}
+						else {
+							$("#addActivityModal").dialog('close');
+						}
+					}
+                });           
+        }
+    });
+    return false;
+}
+
+function reloadGridsForActivity() {
+    if ($(isNewWorkcenter).val() == "True") {
+        reloadWorkcenterGrid();
+    } else {
+        refreshGrid();
+    }
+}
+
+//goes to old add activity controller method 
+//can be removed at a later stage when old review screen is removed
+function AddActionBarNewActivity(btn) {
+    btn.attr('disabled', 'disabled');
+    $("#notes_txtAddActivityNewNote").removeClass("required");
+
+    var denialId = $('#hdnAddNewActivityDenialId').val();
+    var denialInstanceId = $('#hdnAddNewActivityDenialInstanceId').val();
+    var notes = $("#notes_txtAddActivityNewNote").val();
+    var reminder = $("#inputAddActivityReminderDate").val();
+    var stage = $('input[name="assignStage"]:radio:checked').val();
+    var origReminder = $("#hdnAddActivityOrigReminderDate").val();
+    var custId = $("#hdnAddNewActivityCustId").val();
+
+    if (denialId > 0 && notes.length > 0) {
+        var data = {
+            'denialId': denialId,
+            'denialInstanceId': denialInstanceId,
+            'custId': custId,
+            'stage': stage,
+            'reminder': reminder,
+            'origReminder': origReminder,
+            'notes': notes        
+        };
+
+        $.ajax({
+            url: NewActivityURL,
+            data: data,
+            type: "POST",
+            cache: false,
+            traditional: false,
+            success: function (data) {
+                btn.removeAttr('disabled');
+                $('#addActivityModal').dialog('close');
+                $("#ReminderDate").val($("#editActivityReminder").val());
+                if ($(isNewWorkcenter).val() == "True") {
+                    reloadWorkcenterGrid();
+                }
+                else {
+                    refreshGrid();
+                }
+            },
+            error: function (jqXHR, textStatus, errorThrown) {
+                handleAjaxError(jqXHR, textStatus, errorThrown);
+            }
+        });
+    } else {
+        btn.removeAttr('disabled');
+
+        if (notes.length == 0) {
+            $("#notes_txtAddActivityNewNote").addClass("required");
+        }
+    }
+}
+
+function getDocumentDomain(excludeDot) {
+    var host = document.domain;
+    var lastDot = host.lastIndexOf('.');
+    if (lastDot > -1) {
+        var secondToLastDot = host.substring(0, lastDot).lastIndexOf('.');
+        if (secondToLastDot > -1) {
+            return excludeDot ? host.substring(secondToLastDot + 1) : host.substring(secondToLastDot);
+        }
+    }
+    return host;
+}

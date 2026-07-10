@@ -1,0 +1,53 @@
+URL: https://denials.zirmed.com/Scripts/denials-modal-denialunderuseraction.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+function onShowDenialUnderActionModal(func, fullName) {
+    $("#denialUnderActionModal").dialog({
+        title: "",
+        modal: true,
+        draggable: true,
+        resizable: false,
+        width: 450,
+        close: function () {
+            func = null;
+        },
+        open: function () {
+            bindUnderActionModal();
+
+            var denialUnderActionModalText = document.getElementById('denialUnderActionModalText');
+            denialUnderActionModalText.textContent = 'Currently Open by: ' + fullName;
+
+            $("#btnContinueUserUnderAction").on('click', function () {
+                func();
+            });
+        }
+    });
+};
+
+function bindUnderActionModal() {
+    $("#cancelDenialUnderActionModal").on('click', function () {
+        $('#denialUnderActionModal').dialog('close');
+    });
+};
+
+function onCheckDenialUnderUserAction(denialId, func) {
+    var data = { 'denialId': denialId };
+
+    $.ajax({
+        type: "POST",
+        url: CheckDenialUnderUserActionURL,
+        data: data,
+        cache: false,
+        traditional: false,
+        success: function (data) {
+            if (data && data.fullName) {
+                onShowDenialUnderActionModal(func, data.fullName);
+            } else {
+                func();
+            }
+        }
+    });
+};

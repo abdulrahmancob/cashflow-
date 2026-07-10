@@ -1,0 +1,548 @@
+URL: https://denials.zirmed.com/Content/denials-common.css
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: text/css
+POST: 
+================================================================================
+/*Claim Details and Quick Links*/
+.claimDetailsContainer {    
+    min-height: 215px;
+    background-color:#f3f3f3;
+    border: 1px solid #c5c5c5;
+    border-radius: 5px;
+    color: #555;
+    font-family: Arial;
+    font-size: 12px;
+    text-align:left;
+    padding:15px;
+}
+
+.claimDetailsContainer h3 {
+    text-align:left; 
+    padding: 0;  
+    margin: 0 0 15px 0;   
+}
+
+.claimDetailsContainer table {
+    margin:0 -5px;
+}
+
+.claimDetailsContainer td {    
+    text-align: left;  
+    padding-left: 10px;
+    vertical-align: top;
+    padding-bottom:10px;
+    font-size: 12px;
+}
+
+.claimDetailsContainer td:last-child {    
+    padding-bottom:0px;
+}
+
+.claimDetailsContainer td.label {    
+    font-size: 11px;
+    font-weight: bold;
+    text-align: right;
+    padding-left: 0px; 
+    width: 81px;   
+}
+
+.quickLinksContainer {
+    text-align:left;
+    background-color:#f3f3f3;
+    border: 1px solid #c5c5c5;
+    border-radius: 5px;
+    margin-top: 20px;
+    padding:15px;
+}
+
+.quickLinksContainer h3 {
+    text-align:left;
+    padding: 0; 
+    margin: 0 0 15px 0;
+}
+
+.quickLinksContainer .links{
+    height:68px; 
+    margin: 0 -15px -15px -15px;     
+}
+
+.quickLinksContainer .links .whiteContainer{
+     background-color: #fff;
+     width: 63px;
+     height: 67px;
+     margin-bottom:1px;
+     margin-left: 4px;
+     float:left;
+     text-align: center;
+}
+
+.quickLinksContainer .links .whiteContainer:first-child{
+     border-bottom-left-radius:5px; 
+     margin-left: 1px;
+}
+
+.quickLinksContainer .links .whiteContainer:last-child{
+    border-bottom-right-radius:5px; 
+}
+
+.quickLinksContainer .links .whiteContainer img {
+    margin: 12px 0 3px 0;
+}
+
+img.sprite-claim {
+    background: url('../Content/Images/original-claim-icon.png') no-repeat top left;
+    background-position: 0 0;
+    height: 16px;
+    width: 16px;
+    vertical-align: middle;
+}
+/*END Claim Details and Quick Links*/
+
+
+/* ACTION BAR AND MODALS */
+.modalDiv div.lFloat {
+    margin-bottom: 10px;
+}
+
+.subLabelRight{
+    text-align:right;
+    padding-right:20px;
+    font-weight: bold;
+}
+#reminderDateModal .subLabelRight{
+    width:100px;
+}
+
+#reminderDateModal div.datePicker{
+    text-align: left;
+}
+
+#reassignModal .subLabelRight{
+    width:80px;    
+}
+#reprocessRequestedModal .subLabelRight{
+    width:40px;    
+}
+
+.modalDiv textarea.NewNote {
+    width: 250px;
+    height: 50px;
+    padding: 5px;
+    font-family: Arial;
+    font-size: 12px;
+
+}
+
+.modalBtnContainer{
+    padding-bottom: 10px;
+}
+
+#reprocessRequestedModal textarea.NewNote {
+    width: 300px;
+    height: 40px;
+}
+
+#approveCloseModal textarea.NewNote {
+    width: 300px;
+    height: 40px;
+}
+
+.modalDiv .selectContainer {
+    width: 197px;
+}
+
+.modalDiv .selectContainer select {
+    width: 100%;
+}
+
+.viewClaim .dropshadow {
+    margin: 0;
+    width: 830px;
+}
+
+.viewClaim #codeList {
+    width: 800px;
+}
+
+/* NOTES MODAL */
+#notesModal {
+   text-align: left;
+}
+
+#notesModal textarea.NewNote {
+    resize: none;
+    width: 390px;
+    height: 40px;
+}
+
+.AddNote {
+    float: none;
+}
+
+.dropshadow {
+    text-align:center;
+    margin: 2px -1em 5px -1em;
+    border-top: 1px solid #eaeaea;
+}
+
+.dropshadow img{
+    vertical-align: top;
+}
+
+
+#NotesHistory {
+    max-height: 400px;
+    overflow: auto;    
+    padding-top: 10px;
+    margin-right: -11px;
+}
+
+#NotesHistory .oneNote {
+    margin-bottom: 15px;
+    border-radius: 5px;
+    background-color: #eaeaea;
+    border: 1px solid #eaeaea;
+    font-family : Arial;
+    font-size: 12px;
+    color: #555555; 
+    width: 378px;
+}
+
+    .noteflag {
+        float:right;
+        margin-right: -8px;
+        margin-top: -8px;
+        width: 140px;
+        height: 18px;
+        z-index: 99;
+        border: none;
+    }
+
+    .oneNote .noteHeader {
+        padding: 10px 10px;
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+    }
+    #NotesHistory .oneNote .noteHeader {
+        width: 358px;
+    }
+
+    .oneNote .noteHeader .noteicon {
+        padding-right: 7px;        
+        vertical-align: middle;
+    }
+
+    .oneNote .noteHeader .noteicon img{         
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;     
+    }
+
+    .oneNote .noteHeader .lFloat{
+        margin-bottom: 0px;
+    }
+
+    .oneNote .noteHeader .notedate{         
+        font-size: 10px;
+        font-family: arial;
+        color: #555;
+        text-transform: uppercase;        
+    }
+    .oneNote .noteHeader .noteauthor{         
+        font-size: 14px;
+        font-weight: bold;
+        font-family: arial;
+        color: #555;        
+    }
+
+    .oneNote .noteBody {
+        padding: 10px;
+        background: #fff;
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
+    }
+
+    .oneNote .noteBody span{
+        white-space: pre-line;
+    }
+
+ #NotesHistory .oneNote .noteBody {
+        width: 358px;
+    }
+
+
+
+/****/
+.adjCode {
+    float: left;
+    padding: 4px 5px;
+    border-radius: 5px;
+    border-color: #d7f3ff;
+    background-color: #e6f8ff;
+    color: #0082b4;
+    margin-right: 5px;
+    text-align: center;
+}
+
+.toolTipContainer {
+    max-width: 250px;
+    color: #000;
+    margin-top:-15px;
+}
+
+.toolTipInner {
+    min-height: 15px;
+}
+.toolTipContainer .arrowImg {
+    position: relative; 
+    top: -1px;
+    padding: 0;
+}
+
+.toolTipContainer .label{
+    font-weight:bold;
+}
+
+
+div#notificationWrapper
+{
+    width: 700px;
+    height: 50px;
+    margin-bottom: 12px;
+    font-family: Arial;
+    font-size: 12px;
+    color: #555;
+}
+
+div#notificationWrapper div#savedMessage
+{    
+    background-color: #E9FFD8;
+    border: solid 1px #c5e7aa;
+}
+
+div#notificationWrapper div#errorMessage
+{    
+    background-color: #ffdede;
+    border: solid 1px #e8c5c5;
+}
+
+div#notificationWrapper div#savedMessage img
+{
+    margin-right: 8px;
+}
+
+/*View Claim*/
+#viewClaimModal{
+    text-align: left;
+    margin-top: 0px;
+    padding: 0px;
+}
+
+#viewClaimModal .dropshadow{
+    margin: 0px;
+}
+#codeList {
+    background-color: #ffebeb;
+    padding: 15px;
+}
+
+#displayClaim{
+    padding: 15px;
+}
+
+#codeList span.denialCodeHeader{
+    font-family: Merriweather Sans, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    color: #cf0000;
+}
+
+#codeList div#codeRows {
+    width: 770px;
+    padding-top: 15px;
+}
+
+#codeList div#codeRows div.row{
+    background-color: #ff5b5b;    
+    border: 1px solid #ffbcbc;
+    margin-bottom: 15px;
+}
+
+#codeList div#codeRows div.row div.codeleft {
+    width: 60px;
+    background-color: #ff5b5b;
+    font-family: arial;
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+    padding: 10px;
+    vertical-align: top;
+    float:left;
+    overflow:hidden;
+    overflow-wrap: break-word;
+}
+
+#codeList div#codeRows div.row div.coderight{
+    font-family: arial;
+    font-size: 12px;
+    font-weight: normal;
+    color: #cf0000;
+    padding:10px;
+    float:right;
+    width: 660px;
+    vertical-align: top;
+    background-color: #fff;
+    min-height: 40px;
+}
+
+/*End View Claim*/
+
+/*Add Activity*/
+#addActivityModal div.subLabelRight {
+  width: 135px;
+}
+#addActivityModal div.datePicker {
+  text-align: left;
+}
+#addActivityModal div.radio {
+  text-align: left;
+}
+#addActivityModal div.modalBtnContainer{
+    margin-top: 15px;
+}
+
+#addActivityModal textarea.required
+{
+    border-color: #cf0000;
+    background-color : #ffeeee;
+}
+/*End Add Activity*/
+
+.unlinked {
+    font:Arial;
+    font-size: 12px;
+    font-weight: bold;
+    color: #f27b35;
+}
+
+/*Appeal Payer Modal*/
+#appealPayerModalContent{
+    text-align:left;
+    padding:10px;
+}
+#appealPayerModalContent .heading{
+    font-size:12px;
+    margin-bottom:15px;
+}
+#appealPayerModalContent .payerBox{
+    min-height:30px;
+    border:1px solid #c6c6c6;
+    border-radius:5px;
+    padding:10px;
+    margin-top:10px;
+}
+#appealPayerModalContent .payerBox div span.payerName{
+    font-size:14px;
+    font-weight:bold;
+    color:#787d87;
+    max-width:355px;
+    display:inline-block;
+}
+
+#appealPayerModalContent .payerBox div span.denialCount{
+    font-size:13px;
+    color:#787d87;
+    max-width:355px;
+    display:inline-block;
+    margin-top:5px;
+}
+#appealPayerModalContent .lFloat{
+    margin-bottom:0;
+}
+.icon-warning{
+    color:#d42b30;
+    font-weight:bold;
+}
+#denialLimitWarningText{
+    font-style:italic;
+}
+#appealLimitModal span{
+    font-size:13px;
+}
+
+/*End Appeal Payer Modal*/
+
+/* Eligibility Icons and Tooltips */
+
+.elg-tooltip
+{
+    max-width: 200px;
+    background: #444444;
+    border-radius: 5px;
+    font-family: Arial;
+    font-size: 13px;
+    color: #ffffff;
+    box-shadow: rgba(0,0,0,5) 1px 1px;
+    padding: 10px;
+    display: block;
+    border: none;
+}
+
+.elg-pending
+{
+    cursor: pointer;
+}
+
+.elg-inquiry
+{
+    cursor: pointer;
+}
+
+.hide-content
+{
+    display: none;
+}
+
+/* End Eligibility Icons and Tooltips */
+
+/*   Loading Panel    */
+
+.loadingPanel {
+  display: none;
+  float: left;  
+  z-index: 2000;
+  position: absolute;
+  background-color: white;
+}
+.loadingPanel img {
+  margin-top: 2px;
+  float: left;
+}
+.loadingPanel div {
+  float: left;
+  margin-left: 5px;
+  margin-top: 5px;
+}
+
+.gridCell.podsNoScore {
+    font-size: 12px;
+    color: #999999;
+}
+
+.gridCell.podsBottomTier {
+    font-size: 12px;
+    color: #555555;
+}
+
+.gridCell.podsMidTier {
+    font-size: 12px;
+    color: #E69900;
+    font-weight: bold;
+}
+
+.gridCell.podsTopTier {
+    font-size: 12px;
+    color: #31B812;
+    font-weight: bold;
+}

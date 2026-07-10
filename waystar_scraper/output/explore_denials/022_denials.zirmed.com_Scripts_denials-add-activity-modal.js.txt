@@ -1,0 +1,263 @@
+URL: https://denials.zirmed.com/Scripts/denials-add-activity-modal.js
+METHOD: GET
+STATUS: 200
+CONTENT-TYPE: application/javascript
+POST: 
+================================================================================
+var lastReminderDateInput = "";
+
+function bindOnClicks() {
+    $('#addActivityModal .multiSelectDropDown').unbind('click').off('mouseenter');
+
+    $('#activityTypeDropDown').on('click', function () {
+        if ($('.activityTypeDropMenu').is(':visible')) {
+            hideMenu($(this));
+        }
+        else {
+            showMenu($(this));
+        }
+    });
+
+    $('.additionalActivityDropDown').on('click', function () {
+        if ($('.additionalActivityDropMenu').is(':visible')) {
+            hideMenu($(this));
+        }
+        else {
+            showMenu($(this));
+        }
+    });
+
+    $("#cancelModal").on('click', function () {
+        $('#addActivityModal').dialog('close');
+    });
+
+    $("#editActivityReminder").datepicker().on('change', function () {
+        lastReminderDateInput = $("#editActivityReminder").val();
+        ValidateReminderDate(true);
+    }
+    );
+
+    $("#editActivityReminder").on('input', function () {
+        //This is a workaround to the datepicker clearing the field when invalid data is input, and not being able to bind to the select event after datepicker is already rendered
+        lastReminderDateInput = $("#editActivityReminder").val();
+    });
+
+    $("#editActivityReminder").on('blur', function () {
+        setTimeout(ValidateReminderDate(true), 1);
+    });
+}
+
+function activityTypeSelect(type, enumVal) {
+    var denialStatusReasons = $("#denialStatusReasonsHdn");
+    $("#activityType").html(type);
+    $("#activityTypeHdn").val(enumVal);
+    clearDDs();
+
+    if (type == 'Resubmitted') {
+        $(".additionalActivity").html("Close Denial");
+        $('.additional1').hide();
+        $('.additional2').show();
+        $("#closeTypeSelectList").css('display', 'inline-block');
+        $(".closeTypeSelect").val("NoType");
+    }
+    else {
+        if (enumVal == 'InternalHold' && $("#internalHoldReasonsCountHdn").val() != "0") {
+            $("#reasonSelectListInternalHold").css('display', 'inline-block');
+        } else if (enumVal == 'AwaitingPayer' && $("#awaitingPayerReasonsCountHdn").val() != "0") {
+            $("#reasonSelectListAwaitingPayer").css('display', 'inline-block');
+        }
+        $(".additionalActivity").html("None");
+        $('.additional1').show();
+        $('.additional2').hide();
+    }
+}
+
+function additionalActivitySelect(type) {
+    $(".additionalActivity").html(type);
+    clearDDs();
+    if (type == "Reassign") {
+
+        $("#workgroupSelectList").css('display', 'inline-block');
+    } else if (type == "Close Denial") {
+        $("#closeTypeSelectList").css('display', 'inline-block');
+    } else {
+        $(".workgroupSelect").val("0");
+        $(".closeTypeSelect").val("NoType");
+    }
+}
+
+function clearDDs() {
+    $("#workgroupSelectList").hide();
+    $("#closeTypeSelectList").hide();
+    $(".workgroupSelect").val("0");
+    $(".closeTypeSelect").val("NoType");
+    ActivityReminderDateError(false);
+
+    $("#reasonSelectListInternalHold").hide();
+    $("#reasonSelectListAwaitingPayer").hide();
+    $("#reasonSelectListInternalHold .reasonSelect").val("0");
+    $("#reasonSelectListAwaitingPayer .reasonSelect").val("0");
+}
+
+function ShowAddActivityModal(denialID, instanceID) {
+    $("#addActivityModal").dialog({
+        title: "Take Action",
+        modal: true,
+        draggable: true,
+        resizable: false,
+        width: 450,
+        close: function () {
+            $("#addActivityNoteText").removeAttr("style");
+            $("#addActivityNoteText").val('');
+            $(".additionalActivity").html("None");
+            $("#activityType").html(" Change Status ");
+            $("#editActivityReminder").val($("#ReminderDate").val());
+            clearDDs();
+        },
+        open: function () {
+            bindOnClicks();
+            $("#activityDenialID").val(denialID);
+            $("#activityInstanceID").val(instanceID);
+            $("#applyNewActivity").on('click', function () {
+                toggleActivityModalError(false);
+                var isErrored = ValidateClosingType();
+                if (!isErrored && ValidateReminderDate(false)) {
+                    var result = SaveNewActivity();
+                    if (result == true) {
+                        $("#addActivityModal").dialog('close');
+                        location.reload();
+                    }
+                    else {
+                        $("#addActivityModal").dialog('close');
+                    }
+                }
+            });
+            var workgroupId = $('#reassignBtn').data('workgroupid');
+            hideCurrentWorkgroup(workgroupId);
+            $("#reasonSelectListInternalHold").hide();
+            $("#reasonSelectListAwaitingPayer").hide();
+        }
+    });
+}
+
+function ValidateClosingType() {
+    $("#addActivityError").html("");
+    if ($(".additionalActivity").html() == "Close Denial" && $(".closeTypeSelect").val() == "NoType") {
+        toggleActivityModalError(true, "Please select a Close Type");
+        return true;
+    }
+    return false;
+}
+
+function ValidateReminderDate(useAsync) {
+    var success = false;
+    var hinttext = $("#editActivityReminder").attr("data-hinttext");
+    var date = $("#editActivityReminder").val();
+
+    if (date === hinttext) {
+        //This is a workaround to the datepicker clearing the field when invalid data is input, 
+        //and not being able to bind to the select event after datepicker is already rendered
+        date = lastReminderDateInput;
+    }
+
+    var data = {
+        'date': date
+    }
+
+    if (date.length > 1) {
+        $.ajax({
+            type: "POST",
+            url: CheckActivityDateURL,
+            data: data,
+            cache: false,
+            traditional: false,
+            async: useAsync,
+            success: function (result) {
+                if (result == "False") {
+                    ActivityReminderDateError(true);
+                    success = false;
+                }
+                else {
+                    ActivityReminderDateError(false);
+                    success = true;
+                }
+            }
+        });
+    } else {
+        ActivityReminderDateError(false);
+        success = true;
+    }
+
+    return success;
+}
+
+function SaveNewActivity() {
+    var success = false;
+    var stage = $("#activityTypeHdn").val();
+    var denialStatusReason = null;
+
+    if (stage == 'AwaitingPayer' && $("#awaitingPayerReasonsCountHdn").val() != "0") {
+        denialStatusReason = $("#reasonSelectListAwaitingPayer .reasonSelect").val();
+    }
+    else if (stage == 'InternalHold' && $("#internalHoldReasonsCountHdn").val() != "0") {
+        denialStatusReason = $("#reasonSelectListInternalHold .reasonSelect").val();
+    }
+
+    var data = {
+        'denialID': $("#activityDenialID").val(),
+        'denialInstanceID': $("#activityInstanceID").val(),
+        'stage': stage,
+        'workgroupID': $(".workgroupSelect").val(),
+        'adjustmentCloseType': $(".closeTypeSelect").val(),
+        'note': $("#addActivityNoteText").val(),
+        'reminder': $("#editActivityReminder").val(),
+        'denialStatusReasonId': denialStatusReason
+    }
+
+    $.ajax({
+        type: "POST",
+        url: SaveActivityURL,
+        data: data,
+        cache: false,
+        traditional: false,
+        async: false,
+        success: function () {
+            success = true;
+        }
+    });
+    return success;
+}
+
+function ActivityReminderDateError(show) {
+    lastReminderDateInput = $("#editActivityReminder").val();
+    if (show) {
+        $("#editActivityReminder").addClass("error");
+        $("#applyNewActivity").prop('disabled', true);
+        toggleActivityModalError(show, "Please enter a valid date.");
+    }
+    else {
+        $("#editActivityReminder").removeClass("error");
+        $("#applyNewActivity").prop('disabled', false);
+        toggleActivityModalError(show);
+    }
+}
+
+function toggleActivityModalError(show, errorText) {
+    var $errorDiv = $("#addActivityError");
+    if (show) {
+        $errorDiv.append(document.createTextNode(errorText));
+        $errorDiv.show();
+    }
+    else {
+        $errorDiv.html("");
+        $errorDiv.hide();
+    }
+}
+
+function hideCurrentWorkgroup(workgroupId) {
+    $('.workgroupSelectItem').removeAttr('disabled').show();
+
+    var currentWorkgroup = $('.workgroupSelectItem[value="' + workgroupId + '"]');
+    currentWorkgroup.attr('disabled', 'disabled').hide();
+    currentWorkgroup.removeAttr("selected");
+}

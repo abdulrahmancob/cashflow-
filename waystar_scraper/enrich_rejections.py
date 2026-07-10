@@ -28,13 +28,11 @@ from auth import (
     save_storage_state,
 )
 from config import WaystarConfig
-from human import HumanSettings
+from human import HumanSettings, human_pause, maybe_idle_action, should_extend_session
 from logging_config import get_logger, setup_logging
 from rejection_details import MESSAGE_SEPARATOR, fetch_rejection_details
 
 log = get_logger("enrich")
-
-EXTEND_SESSION_EVERY = 10
 
 NEW_COLUMNS = [
     "rejection_count",
@@ -116,46 +114,62 @@ async def enrich(args: argparse.Namespace) -> None:
 
     config = WaystarConfig.from_env(headless=not args.headed)
     human = HumanSettings(
-        action_delay_min=config.action_delay_min,
-        action_delay_max=config.action_delay_max,
+        action_delay_min=args.human_delay_min if args.human_delay_min is not None else config.action_delay_min,
+        action_delay_max=args.human_delay_max if args.human_delay_max is not None else config.action_delay_max,
     )
 
     fetched = 0
     errors = 0
     async with async_playwright() as playwright:
-        browser, context = await create_context(playwright, config, reuse_session=True)
+        browser, context = await create_context(
+            playwright, config, reuse_session=not args.fresh_login
+        )
         try:
             page = await ensure_authenticated(context, config, human)
 
             for index, row in enumerate(rejected, start=1):
                 claim_id = row["claim_id"]
                 if index > 1 and args.delay > 0:
-                    await asyncio.sleep(args.delay)
-                if index % EXTEND_SESSION_EVERY == 0:
+                    await human_pause(human, args.delay)
+                if should_extend_session(human, base_every=10):
                     await extend_session(page)
 
                 try:
-                    details = await fetch_rejection_details(page, claim_id)
-                except Exception as exc:  # keep going on per-claim failures
-                    details = {"error": str(exc).split("\n", maxsplit=1)[0],
-                               "messages": [], "rejection_count": 0,
-                               "original_message": "", "found_grid": False}
+                    details = await fetch_rejection_details(page, claim_id, human=human)
+                except Exception as exc:
+                    details = {
+                        "error": str(exc).split("\n", maxsplit=1)[0],
+                        "messages": [],
+                        "rejection_count": 0,
+                        "original_message": "",
+                        "found_grid": False,
+                    }
 
                 if details.get("error"):
                     errors += 1
-                    log.warning("[%s/%s] claim %s: %s",
-                                index, len(rejected), claim_id, details["error"])
+                    log.warning(
+                        "[%s/%s] claim %s: %s",
+                        index,
+                        len(rejected),
+                        claim_id,
+                        details["error"],
+                    )
                     if "session expired" in (details.get("error") or ""):
                         log.error("Session expired mid-run — stopping. Re-run to resume.")
                         break
                 else:
                     fetched += 1
-                    log.info("[%s/%s] claim %s: %s message(s)",
-                             index, len(rejected), claim_id,
-                             details.get("rejection_count", 0))
+                    log.info(
+                        "[%s/%s] claim %s: %s message(s)",
+                        index,
+                        len(rejected),
+                        claim_id,
+                        details.get("rejection_count", 0),
+                    )
 
                 writer.writerow({**row, **details_to_columns(details)})
                 out_handle.flush()
+                await maybe_idle_action(page, human)
 
             await save_storage_state(context)
         finally:
@@ -172,9 +186,12 @@ def main() -> None:
     )
     parser.add_argument("input", help="Path to exported claims CSV (e.g. claims_rejected_merged.csv)")
     parser.add_argument("--output", default=None, help="Output CSV path (default: <input>_enriched.csv)")
-    parser.add_argument("--delay", type=float, default=1.5, help="Seconds between editor fetches (default: 1.5)")
+    parser.add_argument("--delay", type=float, default=2.5, help="Base seconds between editor fetches (with jitter)")
     parser.add_argument("--limit", type=int, default=None, help="Only fetch first N rejected claims (for testing)")
     parser.add_argument("--headed", action="store_true", help="Run browser in headed mode")
+    parser.add_argument("--fresh-login", action="store_true", help="Ignore saved session and force new login")
+    parser.add_argument("--human-delay-min", type=float, default=None)
+    parser.add_argument("--human-delay-max", type=float, default=None)
     parser.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING", "ERROR"], default="INFO")
     args = parser.parse_args()
 

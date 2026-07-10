@@ -12,7 +12,10 @@ from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
+from config import CLAIMS_LISTING_URL
+from human import HumanSettings, human_pause
 from logging_config import get_logger
+from network_retry import RateLimitError, retry_rate_limited
 
 log = get_logger("rejdetail")
 
@@ -114,23 +117,67 @@ def is_login_or_error_page(html: str) -> str | None:
     return None
 
 
-async def fetch_rejection_details(page, claim_id: str, *, timeout_sec: float = 60) -> dict[str, Any]:
-    """GET the editor page for one claim and parse its rejection details."""
+async def fetch_rejection_details(
+    page,
+    claim_id: str,
+    *,
+    timeout_sec: float = 60,
+    human: HumanSettings | None = None,
+) -> dict[str, Any]:
+    """Open the editor page for one claim and parse its rejection details."""
     url = editor_url(claim_id)
-    response = await page.request.get(
-        url,
-        headers={"Referer": "https://claims.zirmed.com/Claims/Listing/Index?appid=1"},
-        timeout=int(timeout_sec * 1000),
-    )
-    if not response.ok:
-        return {"error": f"HTTP {response.status}", "messages": [],
-                "rejection_count": 0, "original_message": "", "found_grid": False}
+    if human:
+        await human_pause(human, 0.5)
 
-    html = await response.text()
+    async def _goto():
+        response = await page.goto(
+            url,
+            wait_until="domcontentloaded",
+            timeout=int(timeout_sec * 1000),
+            referer=CLAIMS_LISTING_URL,
+        )
+        if response and response.status in {403, 429, 503}:
+            raise RateLimitError(response.status)
+        return response
+
+    try:
+        await retry_rate_limited(_goto, label=f"editor goto {claim_id}")
+        if human:
+            await human_pause(human, 0.4)
+        html = await page.content()
+    except Exception as exc:
+        log.debug("goto failed for claim %s (%s) — falling back to request.get", claim_id, exc)
+
+        async def _get():
+            response = await page.request.get(
+                url,
+                headers={"Referer": CLAIMS_LISTING_URL},
+                timeout=int(timeout_sec * 1000),
+            )
+            if response.status in {403, 429, 503}:
+                raise RateLimitError(response.status, (await response.text())[:300])
+            return response
+
+        response = await retry_rate_limited(_get, label=f"editor GET {claim_id}")
+        if not response.ok:
+            return {
+                "error": f"HTTP {response.status}",
+                "messages": [],
+                "rejection_count": 0,
+                "original_message": "",
+                "found_grid": False,
+            }
+        html = await response.text()
+
     error = is_login_or_error_page(html)
     if error:
-        return {"error": error, "messages": [],
-                "rejection_count": 0, "original_message": "", "found_grid": False}
+        return {
+            "error": error,
+            "messages": [],
+            "rejection_count": 0,
+            "original_message": "",
+            "found_grid": False,
+        }
 
     details = parse_rejection_details(html)
     details["error"] = None

@@ -16,6 +16,8 @@ from auth import (
     list_clinics,
     parse_patient_ext_doc_url,
     refresh_csrf,
+    restart_browser,
+    safe_close_context,
     save_storage_state,
     switch_clinic,
 )
@@ -46,6 +48,7 @@ from export_utils import (
     summarize_edoc_downloads,
     write_status_guide,
 )
+from http_utils import is_browser_connection_lost
 from logging_config import get_logger, setup_logging
 from patient_api import _patient_display_name, iter_all_patients
 from patient_chart_api import chart_to_dict, fetch_patient_chart
@@ -404,7 +407,7 @@ async def _run_with_browser(config: WebPTConfig, coro, *, fresh_login: bool = Fa
             return await coro(page, context, session, config)
         finally:
             await save_storage_state(context)
-            await context.browser.close()
+            await safe_close_context(context)
 
 
 async def cmd_login(config: WebPTConfig, *, fresh_login: bool = False) -> None:
@@ -571,7 +574,7 @@ async def cmd_download_current_page(
             await save_storage_state(context)
             return results
         finally:
-            await context.browser.close()
+            await safe_close_context(context)
 
 
 async def cmd_download_batch(
@@ -669,7 +672,7 @@ async def cmd_download_batch(
                     )
             await save_storage_state(context)
         finally:
-            await context.browser.close()
+            await safe_close_context(context)
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     manifest_path = _manifest_path(output_dir, f"batch_manifest_{ts}.csv")
@@ -775,7 +778,7 @@ async def cmd_download_facility(
 
             await save_storage_state(context)
         finally:
-            await context.browser.close()
+            await safe_close_context(context)
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     manifest_path = _manifest_path(
@@ -844,6 +847,36 @@ async def _maybe_refresh_session(
     return await refresh_csrf(context, page)
 
 
+async def _maybe_restart_browser(
+    playwright,
+    config: WebPTConfig,
+    *,
+    context,
+    page,
+    session,
+    clinic,
+    total_patients: int,
+    browser_restarts: int,
+) -> tuple[Any, Any, Any, int]:
+    every = config.browser_restart_every
+    if every <= 0 or total_patients <= 0 or total_patients % every != 0:
+        return context, page, session, browser_restarts
+    if browser_restarts >= config.browser_restart_max:
+        log.debug(
+            "Skipping proactive browser restart (max restarts %d reached)",
+            config.browser_restart_max,
+        )
+        return context, page, session, browser_restarts
+    context, page, session = await restart_browser(
+        playwright,
+        config,
+        old_context=context,
+        clinic=clinic,
+        reason=f"proactive restart after {total_patients} patients",
+    )
+    return context, page, session, browser_restarts + 1
+
+
 async def cmd_export_recent_appointments(
     config: WebPTConfig,
     *,
@@ -897,6 +930,7 @@ async def cmd_export_recent_appointments(
     async with async_playwright() as playwright:
         context = await create_context(playwright, config)
         page = await context.new_page()
+        browser_restarts = 0
         try:
             session = await ensure_authenticated(page, context, config)
             clinics = await list_clinics(page, config.company_id)
@@ -1006,97 +1040,174 @@ async def cmd_export_recent_appointments(
 
                     key = _patient_key(clinic.facility_id, patient.patient_id)
                     already_done = key in checkpoint["processed_patient_ids"]
+                    patient_done = False
 
-                    try:
-                        chart_fields: dict[str, str] = {}
-                        ocr_summary = empty_ocr_summary()
-                        chart_notes_summary = summarize_chart_notes_downloads(
-                            notes_count=0, results=None, processed=False
-                        )
-                        if not skip_chart:
-                            case_raw = patient.case_id
-                            if case_raw:
-                                chart = await fetch_patient_chart(
-                                    context,
-                                    patient_id=patient.patient_id,
-                                    case_id=case_raw,
-                                    page=page,
-                                    timeout_ms=int(config.chart_timeout_sec * 1000),
-                                )
-                                chart_fields = chart_to_dict(chart)
-
-                        if already_done and not ocr_only:
-                            manifest_rows = _load_edoc_manifest_rows(output_dir)
-                            edoc_summary = aggregate_edoc_summary_from_manifest(
-                                manifest_rows,
-                                patient_id=patient.patient_id,
-                                facility_id=clinic.facility_id,
+                    while not patient_done:
+                        try:
+                            chart_fields: dict[str, str] = {}
+                            ocr_summary = empty_ocr_summary()
+                            chart_notes_summary = summarize_chart_notes_downloads(
+                                notes_count=0, results=None, processed=False
                             )
-                            if edoc_summary["edoc_status"] == "pending":
-                                edoc_summary = summarize_edoc_downloads(
-                                    docs_count=0, results=None, processed=False
-                                )
-                            chart_notes_summary = aggregate_chart_notes_summary_from_manifest(
-                                manifest_rows,
-                                patient_id=patient.patient_id,
-                                facility_id=clinic.facility_id,
-                            )
-                            if not skip_ocr and config.ocr_enabled:
-                                patient_dir = edocs_dir / str(patient.patient_id)
-                                pdf_paths = collect_patient_pdf_paths(patient_dir)
-                                if pdf_paths:
-                                    ocr_summary = run_patient_ocr_validation(
-                                        pdf_paths,
-                                        expected_name=patient.patient_name,
-                                        expected_id=str(patient.patient_id),
-                                        expected_diagnosis=chart_fields.get("diagnosis", ""),
-                                        patient_dir=patient_dir,
-                                        dpi=config.ocr_dpi,
-                                        tesseract_cmd=config.tesseract_cmd or None,
+                            if not skip_chart:
+                                case_raw = patient.case_id
+                                if case_raw:
+                                    chart = await fetch_patient_chart(
+                                        context,
+                                        patient_id=patient.patient_id,
+                                        case_id=case_raw,
+                                        page=page,
+                                        timeout_ms=int(config.chart_timeout_sec * 1000),
                                     )
-                        else:
-                            edoc_rows, edoc_summary, chart_notes_summary, ocr_summary = (
-                                await _process_patient_edocs(
+                                    chart_fields = chart_to_dict(chart)
+
+                            if already_done and not ocr_only:
+                                manifest_rows = _load_edoc_manifest_rows(output_dir)
+                                edoc_summary = aggregate_edoc_summary_from_manifest(
+                                    manifest_rows,
+                                    patient_id=patient.patient_id,
+                                    facility_id=clinic.facility_id,
+                                )
+                                if edoc_summary["edoc_status"] == "pending":
+                                    edoc_summary = summarize_edoc_downloads(
+                                        docs_count=0, results=None, processed=False
+                                    )
+                                chart_notes_summary = aggregate_chart_notes_summary_from_manifest(
+                                    manifest_rows,
+                                    patient_id=patient.patient_id,
+                                    facility_id=clinic.facility_id,
+                                )
+                                if not skip_ocr and config.ocr_enabled:
+                                    patient_dir = edocs_dir / str(patient.patient_id)
+                                    pdf_paths = collect_patient_pdf_paths(patient_dir)
+                                    if pdf_paths:
+                                        ocr_summary = run_patient_ocr_validation(
+                                            pdf_paths,
+                                            expected_name=patient.patient_name,
+                                            expected_id=str(patient.patient_id),
+                                            expected_diagnosis=chart_fields.get("diagnosis", ""),
+                                            patient_dir=patient_dir,
+                                            dpi=config.ocr_dpi,
+                                            tesseract_cmd=config.tesseract_cmd or None,
+                                        )
+                            else:
+                                edoc_rows, edoc_summary, chart_notes_summary, ocr_summary = (
+                                    await _process_patient_edocs(
+                                        context,
+                                        clinic=clinic,
+                                        patient=patient,
+                                        config=config,
+                                        session=session,
+                                        edocs_dir=edocs_dir,
+                                        skip_existing=skip_existing,
+                                        skip_edocs=skip_edocs,
+                                        skip_chart_notes=skip_chart_notes,
+                                        chart_notes_only=chart_notes_only,
+                                        skip_ocr=skip_ocr,
+                                        ocr_only=ocr_only,
+                                        expected_diagnosis=chart_fields.get("diagnosis", ""),
+                                        page=page,
+                                    )
+                                )
+                                if edoc_rows:
+                                    edoc_manifest.extend(edoc_rows)
+                                if not already_done:
+                                    checkpoint["processed_patient_ids"].append(key)
+                                    total_patients += 1
+                                    patients_since_checkpoint += 1
+
+                                session = await _maybe_refresh_session(
+                                    page,
                                     context,
-                                    clinic=clinic,
+                                    session,
+                                    total_patients=total_patients,
+                                )
+                                context, page, session, browser_restarts = (
+                                    await _maybe_restart_browser(
+                                        playwright,
+                                        config,
+                                        context=context,
+                                        page=page,
+                                        session=session,
+                                        clinic=clinic,
+                                        total_patients=total_patients,
+                                        browser_restarts=browser_restarts,
+                                    )
+                                )
+
+                            if config.action_delay_sec > 0 and (
+                                not skip_chart or not skip_edocs or not skip_chart_notes
+                            ):
+                                await asyncio.sleep(config.action_delay_sec)
+
+                            if (
+                                not already_done
+                                and checkpoint_every > 0
+                                and patients_since_checkpoint >= checkpoint_every
+                            ):
+                                facility_rows_flushed = _flush_export_checkpoint(
+                                    checkpoint_path=checkpoint_path,
+                                    checkpoint=checkpoint,
+                                    edoc_manifest=edoc_manifest,
+                                    edocs_manifest_path=edocs_manifest_path,
+                                    patients_csv=patients_csv,
+                                    patients_export_csv=patients_export_csv,
+                                    facility_export_rows=facility_export_rows,
+                                    facility_rows_flushed=facility_rows_flushed,
+                                )
+                                log.info(
+                                    "Checkpoint saved (%d patients processed this run)",
+                                    total_patients,
+                                )
+                                patients_since_checkpoint = 0
+
+                            facility_export_rows.append(
+                                build_patient_export_row(
+                                    clinic_name=clinic.name,
                                     patient=patient,
-                                    config=config,
-                                    session=session,
-                                    edocs_dir=edocs_dir,
-                                    skip_existing=skip_existing,
-                                    skip_edocs=skip_edocs,
-                                    skip_chart_notes=skip_chart_notes,
-                                    chart_notes_only=chart_notes_only,
-                                    skip_ocr=skip_ocr,
-                                    ocr_only=ocr_only,
-                                    expected_diagnosis=chart_fields.get("diagnosis", ""),
-                                    page=page,
+                                    chart_fields=chart_fields,
+                                    edoc_summary=edoc_summary,
+                                    chart_notes_summary=chart_notes_summary,
+                                    ocr_summary=ocr_summary,
                                 )
                             )
-                            if edoc_rows:
-                                edoc_manifest.extend(edoc_rows)
-                            if not already_done:
-                                checkpoint["processed_patient_ids"].append(key)
-                                total_patients += 1
-                                patients_since_checkpoint += 1
-
-                            session = await _maybe_refresh_session(
-                                page,
-                                context,
-                                session,
-                                total_patients=total_patients,
+                            patient_done = True
+                        except Exception as exc:
+                            if (
+                                is_browser_connection_lost(exc)
+                                and browser_restarts < config.browser_restart_max
+                            ):
+                                log.warning(
+                                    "Browser driver lost on patient %s (%s) — restart %d/%d",
+                                    patient.patient_id,
+                                    key,
+                                    browser_restarts + 1,
+                                    config.browser_restart_max,
+                                )
+                                facility_rows_flushed = _flush_export_checkpoint(
+                                    checkpoint_path=checkpoint_path,
+                                    checkpoint=checkpoint,
+                                    edoc_manifest=edoc_manifest,
+                                    edocs_manifest_path=edocs_manifest_path,
+                                    patients_csv=patients_csv,
+                                    patients_export_csv=patients_export_csv,
+                                    facility_export_rows=facility_export_rows,
+                                    facility_rows_flushed=facility_rows_flushed,
+                                )
+                                context, page, session = await restart_browser(
+                                    playwright,
+                                    config,
+                                    old_context=context,
+                                    clinic=clinic,
+                                )
+                                browser_restarts += 1
+                                continue
+                            log.error(
+                                "Failed patient %s (%s): %s",
+                                patient.patient_id,
+                                key,
+                                exc,
                             )
-
-                        if config.action_delay_sec > 0 and (
-                            not skip_chart or not skip_edocs or not skip_chart_notes
-                        ):
-                            await asyncio.sleep(config.action_delay_sec)
-
-                        if (
-                            not already_done
-                            and checkpoint_every > 0
-                            and patients_since_checkpoint >= checkpoint_every
-                        ):
                             facility_rows_flushed = _flush_export_checkpoint(
                                 checkpoint_path=checkpoint_path,
                                 checkpoint=checkpoint,
@@ -1107,40 +1218,7 @@ async def cmd_export_recent_appointments(
                                 facility_export_rows=facility_export_rows,
                                 facility_rows_flushed=facility_rows_flushed,
                             )
-                            log.info(
-                                "Checkpoint saved (%d patients processed this run)",
-                                total_patients,
-                            )
-                            patients_since_checkpoint = 0
-
-                        facility_export_rows.append(
-                            build_patient_export_row(
-                                clinic_name=clinic.name,
-                                patient=patient,
-                                chart_fields=chart_fields,
-                                edoc_summary=edoc_summary,
-                                chart_notes_summary=chart_notes_summary,
-                                ocr_summary=ocr_summary,
-                            )
-                        )
-                    except Exception as exc:
-                        log.error(
-                            "Failed patient %s (%s): %s",
-                            patient.patient_id,
-                            key,
-                            exc,
-                        )
-                        facility_rows_flushed = _flush_export_checkpoint(
-                            checkpoint_path=checkpoint_path,
-                            checkpoint=checkpoint,
-                            edoc_manifest=edoc_manifest,
-                            edocs_manifest_path=edocs_manifest_path,
-                            patients_csv=patients_csv,
-                            patients_export_csv=patients_export_csv,
-                            facility_export_rows=facility_export_rows,
-                            facility_rows_flushed=facility_rows_flushed,
-                        )
-                        raise
+                            raise
 
                 if max_patients is not None and total_patients >= max_patients:
                     export_rows.extend(facility_export_rows)
@@ -1165,7 +1243,7 @@ async def cmd_export_recent_appointments(
 
             await save_storage_state(context)
         finally:
-            await context.browser.close()
+            await safe_close_context(context)
 
     _save_checkpoint(checkpoint_path, checkpoint)
 
@@ -1638,7 +1716,7 @@ async def cmd_enrich_patient_export(
 
             await save_storage_state(context)
         finally:
-            await context.browser.close()
+            await safe_close_context(context)
 
     _write_manifest_rows(out_path, enriched, PATIENT_EXPORT_FIELDNAMES)
     log.info("Wrote enriched export: %s (%d rows)", out_path, len(enriched))

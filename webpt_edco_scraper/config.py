@@ -41,6 +41,8 @@ DEFAULT_OCR_ENABLED = True
 DEFAULT_OCR_DPI = 200
 DEFAULT_PARALLEL_WORKERS = 8
 DEFAULT_MAX_CONCURRENT_PDFS = 12
+DEFAULT_BROWSER_RESTART_MAX = 3
+DEFAULT_BROWSER_RESTART_EVERY = 0
 
 
 def _float_env(name: str, default: float) -> float:
@@ -70,6 +72,8 @@ class WebPTConfig:
     tesseract_cmd: str = ""
     parallel_workers: int = DEFAULT_PARALLEL_WORKERS
     max_concurrent_pdfs: int = DEFAULT_MAX_CONCURRENT_PDFS
+    browser_restart_max: int = DEFAULT_BROWSER_RESTART_MAX
+    browser_restart_every: int = DEFAULT_BROWSER_RESTART_EVERY
 
     @classmethod
     def from_env(cls) -> "WebPTConfig":
@@ -102,5 +106,11 @@ class WebPTConfig:
             ),
             max_concurrent_pdfs=_int_env(
                 "WEBPT_MAX_CONCURRENT_PDFS", DEFAULT_MAX_CONCURRENT_PDFS
+            ),
+            browser_restart_max=_int_env(
+                "WEBPT_BROWSER_RESTART_MAX", DEFAULT_BROWSER_RESTART_MAX
+            ),
+            browser_restart_every=_int_env(
+                "WEBPT_BROWSER_RESTART_EVERY", DEFAULT_BROWSER_RESTART_EVERY
             ),
         )

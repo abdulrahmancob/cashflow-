@@ -1,0 +1,3 @@
+patient_id,daily_note_id,date_of_daily_note,patient_name,diagnosis_icd_codes,insurance_name,visit_no,note_file,modifier,cpt_code,billing_modifier_suffix,modifier_cpt,units,description
+999001,DN999001,2026-06-11,"Martinez, Alejandro",M54.2,Aetna Commercial,1,2026-06-11_DailyNote_DN999001.pdf,GP,97163,GP:97163,GP:97163,1,Eval
+999001,DN999002,2026-06-11,"Martinez, Alejandro",M54.2,Aetna Commercial,1,2026-06-11_DailyNote_DN999001.pdf,GP,97110,GP:97110,GP:97110,2,Therapeutic Exercise
