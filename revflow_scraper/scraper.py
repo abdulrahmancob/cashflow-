@@ -28,6 +28,12 @@ from config import OUTPUT_DIR, RevFlowConfig
 from export import export_eob_spreadsheet, selection_key
 from logging_config import get_logger, setup_logging
 from reports_api import ReportsClient, discover_eobs, load_selections, write_eob_catalog
+from verify import (
+    print_verify_summary,
+    verify_exports,
+    write_missing_selections,
+    write_verify_report,
+)
 
 log = get_logger("scraper")
 
@@ -391,6 +397,37 @@ async def cmd_export_all(
     )
 
 
+def cmd_verify_exports(
+    *,
+    output_dir: Path,
+    catalog_paths: list[Path],
+    manifest_path: Path | None = None,
+    write_missing: Path | None = None,
+) -> int:
+    for catalog_path in catalog_paths:
+        if not catalog_path.exists():
+            log.error("Catalog not found: %s", catalog_path)
+            return 1
+
+    report = verify_exports(
+        output_dir,
+        catalog_paths,
+        manifest_path=manifest_path,
+    )
+    report_path = write_verify_report(report, output_dir)
+    print_verify_summary(report)
+    log.info("Wrote verify report to %s", report_path)
+
+    if write_missing is not None:
+        count = write_missing_selections(report, write_missing)
+        log.info("Wrote %d selection(s) needing export to %s", count, write_missing)
+
+    summary = report["summary"]
+    if summary["missing"] or summary["collision_missing"]:
+        return 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     global_args = argparse.ArgumentParser(add_help=False)
     global_args.add_argument("--headless", action="store_true", help="Run browser headless")
@@ -457,6 +494,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Re-download even if file exists",
     )
 
+    verify_cmd = sub.add_parser(
+        "verify-exports",
+        parents=[global_args],
+        help="Verify exports against EOB catalog(s)",
+    )
+    verify_cmd.add_argument("--output", required=True, help="Output directory with exports/")
+    verify_cmd.add_argument(
+        "--catalog",
+        action="append",
+        required=True,
+        help="Path to eob_catalog.json (repeat for multiple catalogs)",
+    )
+    verify_cmd.add_argument(
+        "--manifest",
+        default=None,
+        help="Optional manifest.json to check for export errors",
+    )
+    verify_cmd.add_argument(
+        "--write-missing",
+        default=None,
+        help="Write missing/collision selections to this JSON file",
+    )
+
     return parser
 
 
@@ -501,6 +561,18 @@ async def run_cli(args: argparse.Namespace) -> int:
             output_dir=output_dir,
             fresh=args.fresh_login,
             skip_existing=not args.no_skip_existing,
+        )
+
+    if args.command == "verify-exports":
+        output_dir = _resolve_output_dir(args.output, None)
+        catalog_paths = [Path(p) for p in args.catalog]
+        manifest_path = Path(args.manifest) if args.manifest else None
+        write_missing = Path(args.write_missing) if args.write_missing else None
+        return cmd_verify_exports(
+            output_dir=output_dir,
+            catalog_paths=catalog_paths,
+            manifest_path=manifest_path,
+            write_missing=write_missing,
         )
 
     raise ValueError(f"Unknown command: {args.command}")

@@ -45,9 +45,15 @@ mappings:
   - patterns:
       - "fidelis"
       - "ambetter"
+      - "wellcare"
+      - "nynm"
+      - "new york network"
     payors:
+      - "NEW YORK NETWORK IPA"
       - "FIDELIS CARE"
       - "AMBETTER FROM FIDELIS CARE"
+      - "FIDELIS CAREWELLCARE BY FIDELIS CARE"
+      - "FIDELIS CARE/WELLCARE BY FIDELIS CARE"
 
   - patterns:
       - "1199"
@@ -165,12 +171,6 @@ mappings:
       - "EMBLEMHEALTH - HIP"
 
   - patterns:
-      - "wellcare"
-    payors:
-      - "FIDELIS CAREWELLCARE BY FIDELIS CARE"
-      - "FIDELIS CARE"
-
-  - patterns:
       - "vns medicare"
       - "vns medicaid"
       - "vnsny"
@@ -201,7 +201,6 @@ mappings:
       - "magnacare"
       - "magnacomp"
     payors:
-      - "NEW YORK NETWORK IPA"
       - "HEALTHCARE PARTNERS, IPA"
       - "INTEGRATED PRODUCTS"
       - "NEW YORK STATE INSURANCE FUND"

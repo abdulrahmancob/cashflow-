@@ -1,0 +1,66 @@
+# Secrets / credentials / sessions
+.env
+**/.env
+deploy/.env
+client_secret*.json
+**/credentials.json
+**/storage_state.json
+**/*.pem
+**/*.key
+snowflake_pull/keys/
+certs/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Node / frontend
+node_modules/
+npm-debug.log*
+
+# Local temp / sync noise
+.tmp_*
+.tmp_server_sync/
+.tools/
+.claude/
+
+# Runtime / artifacts / PHI-ish bulk data
+snowflake_pull/artifacts/
+**/artifacts/
+**/reports/
+**/output/
+patients.csv
+*.xlsx
+sheepshead*
+webpt_edco_scraper/*.csv
+webpt_edco_scraper/Copy of Mail*
+webpt_edco_scraper/Payble CPT*
+webpt_edco_scraper/Transaction Tracker*
+
+# Debug / OAuth scratch
+revflow_scraper/_oauth_*.png
+revflow_scraper/_oauth_url.txt
+revflow_scraper/_debug_*
+webpt_edco_scraper/_debug_*
+
+# Large local diagrams / dumps
+Polymorphic Documents Flow*.png
+
+# LaTeX / docs build junk
+*.aux
+*.log
+*.out
+*.toc
+*.pdf
+texput.log
+porposal/*.pdf
+
+# OS
+.DS_Store
+Thumbs.db

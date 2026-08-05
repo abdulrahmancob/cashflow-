@@ -1,0 +1,284 @@
+# RCM Platform — Minimal & Secure single-server stack.
+# Postgres is NEVER published to the host. Only nginx exposes 80/443.
+#
+# Always-on:  docker compose --env-file .env up -d postgres api nginx
+# One-shot:   docker compose --profile tools run --rm scraper
+#             docker compose --profile tools run --rm worker
+# Drain:      docker compose --profile drain up -d case_drain case_ocr
+# Migrate:    docker compose --profile tools run --rm worker python -m cashflow_db migrate
+
+name: cashflow
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+x-app-env: &app-env
+  CASHFLOW_DATABASE_URL: ${CASHFLOW_DATABASE_URL}
+  DATABASE_URL: ${CASHFLOW_DATABASE_URL}
+  WEBPT_OUTPUT_DIR: /data/webpt
+  WEBPT_LEGACY_OUTPUT_DIR: /data/webpt/legacy
+  WEBPT_SCRAPER_DIR: /app/webpt_edco_scraper
+  REVFLOW_OUTPUT_DIR: /data/revflow
+  REVFLOW_SCRAPER_DIR: /app/revflow_scraper
+  WAYSTAR_OUTPUT_DIR: /data/waystar
+  WAYSTAR_SCRAPER_DIR: /app/waystar_scraper
+  CASE_PIPELINE_DIR: /data/exports/side_by_side_case
+  SNOWFLAKE_OUTPUT_DIR: /data/exports/snowflake
+  CASHFLOW_OPS_ARTIFACTS_DIR: /data/exports/ops
+  TRACKER_XLSX: ${TRACKER_XLSX:-/data/webpt/Transaction Tracker 2026.xlsx}
+  CASHFLOW_OPS_NOTIFY_WEBHOOK: ${CASHFLOW_OPS_NOTIFY_WEBHOOK:-}
+  CASHFLOW_OPS_DRY_RUN: ${CASHFLOW_OPS_DRY_RUN:-0}
+  CASHFLOW_OPS_SKIP_SCRAPERS: ${CASHFLOW_OPS_SKIP_SCRAPERS:-0}
+  CASHFLOW_FORECAST_FROM_DB: ${CASHFLOW_FORECAST_FROM_DB:-1}
+  CASHFLOW_JWT_SECRET: ${CASHFLOW_JWT_SECRET:-}
+  CASHFLOW_JWT_TTL_SECONDS: ${CASHFLOW_JWT_TTL_SECONDS:-43200}
+  CASHFLOW_SEED_ADMIN_EMAIL: ${CASHFLOW_SEED_ADMIN_EMAIL:-abdelrahman.hamdy@cobsolution.com}
+  CASHFLOW_SEED_ADMIN_PASSWORD: ${CASHFLOW_SEED_ADMIN_PASSWORD:-Rcm@112233}
+  CASHFLOW_SEED_ADMIN_NAME: ${CASHFLOW_SEED_ADMIN_NAME:-Abdelrahman Hamdy}
+  CASHFLOW_SEED_FINANCE_EMAIL: ${CASHFLOW_SEED_FINANCE_EMAIL:-mostafa.ezz@cobsolution.com}
+  CASHFLOW_SEED_FINANCE_PASSWORD: ${CASHFLOW_SEED_FINANCE_PASSWORD:-F@12345}
+  CASHFLOW_SEED_FINANCE_NAME: ${CASHFLOW_SEED_FINANCE_NAME:-Mostafa Ezz}
+  CASHFLOW_SEED_POSTING_EMAIL: ${CASHFLOW_SEED_POSTING_EMAIL:-billing7@cobsolution.com}
+  CASHFLOW_SEED_POSTING_PASSWORD: ${CASHFLOW_SEED_POSTING_PASSWORD:-B@12345}
+  CASHFLOW_SEED_POSTING_NAME: ${CASHFLOW_SEED_POSTING_NAME:-Ahmed Daker}
+  TZ: Africa/Cairo
+  GIT_SHA: ${GIT_SHA:-unknown}
+
+services:
+  postgres:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cashflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-cashflow}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ${DATA_ROOT:-/data}/postgres:/var/lib/postgresql/data
+    # NO host ports — Docker network only (PHI)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: cashflow-api:local
+    restart: unless-stopped
+    user: "10001:10001"
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+    read_only: true
+    tmpfs:
+      - /tmp:size=256M,mode=1777
+    volumes:
+      - ${DATA_ROOT:-/data}/webpt:/data/webpt:ro
+      - ${DATA_ROOT:-/data}/revflow:/data/revflow:ro
+      - ${DATA_ROOT:-/data}/waystar:/data/waystar:ro
+      - ${DATA_ROOT:-/data}/exports:/data/exports:ro
+      - ${DATA_ROOT:-/data}/logs:/data/logs:rw
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "8787"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 512
+
+  # One-shot: docker compose --profile tools run --rm worker
+  worker:
+    image: cashflow-api:local
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    profiles: ["tools"]
+    user: "10001:10001"
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+    volumes:
+      - ${DATA_ROOT:-/data}/webpt:/data/webpt
+      - ${DATA_ROOT:-/data}/revflow:/data/revflow
+      - ${DATA_ROOT:-/data}/waystar:/data/waystar
+      - ${DATA_ROOT:-/data}/ocr:/data/ocr
+      - ${DATA_ROOT:-/data}/exports:/data/exports
+      - ${DATA_ROOT:-/data}/logs:/data/logs
+      - ${DATA_ROOT:-/data}/backups:/data/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      [
+        "python",
+        "-m",
+        "cashflow_ops",
+        "run",
+        "--trigger",
+        "task_scheduler",
+        "--skip-scrapers",
+      ]
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  # One-shot: docker compose --profile tools run --rm scraper
+  scraper:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.scraper
+    image: cashflow-scraper:local
+    profiles: ["tools"]
+    user: "10001:10001"
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      WEBPT_OCR_ENABLED: ${WEBPT_OCR_ENABLED:-true}
+    volumes:
+      - ${DATA_ROOT:-/data}/webpt:/data/webpt
+      - ${DATA_ROOT:-/data}/revflow:/data/revflow
+      - ${DATA_ROOT:-/data}/waystar:/data/waystar
+      - ${DATA_ROOT:-/data}/ocr:/data/ocr
+      - ${DATA_ROOT:-/data}/exports:/data/exports
+      - ${DATA_ROOT:-/data}/logs:/data/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      ["python", "-m", "cashflow_ops", "run", "--trigger", "task_scheduler"]
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    shm_size: "1gb"
+
+  # Long-running case drain (single WebPT session). Profile: drain
+  case_drain:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.scraper
+    image: cashflow-scraper:local
+    profiles: ["drain"]
+    restart: unless-stopped
+    user: "10001:10001"
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      WEBPT_HEADLESS: ${WEBPT_HEADLESS:-true}
+      WEBPT_STORAGE_STATE: ${WEBPT_STORAGE_STATE:-/data/webpt/storage_state.json}
+      WEBPT_OCR_ENABLED: "false"
+    volumes:
+      - ${DATA_ROOT:-/data}/webpt:/data/webpt
+      - ${DATA_ROOT:-/data}/exports:/data/exports
+      - ${DATA_ROOT:-/data}/logs:/data/logs
+    working_dir: /app
+    command:
+      [
+        "python",
+        "-u",
+        "snowflake_pull/scripts/run_case_download_worker.py",
+        "--out-dir",
+        "/data/exports/side_by_side_case",
+        "--batch-id",
+        "case_schedule_202601_202608",
+      ]
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    shm_size: "1gb"
+
+  case_ocr:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.scraper
+    image: cashflow-scraper:local
+    profiles: ["drain"]
+    restart: unless-stopped
+    user: "10001:10001"
+    env_file:
+      - .env
+    environment:
+      <<: *app-env
+      WEBPT_OCR_ENABLED: "true"
+      OCR_WORKERS: ${OCR_WORKERS:-10}
+    volumes:
+      - ${DATA_ROOT:-/data}/exports:/data/exports
+      - ${DATA_ROOT:-/data}/ocr:/data/ocr
+      - ${DATA_ROOT:-/data}/logs:/data/logs
+    working_dir: /app
+    command: ["bash", "/app/deploy/scripts/ocr_loop.sh"]
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+
+  nginx:
+    image: nginx:1.27-bookworm
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/cashflow.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/cashflow-ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - ${DATA_ROOT:-/data}/certs:/etc/nginx/certs:ro
+      - ${DATA_ROOT:-/data}/logs/nginx:/var/log/nginx
+      - ${DATA_ROOT:-/data}/portal:/usr/share/nginx/html:ro
+    logging: *default-logging
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=64M,mode=1777
+      - /var/run:size=16M,mode=1777
+      - /tmp:size=16M,mode=1777
+
+networks:
+  internal:
+    driver: bridge

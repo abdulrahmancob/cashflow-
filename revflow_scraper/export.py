@@ -33,11 +33,35 @@ def _sanitize_filename_display(value: str, *, max_len: int = 150) -> str:
     return cleaned[:max_len].rstrip(" ") or "unknown"
 
 
-def export_filename(selection: dict, suggested_ext: str = ".csv") -> str:
+def legacy_export_filename(selection: dict, suggested_ext: str = ".csv") -> str:
+    """Pre-eob_key naming: {payor} - {check_num}.csv (may collide across EOBs)."""
     payor = _sanitize_filename_display(selection.get("payor", "unknown"), max_len=150)
     check_num = _sanitize_filename_display(selection.get("check_eft_num", "check"), max_len=80)
     ext = suggested_ext if suggested_ext.startswith(".") else f".{suggested_ext}"
     return f"{payor} - {check_num}{ext}"
+
+
+def export_filename(selection: dict, suggested_ext: str = ".csv") -> str:
+    payor = _sanitize_filename_display(selection.get("payor", "unknown"), max_len=150)
+    check_num = _sanitize_filename_display(selection.get("check_eft_num", "check"), max_len=80)
+    eob_key = _sanitize_filename_display(selection.get("eob_key", ""), max_len=40)
+    ext = suggested_ext if suggested_ext.startswith(".") else f".{suggested_ext}"
+    if eob_key:
+        return f"{payor} - {check_num} - {eob_key}{ext}"
+    return f"{payor} - {check_num}{ext}"
+
+
+def export_file_exists(exports_dir: Path, selection: dict, *, include_legacy: bool = False) -> Path | None:
+    """Return path if a matching export exists."""
+    for ext in (".csv", ".xlsx"):
+        candidate = exports_dir / export_filename(selection, ext)
+        if candidate.exists():
+            return candidate
+        if include_legacy:
+            legacy = exports_dir / legacy_export_filename(selection, ext)
+            if legacy.exists():
+                return legacy
+    return None
 
 
 def selection_key(selection: dict) -> str:
@@ -131,14 +155,14 @@ async def export_eob_spreadsheet(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for ext in (".csv", ".xlsx"):
-        candidate = output_dir / export_filename(selection, ext)
-        if skip_existing and candidate.exists():
-            log.info("Skipping existing export: %s", candidate.name)
+    if skip_existing:
+        existing = export_file_exists(output_dir, selection, include_legacy=False)
+        if existing is not None:
+            log.info("Skipping existing export: %s", existing.name)
             return {
                 "key": key,
                 "status": "skipped",
-                "path": str(candidate),
+                "path": str(existing),
                 "selection": selection,
             }
 

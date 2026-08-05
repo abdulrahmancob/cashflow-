@@ -2,42 +2,51 @@
 
 ## Quick start
 
-**Important:** run commands from the **repo root** (`D:\cashflow\code`), not from inside `cashflow_forecast/`.
+**Important:** run commands from the **repo root** (`D:\cashflow\code`).
 
-### Option A — repo root (recommended)
+### Build forecast data
 
 ```powershell
 cd D:\cashflow\code
-
-# venv (once)
-python -m venv cashflow_forecast\venv
-.\cashflow_forecast\venv\Scripts\activate
-pip install -e .
-
-# Build
 python -m cashflow_forecast build `
   --data-dir webpt_edco_scraper/output/jun_jul_2026 `
   --output-dir webpt_edco_scraper/output/jun_jul_2026/forecast `
-  --as-of 2026-07-09
+  --as-of 2026-07-17
+```
 
-# Dashboard
+### React dashboard (primary)
+
+```powershell
+cd D:\cashflow\code
+pip install -r cashflow_forecast/requirements.txt
+
+# Terminal 1 — API
+python -m cashflow_forecast.api
+
+# Terminal 2 — UI
+cd cashflow_forecast\web
+npm install
+npm run dev
+```
+
+Open **http://127.0.0.1:5173** (Vite proxies `/api` → `:8787`).
+
+Or one helper: `.\cashflow_forecast\run_web.ps1`
+
+Tabs: Mission Control · Cash Trajectory · Business Insights (audit) · Drill Decks.
+
+### Streamlit fallback (optional)
+
+```powershell
+cd D:\cashflow\code
 streamlit run cashflow_forecast/dashboard.py
 ```
 
-### Option B — from `cashflow_forecast/` folder (your current setup)
-
-```powershell
-cd D:\cashflow\code\cashflow_forecast
-.\venv\Scripts\activate
-pip install -r requirements.txt
-.\run.ps1 build
-.\run.ps1 dashboard
-```
+(`dashboard.py` adds the repo root to `sys.path` so this works without `pip install -e .`.)
 
 ### Payer SLA only
 
 ```powershell
-cd D:\cashflow\code
 python -m cashflow_forecast sla `
   --reconciliation-dir webpt_edco_scraper/output/jun_jul_2026/reconciliation `
   --output webpt_edco_scraper/output/jun_jul_2026/forecast/payer_sla.csv

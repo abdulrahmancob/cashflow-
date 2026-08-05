@@ -75,6 +75,31 @@ def patient_ext_doc_url(patient_id: int, case_id: int) -> str:
     return f"{BASE_URL}/patientExtDoc.php?ID={patient_id}&CaseID={case_id}"
 
 
+def extract_case_id_from_url(url: str) -> str:
+    """Parse CaseID from a chart / ext-doc URL. Empty if absent."""
+    if not url:
+        return ""
+    from urllib.parse import urlparse
+
+    qs = parse_qs(urlparse(url).query)
+    raw = (qs.get("CaseID") or qs.get("caseid") or [""])[0]
+    return str(raw or "").strip()
+
+
+def assert_opened_case_id(opened_case_id: str, scheduled_case_id: str | int) -> None:
+    """S1 gate: fail closed when opened CaseID != schedule CaseID."""
+    opened = str(opened_case_id or "").strip()
+    scheduled = str(scheduled_case_id or "").strip()
+    if not scheduled:
+        raise ValueError("CaseMissingOnSchedule: scheduled case_id is blank")
+    if not opened:
+        raise ValueError("CaseOpenFailed: opened CaseID is blank")
+    if opened != scheduled:
+        raise ValueError(
+            f"CaseMismatch: opened_case_id={opened} scheduled_case_id={scheduled}"
+        )
+
+
 def _page_is_auth_redirect(page: "Page") -> bool:
     url = (page.url or "").lower()
     return "login.webpt.com" in url or "/u/login" in url
@@ -212,6 +237,18 @@ def parse_chart_notes_html(
     return notes
 
 
+def _html_looks_like_auth(html: str) -> bool:
+    lowered = (html or "").lower()
+    return (
+        "login.webpt.com" in lowered
+        or "/u/login" in lowered
+        or "already signed in" in lowered
+        or 'name="username"' in lowered
+        or 'name="password"' in lowered
+        or "auth0" in lowered
+    )
+
+
 def _maybe_save_debug_html(
     html: str,
     *,
@@ -237,6 +274,7 @@ async def _load_chart_notes_html_via_page(
     config: WebPTConfig | None,
     timeout_ms: int,
     page_lock: asyncio.Lock | None,
+    session_lock: asyncio.Lock | None = None,
 ) -> str:
     async def _navigate() -> str:
         from auth import ensure_page_authenticated
@@ -267,8 +305,16 @@ async def _load_chart_notes_html_via_page(
             pass
         return await page.content()
 
+    # Hold session_lock then page_lock so reauth cannot interleave with page use.
+    if session_lock is not None and page_lock is not None:
+        async with session_lock:
+            async with page_lock:
+                return await _navigate()
     if page_lock is not None:
         async with page_lock:
+            return await _navigate()
+    if session_lock is not None:
+        async with session_lock:
             return await _navigate()
     return await _navigate()
 
@@ -285,6 +331,7 @@ async def _fetch_chart_notes_via_page(
     retries: int,
     page_lock: asyncio.Lock | None,
     debug_dir: Path | None,
+    session_lock: asyncio.Lock | None = None,
 ) -> list[ChartNoteRef]:
     last_error = ""
     for attempt in range(retries):
@@ -298,6 +345,7 @@ async def _fetch_chart_notes_via_page(
                 config=config,
                 timeout_ms=timeout_ms,
                 page_lock=page_lock,
+                session_lock=session_lock,
             )
             notes = parse_chart_notes_html(html, case_id=case_id)
             if not notes:
@@ -346,27 +394,139 @@ async def fetch_patient_chart_notes(
     page: "Page | None" = None,
     config: WebPTConfig | None = None,
     page_lock: asyncio.Lock | None = None,
+    session_lock: asyncio.Lock | None = None,
     debug_dir: Path | None = None,
     timeout_ms: int = 90000,
     retries: int = 5,
     blocked_retries: int = 2,
+    prefer_http: bool = False,
 ) -> list[ChartNoteRef]:
-    url = patient_chart_note_url(patient_id, case_id)
+    """List printable chart notes for a patient/case.
 
-    if page is not None:
-        return await _fetch_chart_notes_via_page(
-            page,
-            context,
-            patient_id=patient_id,
-            case_id=case_id,
-            url=url,
-            config=config,
-            timeout_ms=timeout_ms,
-            retries=retries,
-            page_lock=page_lock,
-            debug_dir=debug_dir,
+    By default uses Playwright page navigation when ``page`` is set (more
+    reliable after clinic switch). With ``prefer_http=True`` (parallel-download),
+    try fast ``context.request`` first and only fall back to page on auth-like
+    empty HTML.
+    """
+    import time as _time
+
+    t0 = _time.perf_counter()
+    try:
+        from snowflake_pull.observability import get_global_obs
+
+        _obs = get_global_obs()
+    except Exception:
+        _obs = None
+    if _obs is not None:
+        _obs.emit(
+            event="decision",
+            level="INFO",
+            operation="note_index_start",
+            webpt_patient_id=str(patient_id),
+            outcome="start",
+            extra={"case_id": case_id, "prefer_http": prefer_http},
         )
 
+    url = patient_chart_note_url(patient_id, case_id)
+
+    def _finish(notes: list[ChartNoteRef], *, via: str) -> list[ChartNoteRef]:
+        if _obs is not None:
+            dates = sorted({n.note_date for n in notes if n.note_date})
+            _obs.emit(
+                event="decision",
+                level="INFO",
+                operation="note_index",
+                webpt_patient_id=str(patient_id),
+                outcome="success",
+                decision="note_index_listed",
+                decision_reason=via,
+                execution_ms=round((_time.perf_counter() - t0) * 1000, 2),
+                extra={"note_count": len(notes), "note_dates": dates[:50]},
+            )
+            _obs.mark_success(
+                operation="note_index",
+                webpt_patient_id=str(patient_id),
+            )
+        return notes
+
+    if page is not None and not prefer_http:
+        return _finish(
+            await _fetch_chart_notes_via_page(
+                page,
+                context,
+                patient_id=patient_id,
+                case_id=case_id,
+                url=url,
+                config=config,
+                timeout_ms=timeout_ms,
+                retries=retries,
+                page_lock=page_lock,
+                session_lock=session_lock,
+                debug_dir=debug_dir,
+            ),
+            via="page",
+        )
+
+    notes, auth_miss = await _fetch_chart_notes_via_http(
+        context,
+        patient_id=patient_id,
+        case_id=case_id,
+        url=url,
+        debug_dir=debug_dir,
+        timeout_ms=timeout_ms,
+        retries=retries,
+        blocked_retries=blocked_retries,
+    )
+    if notes:
+        return _finish(notes, via="http")
+    if page is not None and auth_miss:
+        log.warning(
+            "Chart notes HTTP looked like auth for patient %s — retrying via page",
+            patient_id,
+        )
+        if _obs is not None:
+            _obs.set_auth_healthy(False)
+            _obs.emit(
+                event="retry",
+                level="WARN",
+                operation="note_index",
+                webpt_patient_id=str(patient_id),
+                decision="retry_via_page",
+                decision_reason="http_auth_miss",
+                error_type="AuthExpired",
+                error_expected=True,
+            )
+        return _finish(
+            await _fetch_chart_notes_via_page(
+                page,
+                context,
+                patient_id=patient_id,
+                case_id=case_id,
+                url=url,
+                config=config,
+                timeout_ms=timeout_ms,
+                retries=retries,
+                page_lock=page_lock,
+                session_lock=session_lock,
+                debug_dir=debug_dir,
+            ),
+            via="page_after_http_auth_miss",
+        )
+    return _finish(notes, via="http_empty")
+
+
+async def _fetch_chart_notes_via_http(
+    context: BrowserContext,
+    *,
+    patient_id: int,
+    case_id: int,
+    url: str,
+    debug_dir: Path | None,
+    timeout_ms: int,
+    retries: int,
+    blocked_retries: int,
+) -> tuple[list[ChartNoteRef], bool]:
+    """Return (notes, auth_miss). auth_miss means empty parse + login-like HTML."""
     referer = patient_chart_note_url(patient_id, case_id)
     headers = {
         "Accept": "text/html,application/xhtml+xml",
@@ -392,7 +552,8 @@ async def fetch_patient_chart_notes(
                         case_id=case_id,
                         debug_dir=debug_dir,
                     )
-                return notes
+                    return notes, _html_looks_like_auth(html)
+                return notes, False
             last_error = f"HTTP {response.status}"
             if response.status in (403, 429):
                 if blocked_attempt < blocked_retries:
@@ -426,14 +587,14 @@ async def fetch_patient_chart_notes(
                 await asyncio.sleep(wait)
                 continue
             log.warning("Chart notes fetch failed patient %s: %s", patient_id, exc)
-            return []
+            return [], False
     log.warning(
         "Chart notes fetch failed patient %s case %s: %s",
         patient_id,
         case_id,
         last_error,
     )
-    return []
+    return [], False
 
 
 def chart_note_to_dict(note: ChartNoteRef) -> dict[str, Any]:

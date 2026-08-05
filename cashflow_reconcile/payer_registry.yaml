@@ -1,0 +1,369 @@
+# Canonical payer organizations + cross-source aliases.
+# Sources: webpt | revflow | tracker
+# Prefer exact for RevFlow/Tracker legal names; pattern (case-insensitive regex) for WebPT labels.
+payer_orgs:
+  - code: FIDELIS
+    name: Fidelis Care
+    revflow_payors:
+      - "NEW YORK NETWORK IPA"
+      - "FIDELIS CARE"
+      - "AMBETTER FROM FIDELIS CARE"
+      - "FIDELIS CAREWELLCARE BY FIDELIS CARE"
+      - "FIDELIS CARE/WELLCARE BY FIDELIS CARE"
+    aliases:
+      - { source: webpt, pattern: "fidelis.?medicaid", product_class: medicaid }
+      - { source: webpt, pattern: "fidelis.?medicare", product_class: medicare }
+      - { source: webpt, pattern: "fidelis", product_class: null }
+      - { source: webpt, pattern: "wellcare", product_class: medicare }
+      - { source: webpt, pattern: "ambetter", product_class: medicaid }
+      - { source: revflow, exact: "NEW YORK NETWORK IPA" }
+      - { source: revflow, exact: "FIDELIS CARE" }
+      - { source: revflow, exact: "AMBETTER FROM FIDELIS CARE" }
+      - { source: revflow, pattern: "FIDELIS\\s*CARE.*WELLCARE" }
+      - { source: tracker, exact: "NYNM" }
+      - { source: tracker, pattern: "NYNM\\s*DES" }
+      - { source: tracker, pattern: "NEW YORK NETWORK" }
+
+  - code: HEALTHFIRST
+    name: Healthfirst
+    revflow_payors:
+      - "HEALTHFIRST PHSP, INC."
+      - "HEALTHFIRST"
+      - "HEALTHFIRST MEDICARE"
+      - "HEALTHFIRST EARLY START - STAT"
+      - "HEALTHFIRST EARLY START-STAT"
+      - "HEALTHFIRST COMMERCIAL"
+      - "HIX PHSP INDIVIDUAL"
+      - "SENIOR HEALTH PARTNERS"
+      - "INTEGRATED PRODUCTS"
+    aliases:
+      - { source: webpt, pattern: "healthfirst.?medicaid", product_class: medicaid }
+      - { source: webpt, pattern: "healthfirst.?medicare", product_class: medicare }
+      - { source: webpt, pattern: "health\\s*first", product_class: null }
+      - { source: webpt, pattern: "healthfirst", product_class: null }
+      - { source: revflow, exact: "HEALTHFIRST PHSP, INC." }
+      - { source: revflow, exact: "HEALTHFIRST" }
+      - { source: revflow, exact: "HEALTHFIRST MEDICARE" }
+      - { source: revflow, exact: "HEALTHFIRST EARLY START - STAT" }
+      - { source: revflow, exact: "HEALTHFIRST EARLY START-STAT" }
+      - { source: revflow, exact: "HEALTHFIRST COMMERCIAL" }
+      - { source: revflow, exact: "HIX PHSP INDIVIDUAL" }
+      - { source: revflow, exact: "SENIOR HEALTH PARTNERS" }
+      - { source: revflow, exact: "INTEGRATED PRODUCTS" }
+      - { source: tracker, pattern: "HEALTHFIRST" }
+
+  - code: METROPLUS
+    name: MetroPlus Health Plan
+    revflow_payors:
+      - "METROPLUS HEALTH PLAN"
+      - "METROPLUS ESSENTIAL PLAN"
+      - "METROPLUS HEALTH PLAN - HHC"
+      - "METROPLUS ENHANCED (HARP)"
+      - "METROPLUS ULTRA CARE"
+      - "GOLDCARE II"
+    aliases:
+      - { source: webpt, pattern: "metro\\s*plus", product_class: null }
+      - { source: webpt, pattern: "metroplus", product_class: null }
+      - { source: revflow, exact: "METROPLUS HEALTH PLAN" }
+      - { source: revflow, exact: "METROPLUS ESSENTIAL PLAN" }
+      - { source: revflow, exact: "METROPLUS HEALTH PLAN - HHC" }
+      - { source: revflow, exact: "METROPLUS ENHANCED (HARP)" }
+      - { source: revflow, exact: "METROPLUS ULTRA CARE" }
+      - { source: revflow, exact: "GOLDCARE II" }
+      - { source: tracker, pattern: "METROPLUS" }
+
+  - code: EMBLEM
+    name: EmblemHealth
+    revflow_payors:
+      - "EMBLEMHEALTH"
+      - "EMBLEMHEALTH - HIP"
+      - "HEALTHCARE PARTNERS, IPA"
+      - "SOMOS IPA EMBLEM"
+    aliases:
+      - { source: webpt, pattern: "emblem.?hip", product_class: null }
+      - { source: webpt, pattern: "emblem.?hcp", product_class: null }
+      - { source: webpt, pattern: "emblem.?medicaid", product_class: medicaid }
+      - { source: webpt, pattern: "emblem.?ghi", product_class: null }
+      - { source: webpt, pattern: "emblem", product_class: null }
+      - { source: webpt, pattern: "^ghi$", product_class: null }
+      - { source: webpt, pattern: "\\bghi\\b", product_class: null }
+      - { source: revflow, exact: "EMBLEMHEALTH" }
+      - { source: revflow, exact: "EMBLEMHEALTH - HIP" }
+      - { source: revflow, exact: "HEALTHCARE PARTNERS, IPA" }
+      - { source: revflow, exact: "SOMOS IPA EMBLEM" }
+      - { source: tracker, pattern: "EMBLEM" }
+      - { source: tracker, pattern: "MANAGED HEALTH" }
+
+  - code: MOLINA
+    name: Molina Healthcare (Affinity)
+    revflow_payors:
+      - "MOLINA HEALTHCARE OF NEW YORK, INC."
+    aliases:
+      - { source: webpt, pattern: "affinity", product_class: medicaid }
+      - { source: webpt, pattern: "molina", product_class: medicaid }
+      - { source: revflow, exact: "MOLINA HEALTHCARE OF NEW YORK, INC." }
+      - { source: tracker, pattern: "MOLINA" }
+      - { source: tracker, pattern: "AFFINITY" }
+
+  - code: UHC
+    name: UnitedHealthcare
+    revflow_payors:
+      - "UNITEDHEALTHCARE OF NEW YORK INC"
+      - "UNITEDHEALTHCARE INSURANCE COMPANY AND AFFILIATES"
+      - "UNITED HEALTHCARE INSURANCE COMPANY"
+      - "UNITEDHEALTHCARE INSURANCE COMPANY"
+      - "UHC SUREST"
+      - "UNITEDHEALTHCARE SUREST"
+      - "UNITEDHEALTHCARE SHARED SERVICES"
+      - "OXFORD HEALTH INSURANCE INC"
+      - "OXFORD HEALTH PLANS LLC"
+      - "NYC EMPLOYEES PPO PLAN"
+      - "AARP SUPPLEMENTAL HEALTH PLANS FROM UNITEDHEALTHCARE"
+      - "UHC HARVARD PILGRIM"
+      - "NY01 OCNY NEW YORK UHC MA"
+    aliases:
+      - { source: webpt, pattern: "united\\s*health\\s*care\\s*community", product_class: medicaid }
+      - { source: webpt, pattern: "united\\s*healthcare\\s*community", product_class: medicaid }
+      - { source: webpt, pattern: "dual\\s*complete", product_class: medicare }
+      - { source: webpt, pattern: "uhc\\s*choice", product_class: commercial }
+      - { source: webpt, pattern: "choice\\s*plus", product_class: commercial }
+      - { source: webpt, pattern: "nyce\\s*ppo", product_class: commercial }
+      - { source: webpt, pattern: "nyce\\s*hmo", product_class: commercial }
+      - { source: webpt, pattern: "oxford", product_class: commercial }
+      - { source: webpt, pattern: "united\\s*healthcare", product_class: null }
+      - { source: webpt, pattern: "unitedhealthcare", product_class: null }
+      - { source: webpt, pattern: "\\buhc\\b", product_class: null }
+      - { source: webpt, pattern: "surest", product_class: commercial }
+      - { source: webpt, pattern: "aarp", product_class: medicare }
+      - { source: revflow, pattern: "UNITED\\s*HEALTHCARE" }
+      - { source: revflow, pattern: "UNITED HEALTHCARE" }
+      - { source: revflow, exact: "UHC SUREST" }
+      - { source: revflow, exact: "UNITEDHEALTHCARE SUREST" }
+      - { source: revflow, exact: "OXFORD HEALTH INSURANCE INC" }
+      - { source: revflow, exact: "OXFORD HEALTH PLANS LLC" }
+      - { source: revflow, exact: "NYC EMPLOYEES PPO PLAN" }
+      - { source: revflow, exact: "AARP SUPPLEMENTAL HEALTH PLANS FROM UNITEDHEALTHCARE" }
+      - { source: revflow, exact: "UHC HARVARD PILGRIM" }
+      - { source: revflow, exact: "NY01 OCNY NEW YORK UHC MA" }
+      - { source: tracker, pattern: "UHC" }
+      - { source: tracker, pattern: "UNITEDHEALTHCARE" }
+      - { source: tracker, pattern: "UNITED HEALTHCARE" }
+      - { source: tracker, pattern: "NYC\\s*EMPLOYEE" }
+      - { source: tracker, exact: "NYC Employee PPO" }
+      - { source: tracker, pattern: "NYCE" }
+
+  - code: AETNA
+    name: Aetna
+    revflow_payors:
+      - "AETNA"
+      - "AETNA BETTER HEALTH OF NEW YORK"
+      - "MERITAIN HEALTH"
+      - "NIPPON LIFE BENEFITS"
+    aliases:
+      - { source: webpt, pattern: "aetna.?medicare", product_class: medicare }
+      - { source: webpt, pattern: "aetna.?ppo", product_class: commercial }
+      - { source: webpt, pattern: "aetna\\s*commercial", product_class: commercial }
+      - { source: webpt, pattern: "^aetna$", product_class: null }
+      - { source: webpt, pattern: "\\baetna\\b", product_class: null }
+      - { source: webpt, pattern: "meritain", product_class: commercial }
+      - { source: revflow, exact: "AETNA" }
+      - { source: revflow, exact: "AETNA BETTER HEALTH OF NEW YORK" }
+      - { source: revflow, exact: "MERITAIN HEALTH" }
+      - { source: revflow, exact: "NIPPON LIFE BENEFITS" }
+      - { source: tracker, pattern: "AETNA" }
+      - { source: tracker, pattern: "MERITAIN" }
+
+  - code: ANTHEM
+    name: Anthem / BCBS
+    revflow_payors:
+      - "ANTHEM HP, LLC"
+      - "ANTHEM HEALTHCHOICE ASSURANCE"
+      - "WELLPOINT FEDERAL"
+      - "BCBS FEP"
+      - "BCBS"
+    aliases:
+      - { source: webpt, pattern: "bcbs.?medicare", product_class: medicare }
+      - { source: webpt, pattern: "bcbs.?medicaid", product_class: medicaid }
+      - { source: webpt, pattern: "bcbs.?hmo", product_class: commercial }
+      - { source: webpt, pattern: "bcbs.?ppo", product_class: commercial }
+      - { source: webpt, pattern: "bcbs.?federal|bcbs\\s*fedral", product_class: commercial }
+      - { source: webpt, pattern: "bcbs\\s*health\\s*plus", product_class: medicaid }
+      - { source: webpt, pattern: "bcbs", product_class: null }
+      - { source: webpt, pattern: "blue\\s*cross", product_class: null }
+      - { source: webpt, pattern: "bluecross", product_class: null }
+      - { source: webpt, pattern: "anthem", product_class: null }
+      - { source: webpt, pattern: "wellpoint", product_class: null }
+      - { source: revflow, exact: "ANTHEM HP, LLC" }
+      - { source: revflow, exact: "ANTHEM HEALTHCHOICE ASSURANCE" }
+      - { source: revflow, exact: "WELLPOINT FEDERAL" }
+      - { source: revflow, exact: "BCBS FEP" }
+      - { source: revflow, exact: "BCBS" }
+      - { source: tracker, pattern: "ANTHEM" }
+      - { source: tracker, pattern: "BCBS" }
+      - { source: tracker, pattern: "WELLPOINT" }
+
+  - code: MEDICARE
+    name: Medicare (NGS / Railroad)
+    revflow_payors:
+      - "PGBA,LLC"
+      - "PALMETTO GBA - RAILROAD MEDICARE"
+      - "NATIONAL GOVERNMENT SERVICES, INC."
+    aliases:
+      - { source: webpt, pattern: "medicare\\s*new\\s*york\\s*ngs", product_class: medicare }
+      - { source: webpt, pattern: "railroad\\s*medicare", product_class: medicare }
+      - { source: webpt, pattern: "medicare\\s*railroad", product_class: medicare }
+      - { source: webpt, pattern: "^medicare$", product_class: medicare }
+      - { source: revflow, exact: "PGBA,LLC" }
+      - { source: revflow, exact: "PALMETTO GBA - RAILROAD MEDICARE" }
+      - { source: revflow, exact: "NATIONAL GOVERNMENT SERVICES, INC." }
+      - { source: tracker, pattern: "MEDICARE" }
+      - { source: tracker, pattern: "NGS" }
+      - { source: tracker, pattern: "PALMETTO" }
+
+  - code: HUMANA
+    name: Humana
+    revflow_payors:
+      - "HUMANA INC."
+    aliases:
+      - { source: webpt, pattern: "humana", product_class: null }
+      - { source: revflow, exact: "HUMANA INC." }
+      - { source: tracker, pattern: "HUMANA" }
+
+  - code: CIGNA
+    name: Cigna
+    revflow_payors:
+      - "CIGNA HEALTH AND LIFE INSURANCE COMPANY"
+      - "GREATWESTHEALTHCARE-CIGNA"
+      - "AMERICAN SPECIALTY HEALTH"
+      - "CIGNA SUPPLEMENTAL BENEFITS"
+      - "CONNECTICUT GENERAL LIFE INSURANCE COMPANY"
+    aliases:
+      - { source: webpt, pattern: "cigna", product_class: commercial }
+      - { source: webpt, pattern: "greatwest", product_class: commercial }
+      - { source: webpt, pattern: "american\\s*specialty|\\bash\\b", product_class: commercial }
+      - { source: revflow, exact: "CIGNA HEALTH AND LIFE INSURANCE COMPANY" }
+      - { source: revflow, exact: "GREATWESTHEALTHCARE-CIGNA" }
+      - { source: revflow, exact: "AMERICAN SPECIALTY HEALTH" }
+      - { source: revflow, exact: "CIGNA SUPPLEMENTAL BENEFITS" }
+      - { source: revflow, exact: "CONNECTICUT GENERAL LIFE INSURANCE COMPANY" }
+      - { source: tracker, pattern: "CIGNA" }
+      - { source: tracker, pattern: "AMERICAN SPECIALTY" }
+
+  - code: SEIU1199
+    name: 1199SEIU
+    revflow_payors:
+      - "1199SEIU"
+    aliases:
+      - { source: webpt, pattern: "1199", product_class: commercial }
+      - { source: revflow, exact: "1199SEIU" }
+      - { source: tracker, pattern: "1199" }
+
+  - code: VNS
+    name: VNS Health
+    revflow_payors:
+      - "VNS CHOICE"
+      - "VISITING NURSE SERVICE OF NY"
+    aliases:
+      - { source: webpt, pattern: "vns\\s*medicare", product_class: medicare }
+      - { source: webpt, pattern: "vns\\s*medicaid", product_class: medicaid }
+      - { source: webpt, pattern: "vns\\s*choice", product_class: null }
+      - { source: webpt, pattern: "vnsny|visiting\\s*nurse", product_class: null }
+      - { source: revflow, exact: "VNS CHOICE" }
+      - { source: revflow, exact: "VISITING NURSE SERVICE OF NY" }
+      - { source: tracker, pattern: "VNS" }
+
+  - code: NYSIF
+    name: NYSIF / Workers Comp
+    revflow_payors:
+      - "NEW YORK STATE INSURANCE FUND"
+      - "APRICUS"
+    aliases:
+      - { source: webpt, pattern: "nysif", product_class: workers_comp }
+      - { source: webpt, pattern: "workers.?\\s*comp", product_class: workers_comp }
+      - { source: revflow, exact: "NEW YORK STATE INSURANCE FUND" }
+      - { source: revflow, exact: "APRICUS" }
+      - { source: tracker, pattern: "NYSIF" }
+      - { source: tracker, pattern: "APRICUS" }
+
+  - code: SWH
+    name: Senior Whole Health
+    revflow_payors:
+      - "SENIOR WHOLE HEALTH OF NEW YORK"
+    aliases:
+      - { source: webpt, pattern: "senior\\s*whole\\s*health", product_class: medicare }
+      - { source: revflow, exact: "SENIOR WHOLE HEALTH OF NEW YORK" }
+      - { source: tracker, pattern: "SENIOR WHOLE" }
+
+  - code: ELDERPLAN
+    name: Elderplan
+    revflow_payors:
+      - "ELDERPLAN INC"
+      - "ELDERPLAN MEDADVANTAGE"
+      - "VILLAGE CARE MAX"
+    aliases:
+      - { source: webpt, pattern: "elderplan", product_class: medicare }
+      - { source: webpt, pattern: "village\\s*care", product_class: medicare }
+      - { source: revflow, exact: "ELDERPLAN INC" }
+      - { source: revflow, exact: "ELDERPLAN MEDADVANTAGE" }
+      - { source: revflow, exact: "VILLAGE CARE MAX" }
+      - { source: tracker, pattern: "ELDERPLAN" }
+      - { source: tracker, pattern: "VILLAGE CARE" }
+
+  - code: CPHL
+    name: Centers Plan for Healthy Living
+    revflow_payors:
+      - "CENTERS PLAN FOR HEALTHY LIVING-DSNP"
+      - "CENTERS PLAN FOR HEALTHY LIVING-MAP"
+      - "CENTERS PLAN FOR HEALTHY LIVING-MLTC"
+    aliases:
+      - { source: webpt, pattern: "centers\\s*plan", product_class: medicare }
+      - { source: webpt, pattern: "\\bcphl\\b", product_class: medicare }
+      - { source: revflow, pattern: "CENTERS PLAN FOR HEALTHY LIVING" }
+      - { source: tracker, pattern: "CENTERS PLAN" }
+
+  - code: UMR
+    name: UMR
+    revflow_payors:
+      - "UMR"
+      - "UMR USNAS"
+    aliases:
+      - { source: webpt, pattern: "^umr$", product_class: commercial }
+      - { source: webpt, pattern: "\\bumr\\b", product_class: commercial }
+      - { source: revflow, exact: "UMR" }
+      - { source: revflow, exact: "UMR USNAS" }
+      - { source: tracker, pattern: "UMR" }
+
+  - code: MAGNACARE
+    name: MagnaCare
+    revflow_payors:
+      - "INTEGRATED PRODUCTS"
+    aliases:
+      - { source: webpt, pattern: "magnacare", product_class: commercial }
+      - { source: webpt, pattern: "magnacomp", product_class: commercial }
+      - { source: tracker, pattern: "MAGNACARE" }
+
+  - code: SELF_PAY
+    name: Self Pay
+    revflow_payors: []
+    aliases:
+      - { source: webpt, pattern: "self[\\s-]?pay", product_class: other }
+
+  # ACH processors (not insurers). Tracker heads only — do not alias to a payer org.
+  - code: ACH_PROCESSOR_ECHO
+    name: ACH Processor (Echo)
+    revflow_payors: []
+    aliases:
+      - { source: tracker, exact: "HNB ECHO" }
+      - { source: tracker, exact: "HNB - ECHO" }
+      - { source: tracker, pattern: "HNB\\s*-?\\s*ECHO" }
+      - { source: tracker, exact: "PNC-ECHO" }
+      - { source: tracker, exact: "PNC ECHO" }
+      - { source: tracker, pattern: "PNC[-\\s]*ECHO" }
+
+  - code: ACH_PROCESSOR_PAYPLUS
+    name: ACH Processor (PayPlus)
+    revflow_payors: []
+    aliases:
+      - { source: tracker, exact: "PayPlus" }
+      - { source: tracker, exact: "PAY PLUS" }
+      - { source: tracker, pattern: "PAY\\s*PLUS" }

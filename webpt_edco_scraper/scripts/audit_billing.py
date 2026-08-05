@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -19,7 +20,21 @@ from typing import Any
 import yaml
 from openpyxl import Workbook
 
-AUDIT_DIR = Path(__file__).resolve().parent.parent / "audit"
+ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = ROOT.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from audit.icd10_catalog import Icd10Catalog, get_default_catalog  # noqa: E402
+
+try:
+    from cashflow_reconcile.payer_registry import resolve as resolve_payer_org
+except ImportError:  # pragma: no cover - optional when run outside monorepo
+    resolve_payer_org = None  # type: ignore[assignment]
+
+AUDIT_DIR = ROOT / "audit"
 DEFAULT_CPT_RULES = AUDIT_DIR / "cpt_insurance_rules.yaml"
 DEFAULT_ICD_RULES = AUDIT_DIR / "icd_denial_rules.yaml"
 
@@ -35,8 +50,23 @@ class NoteRecord:
     visit_no: str = ""
     note_file: str = ""
     diagnosis_icd_codes: str = ""
+    treatment_diagnosis_icd_codes: str = ""
     cpt_codes: set[str] = field(default_factory=set)
     cpt_details: list[dict[str, str]] = field(default_factory=list)
+
+    def audited_icd_codes(self) -> list[str]:
+        """Union of diagnosis + treatment ICD lists, stable order."""
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for raw in (self.diagnosis_icd_codes, self.treatment_diagnosis_icd_codes):
+            for code in _parse_icd_list(raw):
+                if code not in seen:
+                    seen.add(code)
+                    ordered.append(code)
+        return ordered
+
+    def audited_icd_display(self) -> str:
+        return "; ".join(self.audited_icd_codes())
 
 
 def _parse_icd_list(raw: str | None) -> list[str]:
@@ -48,6 +78,17 @@ def _parse_icd_list(raw: str | None) -> list[str]:
 def load_yaml(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
+
+
+def _payer_org_fields(insurance_name: str) -> dict[str, str]:
+    if resolve_payer_org is None:
+        return {"payer_org_code": "", "payer_org": ""}
+    hit = resolve_payer_org(insurance_name, "webpt") or resolve_payer_org(
+        insurance_name, "any"
+    )
+    if hit is None:
+        return {"payer_org_code": "", "payer_org": ""}
+    return {"payer_org_code": hit.code, "payer_org": hit.name}
 
 
 def compile_cpt_rules(config: dict[str, Any]) -> list[dict[str, Any]]:
@@ -93,42 +134,59 @@ def load_notes(extracted: Path) -> dict[str, NoteRecord]:
                     visit_no=(row.get("visit_no") or "").strip(),
                     note_file=(row.get("note_file") or "").strip(),
                     diagnosis_icd_codes=(row.get("diagnosis_icd_codes") or "").strip(),
+                    treatment_diagnosis_icd_codes=(
+                        row.get("treatment_diagnosis_icd_codes") or ""
+                    ).strip(),
                 )
 
     cpt_path = extracted / "cpt_codes.csv"
-    with cpt_path.open(encoding="utf-8", errors="replace", newline="") as fh:
-        for row in csv.DictReader(fh):
-            nid = (row.get("daily_note_id") or "").strip()
-            if not nid:
-                continue
-            if nid not in notes:
-                notes[nid] = NoteRecord(
-                    daily_note_id=nid,
-                    patient_id=(row.get("patient_id") or "").strip(),
-                    patient_name=(row.get("patient_name") or "").strip(),
-                    date_of_daily_note=(row.get("date_of_daily_note") or "").strip(),
-                    insurance_name=(row.get("insurance_name") or "").strip(),
-                    visit_no=(row.get("visit_no") or "").strip(),
-                    note_file=(row.get("note_file") or "").strip(),
-                    diagnosis_icd_codes=(row.get("diagnosis_icd_codes") or "").strip(),
-                )
-            note = notes[nid]
-            if not note.insurance_name:
-                note.insurance_name = (row.get("insurance_name") or "").strip()
-            if not note.diagnosis_icd_codes:
-                note.diagnosis_icd_codes = (row.get("diagnosis_icd_codes") or "").strip()
-            cpt = (row.get("cpt_code") or "").strip().upper()
-            if cpt:
-                note.cpt_codes.add(cpt)
-                note.cpt_details.append(
-                    {
-                        "cpt_code": cpt,
-                        "units": (row.get("units") or "").strip(),
-                        "description": (row.get("description") or "").strip(),
-                        "modifier": (row.get("modifier") or "").strip(),
-                    }
-                )
+    if cpt_path.exists():
+        with cpt_path.open(encoding="utf-8", errors="replace", newline="") as fh:
+            for row in csv.DictReader(fh):
+                nid = (row.get("daily_note_id") or "").strip()
+                if not nid:
+                    continue
+                if nid not in notes:
+                    notes[nid] = NoteRecord(
+                        daily_note_id=nid,
+                        patient_id=(row.get("patient_id") or "").strip(),
+                        patient_name=(row.get("patient_name") or "").strip(),
+                        date_of_daily_note=(row.get("date_of_daily_note") or "").strip(),
+                        insurance_name=(row.get("insurance_name") or "").strip(),
+                        visit_no=(row.get("visit_no") or "").strip(),
+                        note_file=(row.get("note_file") or "").strip(),
+                        diagnosis_icd_codes=(row.get("diagnosis_icd_codes") or "").strip(),
+                        treatment_diagnosis_icd_codes=(
+                            row.get("treatment_diagnosis_icd_codes") or ""
+                        ).strip(),
+                    )
+                note = notes[nid]
+                if not note.insurance_name:
+                    note.insurance_name = (row.get("insurance_name") or "").strip()
+                if not note.diagnosis_icd_codes:
+                    note.diagnosis_icd_codes = (row.get("diagnosis_icd_codes") or "").strip()
+                if not note.treatment_diagnosis_icd_codes:
+                    note.treatment_diagnosis_icd_codes = (
+                        row.get("treatment_diagnosis_icd_codes") or ""
+                    ).strip()
+                cpt = (row.get("cpt_code") or "").strip().upper()
+                if cpt:
+                    note.cpt_codes.add(cpt)
+                    note.cpt_details.append(
+                        {
+                            "cpt_code": cpt,
+                            "units": (row.get("units") or "").strip(),
+                            "description": (row.get("description") or "").strip(),
+                            "modifier": (row.get("modifier") or "").strip(),
+                        }
+                    )
     return notes
+
+
+def _codes_matching_prefixes(codes: set[str], prefixes: list[str]) -> list[str]:
+    return [
+        c for c in sorted(codes) if any(c.startswith(p) for p in prefixes)
+    ]
 
 
 def _condition_matches(codes: set[str], cond: dict[str, Any]) -> bool:
@@ -155,6 +213,16 @@ def _matching_codes(codes: set[str], cond: dict[str, Any]) -> list[str]:
     return found
 
 
+def _dedupe_preserve(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            ordered.append(item)
+    return ordered
+
+
 # Laterality families from Denial Matrix examples (joint pain M25.5xx, etc.).
 # Require 3+ chars after decimal so M54.51/M54.59 (LBP subtypes) are not treated as sides.
 _LATERALITY_CODE = re.compile(r"^[A-Z]\d{2}\.\d{2,}[129]$")
@@ -176,17 +244,78 @@ def check_lateralization(codes: set[str]) -> list[str] | None:
     return conflicts or None
 
 
+def check_site_pair_map(
+    codes: set[str], pairs: list[dict[str, Any]]
+) -> list[str] | None:
+    """Fire when any site pair has both left and right prefix matches."""
+    conflicts: list[str] = []
+    for pair in pairs or []:
+        left = _codes_matching_prefixes(codes, list(pair.get("left_prefixes") or []))
+        right = _codes_matching_prefixes(codes, list(pair.get("right_prefixes") or []))
+        if left and right:
+            conflicts.extend(left)
+            conflicts.extend(right)
+    return _dedupe_preserve(conflicts) or None
+
+
+def check_bilateral_split(
+    codes: set[str], families: list[dict[str, Any]]
+) -> list[str] | None:
+    """Fire when both unilateral R and L codes are present for a bilateral family."""
+    conflicts: list[str] = []
+    for family in families or []:
+        right = [c for c in (family.get("right") or []) if c in codes]
+        left = [c for c in (family.get("left") or []) if c in codes]
+        if right and left:
+            conflicts.extend(sorted(right + left))
+    return _dedupe_preserve(conflicts) or None
+
+
+def check_invalid_or_nonbillable(
+    codes: set[str], catalog: Icd10Catalog
+) -> list[str] | None:
+    bad = catalog.invalid_or_nonbillable(codes)
+    return bad or None
+
+
 def audit_icd(
-    note: NoteRecord, icd_rules: list[dict[str, Any]]
+    note: NoteRecord,
+    icd_rules: list[dict[str, Any]],
+    *,
+    site_maps: dict[str, list[dict[str, Any]]] | None = None,
+    bilateral_families: list[dict[str, Any]] | None = None,
+    catalog: Icd10Catalog | None = None,
 ) -> list[dict[str, str]]:
-    codes = set(_parse_icd_list(note.diagnosis_icd_codes))
+    codes = set(note.audited_icd_codes())
     if not codes:
         return []
+    site_maps = site_maps or {}
+    bilateral_families = bilateral_families or []
+    display_codes = note.audited_icd_display()
     violations: list[dict[str, str]] = []
     for rule in icd_rules:
+        check = rule.get("check")
         conflicting: list[str] = []
-        if rule.get("check") == "lateralization_unspecified":
+        if check == "lateralization_unspecified":
             hit = check_lateralization(codes)
+            if not hit:
+                continue
+            conflicting = hit
+        elif check == "site_pair_map":
+            map_name = rule.get("site_map") or ""
+            hit = check_site_pair_map(codes, site_maps.get(map_name) or [])
+            if not hit:
+                continue
+            conflicting = hit
+        elif check == "bilateral_split":
+            hit = check_bilateral_split(codes, bilateral_families)
+            if not hit:
+                continue
+            conflicting = hit
+        elif check == "invalid_or_nonbillable":
+            if catalog is None:
+                continue
+            hit = check_invalid_or_nonbillable(codes, catalog)
             if not hit:
                 continue
             conflicting = hit
@@ -198,14 +327,22 @@ def audit_icd(
                 continue
             for cond in conditions:
                 conflicting.extend(_matching_codes(codes, cond))
-            # de-dupe preserve order
-            seen: set[str] = set()
-            ordered: list[str] = []
-            for c in conflicting:
-                if c not in seen:
-                    seen.add(c)
-                    ordered.append(c)
-            conflicting = ordered
+            conflicting = _dedupe_preserve(conflicting)
+
+        correct = rule.get("correct_approach") or ""
+        if check == "bilateral_split":
+            # Enrich message with suggested bilateral codes when available.
+            suggestions: list[str] = []
+            for family in bilateral_families:
+                right = [c for c in (family.get("right") or []) if c in codes]
+                left = [c for c in (family.get("left") or []) if c in codes]
+                if right and left:
+                    suggestions.extend(family.get("bilateral") or [])
+            if suggestions:
+                correct = (
+                    f"Use the bilateral code(s) {', '.join(_dedupe_preserve(suggestions))} "
+                    "instead of separate R/L codes."
+                )
 
         violations.append(
             {
@@ -217,16 +354,66 @@ def audit_icd(
                 "insurance_name": note.insurance_name,
                 "visit_no": note.visit_no,
                 "note_file": note.note_file,
-                "diagnosis_icd_codes": note.diagnosis_icd_codes,
+                "diagnosis_icd_codes": display_codes or note.diagnosis_icd_codes,
                 "rule_id": rule["id"],
                 "category": rule.get("category") or "",
                 "severity": rule.get("severity") or "error",
                 "conflicting_codes": "; ".join(conflicting),
                 "description": rule.get("description") or "",
-                "correct_approach": rule.get("correct_approach") or "",
+                "correct_approach": correct,
             }
         )
     return violations
+
+
+def _preference_present(
+    item: str,
+    cpts: set[str],
+    strapping_codes: set[str],
+) -> bool:
+    token = (item or "").strip().lower()
+    if not token or token == "-":
+        return True
+    if token == "strapping":
+        return bool(cpts & strapping_codes)
+    return token.upper() in cpts
+
+
+def _expand_do_not_use(
+    items: list[str],
+    strapping_codes: set[str],
+) -> list[tuple[str, set[str]]]:
+    """Return list of (label, forbidden_cpt_set) from do_not_use tokens."""
+    expanded: list[tuple[str, set[str]]] = []
+    for raw in items or []:
+        token = (raw or "").strip()
+        if not token or token == "-":
+            continue
+        lower = token.lower()
+        if lower == "strapping":
+            expanded.append(("strapping", set(strapping_codes)))
+        else:
+            code = token.upper()
+            expanded.append((code, {code}))
+    return expanded
+
+
+def _timed_units_total(
+    note: NoteRecord,
+    timed_codes: set[str],
+    excluded: set[str],
+) -> int:
+    total = 0
+    for detail in note.cpt_details:
+        code = (detail.get("cpt_code") or "").upper()
+        if code in excluded or code not in timed_codes:
+            continue
+        try:
+            units = int(float(detail.get("units") or "0"))
+        except ValueError:
+            units = 0
+        total += max(units, 0)
+    return total
 
 
 def audit_cpt(
@@ -243,14 +430,13 @@ def audit_cpt(
     eval_codes = {c.upper() for c in (config.get("eval_codes") or [])}
     reeval_code = (config.get("reeval_code") or "97164").upper()
     massage_code = (config.get("massage_code") or "97124").upper()
+    manual_code = (config.get("manual_code") or "97140").upper()
     ta_code = (config.get("therapeutic_activity_code") or "97530").upper()
     estim_97014 = (config.get("estim_97014") or "97014").upper()
     estim_g0283 = (config.get("estim_g0283") or "G0283").upper()
 
-    has_strap = bool(cpts & strapping_codes)
     has_timed = bool(cpts & timed_codes)
     has_eval_only = bool(cpts & eval_codes) and not has_timed and reeval_code not in cpts
-    strap_present = sorted(cpts & strapping_codes)
 
     violations: list[dict[str, str]] = []
 
@@ -283,86 +469,123 @@ def audit_cpt(
             }
         )
 
-    expected_estim = (rule.get("estim") or "").upper()
-    if expected_estim == estim_g0283 and estim_97014 in cpts:
-        add(
-            "estim_mismatch",
-            "error",
-            f"Insurance rule requires G-Code e-stim ({estim_g0283}) but note has {estim_97014}.",
-            expected=estim_g0283,
-            found=estim_97014,
-        )
-    elif expected_estim == estim_97014 and estim_g0283 in cpts:
-        add(
-            "estim_mismatch",
-            "error",
-            f"Insurance rule requires {estim_97014} but note has G-Code ({estim_g0283}).",
-            expected=estim_97014,
-            found=estim_g0283,
-        )
-
-    strapping_policy = (rule.get("strapping") or "accepted").lower()
-    if strapping_policy == "forbidden" and has_strap:
-        add(
-            "strapping_forbidden",
-            "error",
-            f"Strapping is not allowed for this insurance but found: {', '.join(strap_present)}.",
-            expected="no strapping",
-            found="; ".join(strap_present),
-        )
-    elif strapping_policy == "required" and not has_strap:
-        if has_timed:
+    # Global: 97140 & 97124 can't be used together
+    global_rules = config.get("global_rules") or {}
+    if global_rules.get("forbid_manual_and_massage_together"):
+        if manual_code in cpts and massage_code in cpts:
             add(
-                "strapping_required_missing",
+                "manual_massage_together",
                 "error",
-                "Strapping is required for this insurance on treatment visits, but no strapping CPT was billed.",
-                expected="strapping CPT",
-                found="none",
+                f"Manual therapy ({manual_code}) and massage ({massage_code}) cannot be billed together.",
+                expected=f"{manual_code} or {massage_code}",
+                found=f"{manual_code}; {massage_code}",
             )
-        elif has_eval_only:
+
+    # Accepted E-stim mismatch (only when an e-stim code is present)
+    expected_estim = (rule.get("estim") or "").strip().upper()
+    has_estim = estim_97014 in cpts or estim_g0283 in cpts
+    if expected_estim and has_estim:
+        if expected_estim == estim_g0283 and estim_97014 in cpts:
             add(
-                "strapping_required_missing",
-                "warning",
-                "Strapping is required for this insurance; eval-only visit has no strapping (confirm if initial note needs it).",
-                expected="strapping CPT",
-                found="none (eval-only)",
+                "estim_mismatch",
+                "error",
+                f"Insurance rule requires G-Code e-stim ({estim_g0283}) but note has {estim_97014}.",
+                expected=estim_g0283,
+                found=estim_97014,
+            )
+        elif expected_estim == estim_97014 and estim_g0283 in cpts:
+            add(
+                "estim_mismatch",
+                "error",
+                f"Insurance rule requires {estim_97014} but note has G-Code ({estim_g0283}).",
+                expected=estim_97014,
+                found=estim_g0283,
+            )
+
+    # Do not use
+    for label, forbidden in _expand_do_not_use(
+        list(rule.get("do_not_use") or []), strapping_codes
+    ):
+        hit = sorted(cpts & forbidden)
+        if not hit:
+            continue
+        if label == "strapping":
+            add(
+                "do_not_use_strapping",
+                "error",
+                f"Strapping is listed under Do not use for this insurance but found: {', '.join(hit)}.",
+                expected="no strapping",
+                found="; ".join(hit),
             )
         else:
             add(
-                "strapping_required_missing",
-                "warning",
-                "Strapping is required for this insurance but no strapping CPT was billed.",
-                expected="strapping CPT",
-                found="none",
+                f"do_not_use_{label}",
+                "error",
+                f"CPT {label} is listed under Do not use for this insurance but was billed.",
+                expected=f"no {label}",
+                found="; ".join(hit),
             )
 
-    reeval_policy = (rule.get("reeval") or "allowed").lower()
-    if reeval_policy == "forbidden" and reeval_code in cpts:
+    # Highly preferred missing (always warning — sheet preference, not hard deny)
+    for item in rule.get("highly_preferred") or []:
+        if _preference_present(item, cpts, strapping_codes):
+            continue
+        label = item.strip()
+        if has_timed:
+            context = "treatment visit"
+        elif has_eval_only:
+            context = "eval-only visit"
+        else:
+            context = "visit"
         add(
-            "reeval_forbidden",
-            "error",
-            f"Re-eval code {reeval_code} is not allowed for this insurance.",
-            expected="no re-eval",
-            found=reeval_code,
+            "highly_preferred_missing",
+            "warning",
+            f"Highly preferred '{label}' is missing on this {context}.",
+            expected=label,
+            found="none" if label.lower() != "strapping" else "none",
         )
 
-    if rule.get("prefer_manual_over_massage") and massage_code in cpts:
+    # Preferred missing (treatment visits only → warning)
+    for item in rule.get("preferred") or []:
+        if _preference_present(item, cpts, strapping_codes):
+            continue
+        if not has_timed:
+            continue
+        label = item.strip()
         add(
-            "massage_instead_of_manual",
-            "error",
-            f"Massage ({massage_code}) billed; guide requires Manual Therapy instead of massage for this insurance.",
-            expected="97140 (manual)",
-            found=massage_code,
+            "preferred_missing",
+            "warning",
+            f"Preferred '{label}' is missing on this treatment visit.",
+            expected=label,
+            found="none",
         )
 
-    if (rule.get("timed_codes") or "") == "therapeutic_activities":
-        if has_timed and ta_code not in cpts:
+    # Require 97530 when Use column says so
+    if rule.get("require_97530") and has_timed and ta_code not in cpts:
+        add(
+            "missing_therapeutic_activity",
+            "error",
+            f"Insurance Use column requires Therapeutic Activities ({ta_code}), but it is missing.",
+            expected=ta_code,
+            found="; ".join(sorted(cpts & timed_codes)) or "none",
+        )
+
+    # Max timed units excluding eval/reeval
+    max_units = rule.get("max_timed_units")
+    if max_units is not None:
+        excluded = set(eval_codes) | {reeval_code}
+        total = _timed_units_total(note, timed_codes, excluded)
+        try:
+            limit = int(max_units)
+        except (TypeError, ValueError):
+            limit = 0
+        if limit > 0 and total > limit:
             add(
-                "missing_therapeutic_activity",
+                "max_timed_units_exceeded",
                 "error",
-                f"Insurance expects Therapeutic Activities ({ta_code}) among timed codes, but it is missing.",
-                expected=ta_code,
-                found="; ".join(sorted(cpts & timed_codes)) or "none",
+                f"Timed units excluding eval/reeval total {total}, but insurance max is {limit}U.",
+                expected=f"<= {limit}U",
+                found=f"{total}U",
             )
 
     return violations
@@ -430,7 +653,14 @@ def write_excel(
         ),
         "unmapped_insurance": (
             unmapped_rows,
-            ["insurance_name", "note_count", "example_patient", "example_note_id"],
+            [
+                "insurance_name",
+                "note_count",
+                "example_patient",
+                "example_note_id",
+                "payer_org_code",
+                "payer_org",
+            ],
         ),
     }
 
@@ -452,11 +682,15 @@ def run_audit(
     out_dir: Path,
     cpt_rules_path: Path,
     icd_rules_path: Path,
+    catalog: Icd10Catalog | None = None,
 ) -> dict[str, Any]:
     cpt_config = load_yaml(cpt_rules_path)
     icd_config = load_yaml(icd_rules_path)
     cpt_rules = compile_cpt_rules(cpt_config)
     icd_rules = list(icd_config.get("rules") or [])
+    site_maps = dict(icd_config.get("site_maps") or {})
+    bilateral_families = list(icd_config.get("bilateral_families") or [])
+    icd_catalog = catalog if catalog is not None else get_default_catalog()
 
     notes = load_notes(extracted)
     cpt_violations: list[dict[str, str]] = []
@@ -468,7 +702,15 @@ def run_audit(
     empty_insurance = 0
 
     for note in notes.values():
-        icd_violations.extend(audit_icd(note, icd_rules))
+        icd_violations.extend(
+            audit_icd(
+                note,
+                icd_rules,
+                site_maps=site_maps,
+                bilateral_families=bilateral_families,
+                catalog=icd_catalog,
+            )
+        )
 
         ins = (note.insurance_name or "").strip()
         if not ins:
@@ -493,6 +735,7 @@ def run_audit(
             "note_count": str(count),
             "example_patient": unmapped_examples.get(name, ("", ""))[0],
             "example_note_id": unmapped_examples.get(name, ("", ""))[1],
+            **_payer_org_fields(name),
         }
         for name, count in unmapped_counter.most_common()
     ]
@@ -617,7 +860,14 @@ def run_audit(
     write_csv(
         out_dir / "unmapped_insurance.csv",
         unmapped_rows,
-        ["insurance_name", "note_count", "example_patient", "example_note_id"],
+        [
+            "insurance_name",
+            "note_count",
+            "example_patient",
+            "example_note_id",
+            "payer_org_code",
+            "payer_org",
+        ],
     )
     write_excel(
         out_dir / "audit_report.xlsx",

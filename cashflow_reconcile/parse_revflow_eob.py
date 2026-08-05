@@ -16,11 +16,24 @@ from .normalize import (
     parse_date,
     parse_money,
     safe_int,
+    split_carcs,
 )
 
 DATE_RANGE_RE = re.compile(
     r"^(\d{2}/\d{2}/\d{4})\s*-\s*(\d{2}/\d{2}/\d{4})$"
 )
+
+# ASH (and similar) provider bonus / incentive CARC reason codes.
+BONUS_CARC_REASON_CODES = frozenset({"161", "144"})
+
+
+def is_bonus_carc(carc: str) -> bool:
+    """True for provider bonus CARCs such as OA-161 / OA-144."""
+    text = (carc or "").strip().upper()
+    if not text:
+        return False
+    reason = text.rsplit("-", 1)[-1]
+    return reason in BONUS_CARC_REASON_CODES
 
 
 @dataclass
@@ -59,6 +72,15 @@ class PaymentLine:
     source_file: str
     eob_key: str = ""
     company_id: str = ""
+
+
+def is_bonus_payment(payment: PaymentLine) -> bool:
+    """Patient-level bonus line: no DOS, bonus CARC, and a paid amount."""
+    if (payment.date_of_service or "").strip():
+        return False
+    if payment.paid_amount <= 0:
+        return False
+    return any(is_bonus_carc(code) for code in split_carcs(payment.carcs))
 
 
 @dataclass
@@ -151,6 +173,7 @@ def parse_revflow_csv(path: Path, manifest_meta: dict | None = None) -> list[Pay
         return []
 
     buckets: dict[tuple[str, str, str, str, str, str], _RollupBucket] = {}
+    bonus_lines: list[PaymentLine] = []
 
     for row in csv.DictReader(lines[header_idx:]):
         first = (row.get("First Name") or "").strip()
@@ -167,6 +190,34 @@ def parse_revflow_csv(path: Path, manifest_meta: dict | None = None) -> list[Pay
         carc = (row.get("CARC") or "").strip()
 
         if not dos_str:
+            paid_amount = parse_money(row.get("Paid Amount"))
+            if is_bonus_carc(carc) and paid_amount > 0:
+                bonus_lines.append(
+                    PaymentLine(
+                        revflow_patient_id=patient_id,
+                        first_name=first,
+                        last_name=last,
+                        name_key=name_key_from_revflow(last, first),
+                        date_of_service="",
+                        cpt_code="",
+                        modifier="",
+                        units=units if units is not None else 0,
+                        billed_amount=parse_money(row.get("Billed Amount")),
+                        allowed_amount=parse_money(row.get("Allowed Amount")),
+                        paid_amount=paid_amount,
+                        adjustment_amount=parse_money(row.get("Adjustment Amount")),
+                        deductible_amount=parse_money(row.get("Deductible Amount")),
+                        carcs=carc,
+                        payor=meta.payor,
+                        check_eft_num=meta.check_eft_num,
+                        eob_date=meta.eob_date,
+                        report_from=meta.report_from,
+                        report_to=meta.report_to,
+                        source_file=meta.source_file,
+                        eob_key=meta.eob_key,
+                        company_id=meta.company_id,
+                    )
+                )
             continue
 
         if cpt and units is not None and units > 0:
@@ -215,7 +266,7 @@ def parse_revflow_csv(path: Path, manifest_meta: dict | None = None) -> list[Pay
                         bucket.deductible_amount += parse_money(row.get("Deductible Amount"))
                         bucket.carcs.append(carc)
 
-    results: list[PaymentLine] = []
+    results: list[PaymentLine] = list(bonus_lines)
     for bucket in buckets.values():
         results.append(
             PaymentLine(

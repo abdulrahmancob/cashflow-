@@ -1,0 +1,9 @@
+# Copy of cashflow-ssl.conf — enable by mounting as conf.d/ssl.conf (see docker-compose.yml).
+# Requires /data/certs/fullchain.pem + privkey.pem.
+#
+# Generate self-signed for IP (no public DNS):
+#   sudo openssl req -x509 -nodes -newkey rsa:2048 -days 825 \
+#     -keyout /data/certs/privkey.pem -out /data/certs/fullchain.pem \
+#     -subj "/CN=147.93.138.73" -addext "subjectAltName=IP:147.93.138.73"
+
+# See cashflow-ssl.conf for the active server block (SPA + /api on :443).

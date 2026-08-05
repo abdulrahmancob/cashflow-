@@ -6,7 +6,14 @@ def setup_logging(level: int = logging.INFO) -> None:
     root = logging.getLogger()
     if root.handlers:
         return
-    handler = logging.StreamHandler(sys.stdout)
+    stream = sys.stdout
+    # Windows cp1252 consoles choke on Playwright arrows / unicode in exceptions.
+    if hasattr(stream, "reconfigure"):
+        try:
+            stream.reconfigure(errors="replace")
+        except Exception:
+            pass
+    handler = logging.StreamHandler(stream)
     handler.setFormatter(
         logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     )

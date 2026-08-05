@@ -12,6 +12,7 @@ import yaml
 
 from cashflow_forecast.config import GLOBAL_MEDIAN_LAG_DAYS, MAX_LAG_DAYS, MIN_SLA_SAMPLES
 from cashflow_forecast.utils import percentile
+from cashflow_reconcile.payer_registry import resolve
 
 
 def _confidence(n: int) -> str:
@@ -22,6 +23,18 @@ def _confidence(n: int) -> str:
     if n >= MIN_SLA_SAMPLES:
         return "low"
     return "fallback"
+
+
+def _resolve_org(ins: str, rev: str) -> tuple[str, str]:
+    hit = (
+        resolve(ins, "webpt")
+        or resolve(rev, "revflow")
+        or resolve(ins, "any")
+        or resolve(rev, "any")
+    )
+    if hit is None:
+        return "", ""
+    return hit.code, hit.name
 
 
 def build_payer_sla(lines: pd.DataFrame) -> pd.DataFrame:
@@ -37,6 +50,8 @@ def build_payer_sla(lines: pd.DataFrame) -> pd.DataFrame:
             columns=[
                 "webpt_insurance",
                 "revflow_payor",
+                "payer_org_code",
+                "payer_org",
                 "sample_count",
                 "median_lag_days",
                 "avg_lag_days",
@@ -72,10 +87,13 @@ def build_payer_sla(lines: pd.DataFrame) -> pd.DataFrame:
     for (ins, rev), lags in sorted(groups.items(), key=lambda x: -len(x[1])):
         lags_sorted = sorted(lags)
         n = len(lags_sorted)
+        org_code, org_name = _resolve_org(ins, rev)
         rows.append(
             {
                 "webpt_insurance": ins,
                 "revflow_payor": rev,
+                "payer_org_code": org_code,
+                "payer_org": org_name,
                 "sample_count": n,
                 "median_lag_days": int(median(lags_sorted)) if n else GLOBAL_MEDIAN_LAG_DAYS,
                 "avg_lag_days": round(mean(lags_sorted), 1) if n else float(GLOBAL_MEDIAN_LAG_DAYS),
@@ -97,17 +115,15 @@ def build_payer_sla(lines: pd.DataFrame) -> pd.DataFrame:
 
 
 def sla_lookup(sla_df: pd.DataFrame) -> dict[str, int]:
-    """Map webpt_insurance (lower) → median_lag_days."""
+    """Map webpt_insurance / revflow_payor / payer_org (lower) → median_lag_days."""
     lookup: dict[str, int] = {}
     if sla_df.empty:
         return lookup
     for _, row in sla_df.iterrows():
-        key = str(row["webpt_insurance"]).strip().lower()
-        if key and key not in lookup:
-            lookup[key] = int(row["median_lag_days"])
-        rev = str(row.get("revflow_payor") or "").strip().lower()
-        if rev and rev not in lookup:
-            lookup[rev] = int(row["median_lag_days"])
+        for col in ("webpt_insurance", "revflow_payor", "payer_org_code", "payer_org"):
+            key = str(row.get(col) or "").strip().lower()
+            if key and key not in lookup:
+                lookup[key] = int(row["median_lag_days"])
     return lookup
 
 
@@ -115,11 +131,26 @@ def get_lag_days(lookup: dict[str, int], insurance: str) -> int:
     key = (insurance or "").strip().lower()
     if key in lookup:
         return lookup[key]
+    resolved = resolve(insurance, "any")
+    if resolved is not None:
+        for candidate in (resolved.code.lower(), resolved.name.lower()):
+            if candidate in lookup:
+                return lookup[candidate]
     # Partial contains match
     for k, v in lookup.items():
         if k and (k in key or key in k):
             return v
     return GLOBAL_MEDIAN_LAG_DAYS
+
+
+def build_lag_cache(lookup: dict[str, int], insurance_values: list[str]) -> dict[str, int]:
+    """Pre-resolve lag days for unique insurance strings (avoids per-row resolve)."""
+    cache: dict[str, int] = {}
+    for raw in insurance_values:
+        key = (raw or "").strip().lower()
+        if key and key not in cache:
+            cache[key] = get_lag_days(lookup, raw)
+    return cache
 
 
 def write_payer_sla(sla_df: pd.DataFrame, csv_path: Path, yaml_path: Path | None = None) -> None:

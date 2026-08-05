@@ -23,6 +23,20 @@ class SmokeTests(unittest.TestCase):
         self.assertEqual(args.command, "export-all")
         self.assertEqual(args.output, "output/jun_2026")
 
+    def test_cli_parser_has_verify_exports(self):
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "verify-exports",
+                "--output",
+                "output/jun_jul_combined",
+                "--catalog",
+                "output/jun_2026/eob_catalog.json",
+            ]
+        )
+        self.assertEqual(args.command, "verify-exports")
+        self.assertEqual(args.catalog, ["output/jun_2026/eob_catalog.json"])
+
     def test_authenticated_url_recognizes_dashboard(self):
         self.assertTrue(
             _is_authenticated_url("https://billing.revflow.com/dashboard")
@@ -76,7 +90,7 @@ class SmokeTests(unittest.TestCase):
             filename = export_filename(selections[0])
             self.assertEqual(
                 filename,
-                "UNITEDHEALTHCARE OF NEW YORK INC - 26147B1001154298.csv",
+                "UNITEDHEALTHCARE OF NEW YORK INC - 26147B1001154298 - 23941775.csv",
             )
             key = selection_key(selections[0])
             self.assertIn("23941775", key)
@@ -87,10 +101,11 @@ class ExportFilenameTests(unittest.TestCase):
         selection = {
             "payor": "MOLINA HEALTHCARE OF NEW YORK, INC.",
             "check_eft_num": "1246736057",
+            "eob_key": "24100001",
         }
         self.assertEqual(
             export_filename(selection),
-            "MOLINA HEALTHCARE OF NEW YORK, INC. - 1246736057.csv",
+            "MOLINA HEALTHCARE OF NEW YORK, INC. - 1246736057 - 24100001.csv",
         )
 
     def test_strips_invalid_characters(self):
@@ -108,10 +123,11 @@ class ExportFilenameTests(unittest.TestCase):
         selection = {
             "payor": "AETNA",
             "check_eft_num": "826182000214418",
+            "eob_key": "24100002",
         }
         self.assertEqual(
             export_filename(selection, ".xlsx"),
-            "AETNA - 826182000214418.xlsx",
+            "AETNA - 826182000214418 - 24100002.xlsx",
         )
 
     def test_sanitize_truncates_long_payor(self):

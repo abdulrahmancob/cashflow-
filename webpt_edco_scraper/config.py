@@ -4,9 +4,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent
+# Always load scraper-local .env first so scripts started from repo root
+# (e.g. snowflake_pull/scripts/run_online_gates.py) still authenticate.
+load_dotenv(BASE_DIR / ".env")
+load_dotenv()  # optional cwd overlay
+
 OUTPUT_DIR = BASE_DIR / "output"
 EDOCS_DIR = OUTPUT_DIR / "edocs"
 STORAGE_STATE_PATH = BASE_DIR / "storage_state.json"
@@ -40,7 +43,7 @@ DEFAULT_COMPANY_ID = "13829"
 DEFAULT_OCR_ENABLED = True
 DEFAULT_OCR_DPI = 200
 DEFAULT_PARALLEL_WORKERS = 8
-DEFAULT_MAX_CONCURRENT_PDFS = 12
+DEFAULT_MAX_CONCURRENT_PDFS = 24
 DEFAULT_BROWSER_RESTART_MAX = 3
 DEFAULT_BROWSER_RESTART_EVERY = 0
 

@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import contextvars
 import json
 import re
 import time
@@ -23,6 +24,19 @@ from logging_config import get_logger, mask_secret
 
 log = get_logger("auth")
 
+# Parallel-download sets this False so we never click "Yes, oust them!" mid-run.
+_allow_oust_var: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "webpt_allow_oust", default=True
+)
+
+
+def set_allow_oust(allow: bool) -> contextvars.Token:
+    return _allow_oust_var.set(allow)
+
+
+def reset_allow_oust(token: contextvars.Token) -> None:
+    _allow_oust_var.reset(token)
+
 SSO_MUTATION = """
 mutation SSOEmrAuthenticate($data: SSOEmrAuthenticateInput!) {
   ssoEmrAuthenticate(data: $data) {
@@ -38,6 +52,10 @@ class SessionExpiredError(Exception):
     """Saved session is no longer valid."""
 
 
+class ClinicSwitchError(Exception):
+    """Raised when the active clinic could not be switched/verified."""
+
+
 @dataclass
 class SessionState:
     csrf_token: str | None = None
@@ -51,7 +69,7 @@ class ClinicInfo:
     name: str
 
 
-def _is_auth_redirect_url(url: str) -> bool:
+def is_auth_redirect_url(url: str) -> bool:
     u = (url or "").lower()
     return (
         "login.webpt.com" in u
@@ -60,8 +78,88 @@ def _is_auth_redirect_url(url: str) -> bool:
     )
 
 
+# Back-compat alias for internal call sites / tests.
+_is_auth_redirect_url = is_auth_redirect_url
+
+
 def _is_login_url(url: str) -> bool:
-    return _is_auth_redirect_url(url)
+    return is_auth_redirect_url(url)
+
+
+AUTH_EXPIRED = "auth_expired"
+# Refresh JWT when fewer than this many seconds remain (vega_emr_auth ~15 min).
+VEGA_JWT_MIN_TTL_SEC = 180
+
+
+def vega_jwt_seconds_remaining(cookies: list[dict]) -> float | None:
+    """Return seconds until vega_emr_auth JWT exp, or None if cookie missing/unreadable."""
+    now = time.time()
+    for cookie in cookies:
+        if cookie.get("name") != "vega_emr_auth":
+            continue
+        token = cookie.get("value") or ""
+        parts = token.split(".")
+        if len(parts) < 2:
+            continue
+        try:
+            payload_b64 = parts[1] + "=" * (-len(parts[1]) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+            exp = payload.get("exp")
+            if exp is None:
+                return None
+            return float(exp) - now
+        except Exception:
+            continue
+    return None
+
+
+async def ensure_session_fresh(
+    page: Page,
+    context: BrowserContext,
+    config: WebPTConfig,
+    *,
+    facility_id: str | None = None,
+    company_id: str | None = None,
+    min_ttl_sec: int = VEGA_JWT_MIN_TTL_SEC,
+    allow_oust: bool = True,
+    force: bool = False,
+) -> SessionState:
+    """Re-authenticate when vega JWT is missing, near expiry, or force=True."""
+    cookies = await context.cookies()
+    remaining = vega_jwt_seconds_remaining(cookies)
+    if (
+        not force
+        and remaining is not None
+        and remaining > min_ttl_sec
+    ):
+        return await refresh_csrf(context, page)
+
+    if force:
+        log.info("Forcing session refresh after auth_expired download")
+    elif remaining is None:
+        log.info("vega_emr_auth missing or unreadable — refreshing session")
+    else:
+        log.info(
+            "vega_emr_auth TTL %.0fs < %ds — refreshing session",
+            remaining,
+            min_ttl_sec,
+        )
+    session = await ensure_authenticated(
+        page, context, config, allow_oust=allow_oust
+    )
+    fid = facility_id
+    cid = company_id or config.company_id
+    if fid and cid:
+        await switch_clinic(page, company_id=cid, facility_id=str(fid))
+        await page.goto(
+            SCHEDULER_INDEX_URL,
+            wait_until="domcontentloaded",
+            timeout=45000,
+        )
+        session = await ensure_page_authenticated(
+            page, context, config, allow_oust=allow_oust
+        )
+    return session
 
 
 def _oust_yes_button(page: Page):
@@ -73,8 +171,17 @@ def _oust_yes_button(page: Page):
     ).first
 
 
-async def dismiss_already_signed_in_prompt(page: Page) -> bool:
-    """Click 'Yes, oust them!' if single-session conflict dialog is shown."""
+async def dismiss_already_signed_in_prompt(
+    page: Page, *, allow_oust: bool | None = None
+) -> bool:
+    """Click 'Yes, oust them!' if single-session conflict dialog is shown.
+
+    When allow_oust is False (parallel-download), refuse to kick the other
+    session — that usually means kicking our own shared browser session.
+    """
+    if allow_oust is None:
+        allow_oust = _allow_oust_var.get()
+
     try:
         body_text = (await page.locator("body").inner_text(timeout=2000)).lower()
     except Exception:
@@ -88,6 +195,13 @@ async def dismiss_already_signed_in_prompt(page: Page) -> bool:
 
     if "already signed in" not in body_text and not visible:
         return False
+
+    if not allow_oust:
+        raise SessionExpiredError(
+            "WebPT single-session conflict detected; refusing to click "
+            "'Yes, oust them!' (allow_oust=False). Use one patient worker "
+            "and avoid concurrent logins."
+        )
 
     try:
         if not visible:
@@ -113,8 +227,8 @@ async def dismiss_already_signed_in_prompt(page: Page) -> bool:
         return False
 
 
-async def _settle_app_page(page: Page) -> None:
-    await dismiss_already_signed_in_prompt(page)
+async def _settle_app_page(page: Page, *, allow_oust: bool | None = None) -> None:
+    await dismiss_already_signed_in_prompt(page, allow_oust=allow_oust)
 
 
 def _is_on_app_domain(url: str) -> bool:
@@ -124,6 +238,45 @@ def _is_on_app_domain(url: str) -> bool:
 def _is_post_login_interstitial_url(url: str) -> bool:
     u = (url or "").lower()
     return "/redirect/" in u or "delegator.webpt.com" in u
+
+
+def _is_auth0_oops_url(url: str) -> bool:
+    """Auth0 lost OAuth transaction state (common after cookie clears mid-login)."""
+    u = (url or "").lower()
+    return "login.webpt.com" in u and "/authorize/resume" in u
+
+
+async def _is_auth0_oops_page(page: Page) -> bool:
+    """True when Auth0 shows 'couldn't find your session' / Oops page."""
+    if not _is_auth0_oops_url(page.url):
+        # Also catch oops on other login.webpt.com paths via body text.
+        if "login.webpt.com" not in (page.url or "").lower():
+            return False
+    try:
+        body = (await page.locator("body").inner_text(timeout=3000)).lower()
+    except Exception:
+        return _is_auth0_oops_url(page.url)
+    markers = (
+        "couldn't find your session",
+        "could not find your session",
+        "something went wrong",
+        "opened too many login",
+    )
+    return any(m in body for m in markers)
+
+
+async def _recover_from_auth0_oops(page: Page, context: BrowserContext) -> None:
+    """Abort broken OAuth resume; start a fresh authorize via app entry."""
+    log.warning(
+        "Auth0 Oops/session-lost on %s — clearing cookies and restarting via app entry",
+        page.url,
+    )
+    try:
+        await context.clear_cookies()
+    except Exception as exc:
+        log.debug("clear_cookies during Oops recovery failed: %s", exc)
+    await _goto_login_entry(page)
+    await _wait_for_auth0_login_page(page, timeout_sec=45)
 
 
 async def _wait_for_app_domain(page: Page, *, timeout_ms: int = 60000) -> bool:
@@ -207,16 +360,31 @@ async def ensure_page_authenticated(
     page: Page,
     context: BrowserContext,
     config: WebPTConfig,
+    *,
+    allow_oust: bool | None = None,
 ) -> SessionState:
     """Re-auth if the visible page landed on SSO/login after navigation."""
-    if _page_needs_auth(page):
-        log.warning("Page on auth redirect (%s) — re-authenticating", page.url)
-        return await ensure_authenticated(page, context, config)
-    await _settle_app_page(page)
-    if _page_needs_auth(page):
-        log.warning("Auth redirect after oust prompt (%s) — re-authenticating", page.url)
-        return await ensure_authenticated(page, context, config)
-    return await refresh_csrf(context, page)
+    token = None
+    if allow_oust is not None:
+        token = set_allow_oust(allow_oust)
+    try:
+        if _page_needs_auth(page):
+            log.warning("Page on auth redirect (%s) — re-authenticating", page.url)
+            return await ensure_authenticated(
+                page, context, config, allow_oust=allow_oust
+            )
+        await _settle_app_page(page, allow_oust=allow_oust)
+        if _page_needs_auth(page):
+            log.warning(
+                "Auth redirect after session prompt (%s) — re-authenticating", page.url
+            )
+            return await ensure_authenticated(
+                page, context, config, allow_oust=allow_oust
+            )
+        return await refresh_csrf(context, page)
+    finally:
+        if token is not None:
+            reset_allow_oust(token)
 
 
 async def create_context(
@@ -535,6 +703,13 @@ async def _try_automated_auth0_login(page: Page, config: WebPTConfig) -> bool:
         log.debug("Auth0: not on login page (%s)", page.url)
         return False
 
+    # Auth0 / login.webpt.com can take a few seconds to paint identifier fields.
+    try:
+        await page.wait_for_load_state("domcontentloaded", timeout=15000)
+    except Exception:
+        pass
+    await asyncio.sleep(1.5)
+
     on_password_page = "/login/password" in page.url.lower()
     password_input = _auth0_password_locator(page)
     skip_username = on_password_page
@@ -550,7 +725,7 @@ async def _try_automated_auth0_login(page: Page, config: WebPTConfig) -> bool:
     if not skip_username:
         username_input = _auth0_username_locator(page)
         try:
-            await username_input.wait_for(state="visible", timeout=8000)
+            await username_input.wait_for(state="visible", timeout=25000)
         except Exception as exc:
             try:
                 await password_input.wait_for(state="visible", timeout=5000)
@@ -599,6 +774,24 @@ async def wait_for_manual_login(
     raise SessionExpiredError("Timed out waiting for manual login")
 
 
+async def _goto_login_entry(page: Page) -> None:
+    log.info("Opening WebPT (entry: %s)", LOGIN_ENTRY_URL)
+    await page.goto(LOGIN_ENTRY_URL, wait_until="domcontentloaded", timeout=90000)
+    await asyncio.sleep(2)
+
+
+async def _wait_for_auth0_login_page(page: Page, *, timeout_sec: float = 20) -> bool:
+    """Wait until Auth0 / login.webpt.com form is reachable."""
+    if _is_auth_redirect_url(page.url):
+        return True
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        if _is_auth_redirect_url(page.url):
+            return True
+        await asyncio.sleep(0.5)
+    return _is_auth_redirect_url(page.url)
+
+
 async def login(
     page: Page,
     context: BrowserContext,
@@ -606,39 +799,198 @@ async def login(
     *,
     fresh: bool = False,
 ) -> None:
+    if not (config.username or "").strip() or not (config.password or "").strip():
+        raise SessionExpiredError(
+            "WEBPT_USERNAME/WEBPT_PASSWORD not set — refusing to wait on login page. "
+            "Ensure webpt_edco_scraper/.env is loaded (config loads it from package dir)."
+        )
+
     if fresh:
         await context.clear_cookies()
         log.info("Cleared browser cookies for fresh login")
 
-    log.info("Opening WebPT (entry: %s)", LOGIN_ENTRY_URL)
-    await page.goto(LOGIN_ENTRY_URL, wait_until="domcontentloaded", timeout=90000)
-    await asyncio.sleep(2)
+    await _goto_login_entry(page)
 
     if not fresh and await _session_ready(page, context):
         log.info("Already authenticated")
         return
 
-    if _is_auth_redirect_url(page.url):
-        log.info("Auth0 login page detected (%s)", page.url)
-    elif await _has_session_cookies(context):
+    # Soft recover: already on app dashboard with cookies — refresh CSRF instead
+    # of wiping storage_state (clearing cookies here was forcing useless Auth0 waits).
+    if (
+        not fresh
+        and not _is_auth_redirect_url(page.url)
+        and _is_on_app_domain(page.url)
+        and await _has_session_cookies(context)
+    ):
+        await _settle_app_page(page)
+        if await _session_ready(page, context):
+            log.info("App session recovered on %s without Auth0 re-login", page.url)
+            return
+        csrf_state = await refresh_csrf(context, page)
+        if csrf_state.csrf_token and await _probe_session(context):
+            log.info("CSRF recovered on app domain — skipping Auth0")
+            return
+
+    # Stale storage_state often lands on delegator interstitial without Auth0
+    # fields. Clear cookies once and reopen so automated login can proceed.
+    if (
+        not fresh
+        and not _is_auth_redirect_url(page.url)
+        and (
+            _is_post_login_interstitial_url(page.url)
+            or await _has_session_cookies(context)
+        )
+        and not _is_on_app_domain(page.url)
+    ):
         log.warning(
-            "Session cookies present but login incomplete (url=%s) — retrying Auth0",
+            "Incomplete session on %s — clearing cookies and retrying fresh login",
             page.url,
         )
+        await context.clear_cookies()
+        await _goto_login_entry(page)
 
-    if await _try_automated_auth0_login(page, config):
-        log.info("Automated Auth0 login succeeded")
-        await _wait_for_dashboard(page)
-        await _settle_app_page(page)
-        return
+    if _is_auth_redirect_url(page.url):
+        log.info("Auth0 login page detected (%s)", page.url)
+    elif not await _wait_for_auth0_login_page(page):
+        log.warning(
+            "Not on Auth0 after entry (url=%s) — forcing login entry again",
+            page.url,
+        )
+        await _goto_login_entry(page)
+        await _wait_for_auth0_login_page(page)
+
+    if not _is_auth_redirect_url(page.url):
+        # Soft dashboard / interstitial without Auth0 fields.
+        if _is_on_app_domain(page.url) and await _has_session_cookies(context):
+            await _settle_app_page(page)
+            if await _session_ready(page, context):
+                log.info("Staying on app session (%s) — Auth0 not required", page.url)
+                return
+            csrf_state = await refresh_csrf(context, page)
+            if csrf_state.csrf_token and await _probe_session(context):
+                log.info("CSRF recovered before Auth0 fallback")
+                return
+        log.warning(
+            "Still not on Auth0 (url=%s) — opening https://login.webpt.com",
+            page.url,
+        )
+        await context.clear_cookies()
+        await page.goto(
+            "https://login.webpt.com",
+            wait_until="domcontentloaded",
+            timeout=90000,
+        )
+        await asyncio.sleep(3)
+        await _wait_for_auth0_login_page(page, timeout_sec=45)
+
+    async def _finish_if_logged_in() -> bool:
+        if await _session_ready(page, context):
+            await _wait_for_dashboard(page)
+            await _settle_app_page(page)
+            return True
+        return False
+
+    async def _abort_oauth_and_restart_via_app() -> None:
+        """Full abort only — never clear cookies mid-transaction otherwise."""
+        if await _is_auth0_oops_page(page):
+            await _recover_from_auth0_oops(page, context)
+            return
+        log.info("Aborting OAuth transaction — fresh authorize via app entry")
+        try:
+            await context.clear_cookies()
+        except Exception as exc:
+            log.debug("clear_cookies on abort failed: %s", exc)
+        await _goto_login_entry(page)
+        if not await _wait_for_auth0_login_page(page, timeout_sec=45):
+            # Fallback only after app entry failed to reach Auth0.
+            log.warning(
+                "App entry did not reach Auth0 (url=%s) — fallback login.webpt.com",
+                page.url,
+            )
+            await page.goto(
+                "https://login.webpt.com",
+                wait_until="domcontentloaded",
+                timeout=90000,
+            )
+            await asyncio.sleep(2)
+            await _wait_for_auth0_login_page(page, timeout_sec=45)
 
     if config.headless:
+        # Headless: finite automated retries, then fail (no interactive window).
+        backoff = 5.0
+        for attempt in range(1, 6):
+            if await _is_auth0_oops_page(page):
+                await _recover_from_auth0_oops(page, context)
+            if await _try_automated_auth0_login(page, config):
+                log.info("Automated Auth0 login succeeded (headless attempt %s)", attempt)
+                await _wait_for_dashboard(page)
+                await _settle_app_page(page)
+                return
+            if await _finish_if_logged_in():
+                return
+            log.warning(
+                "Headless Auth0 attempt %s failed (url=%s) — abort + retry in %.0fs",
+                attempt,
+                page.url,
+                backoff,
+            )
+            await asyncio.sleep(backoff)
+            backoff = min(60.0, backoff * 1.5)
+            await _abort_oauth_and_restart_via_app()
         raise SessionExpiredError(
             "Automated login failed and headless mode is on. "
-            "Run without --headless to log in manually, then retry."
+            "Run without --headless: python scraper.py login --fresh-login"
         )
 
-    await wait_for_manual_login(page, context, timeout_sec=300)
+    # Non-headless: one clean OAuth attempt at a time (like a normal browser).
+    # Long manual wait WITHOUT clear_cookies / re-navigation mid-flow.
+    # Only after a full failure (or Oops) abort and start a new authorize.
+    backoff = 5.0
+    attempt = 0
+    while True:
+        attempt += 1
+        if await _is_auth0_oops_page(page):
+            await _recover_from_auth0_oops(page, context)
+
+        if await _try_automated_auth0_login(page, config):
+            log.info("Automated Auth0 login succeeded (attempt %s)", attempt)
+            await _wait_for_dashboard(page)
+            await _settle_app_page(page)
+            return
+        if await _finish_if_logged_in():
+            return
+
+        log.warning(
+            "Auth0 automated attempt %s incomplete (url=%s) — "
+            "waiting up to 300s for manual login (no cookie clear)",
+            attempt,
+            page.url,
+        )
+        try:
+            await wait_for_manual_login(page, context, timeout_sec=300)
+            await _wait_for_dashboard(page)
+            await _settle_app_page(page)
+            return
+        except SessionExpiredError:
+            pass
+
+        if await _is_auth0_oops_page(page):
+            await _recover_from_auth0_oops(page, context)
+            continue
+
+        log.info(
+            "Manual window elapsed — abort OAuth and retry via app entry in %.0fs "
+            "(attempt %s)",
+            backoff,
+            attempt + 1,
+        )
+        await asyncio.sleep(backoff)
+        backoff = min(90.0, backoff * 1.4)
+        try:
+            await _abort_oauth_and_restart_via_app()
+        except Exception as exc:
+            log.warning("Auth0 abort/restart failed: %s — continuing", exc)
 
 
 async def _log_session_failure_diagnostics(
@@ -662,44 +1014,57 @@ async def ensure_authenticated(
     config: WebPTConfig,
     *,
     fresh_login: bool = False,
+    allow_oust: bool | None = None,
 ) -> SessionState:
-    if not fresh_login and await is_session_valid(page, context):
-        log.info("Existing session is valid")
-        state = await refresh_csrf(context, page)
-        if state.csrf_token:
-            return state
-        log.warning("Saved session missing CSRF — performing login")
-
-    log.info("Session invalid or missing — performing login")
-    await login(page, context, config, fresh=fresh_login)
-    await _wait_for_dashboard(page)
-    await _settle_app_page(page)
+    token = None
+    if allow_oust is not None:
+        token = set_allow_oust(allow_oust)
     try:
-        await page.wait_for_function(
-            "() => localStorage.getItem('vega_auth_csrf') || document.cookie.includes('vega_emr_auth')",
-            timeout=60000,
-        )
-    except Exception:
-        log.warning("Timed out waiting for CSRF markers after login")
-    if not await _has_session_cookies(context):
-        await _log_session_failure_diagnostics(page, context)
-        raise SessionExpiredError("Login completed but session cookies are missing")
+        if not fresh_login and await is_session_valid(page, context):
+            log.info("Existing session is valid")
+            state = await refresh_csrf(context, page)
+            if state.csrf_token:
+                return state
+            log.warning("Saved session missing CSRF — settling app then retry CSRF")
+            await _settle_app_page(page, allow_oust=allow_oust)
+            state = await refresh_csrf(context, page)
+            if state.csrf_token and await _probe_session(context):
+                await save_storage_state(context)
+                return state
 
-    ready_deadline = time.monotonic() + 30
-    session_ready = False
-    while time.monotonic() < ready_deadline:
-        if await _session_ready(page, context):
-            session_ready = True
-            break
-        await asyncio.sleep(1)
+        log.info("Session invalid or missing — performing login")
+        await login(page, context, config, fresh=fresh_login)
+        await _wait_for_dashboard(page)
+        await _settle_app_page(page, allow_oust=allow_oust)
+        try:
+            await page.wait_for_function(
+                "() => localStorage.getItem('vega_auth_csrf') || document.cookie.includes('vega_emr_auth')",
+                timeout=60000,
+            )
+        except Exception:
+            log.warning("Timed out waiting for CSRF markers after login")
+        if not await _has_session_cookies(context):
+            await _log_session_failure_diagnostics(page, context)
+            raise SessionExpiredError("Login completed but session cookies are missing")
 
-    if not session_ready:
-        await _log_session_failure_diagnostics(page, context)
-        raise SessionExpiredError(
-            "Login completed but session is not valid (CSRF token missing)"
-        )
-    await save_storage_state(context)
-    return await refresh_csrf(context, page)
+        ready_deadline = time.monotonic() + 30
+        session_ready = False
+        while time.monotonic() < ready_deadline:
+            if await _session_ready(page, context):
+                session_ready = True
+                break
+            await asyncio.sleep(1)
+
+        if not session_ready:
+            await _log_session_failure_diagnostics(page, context)
+            raise SessionExpiredError(
+                "Login completed but session is not valid (CSRF token missing)"
+            )
+        await save_storage_state(context)
+        return await refresh_csrf(context, page)
+    finally:
+        if token is not None:
+            reset_allow_oust(token)
 
 
 async def list_clinics(page: Page, company_id: str) -> list[ClinicInfo]:
@@ -744,8 +1109,11 @@ async def switch_clinic(
     facility_id: str,
     user_id: str | None = None,
 ) -> None:
-    """Switch active clinic via #ClinicChange dropdown."""
-    await page.goto(DASHBOARD_URL, wait_until="domcontentloaded", timeout=30000)
+    """Switch active clinic via #ClinicChange dropdown.
+
+    Raises ClinicSwitchError if the dropdown cannot be set to the target clinic.
+    """
+    await page.goto(DASHBOARD_URL, wait_until="domcontentloaded", timeout=90000)
     await _settle_app_page(page)
 
     if user_id is None:
@@ -788,11 +1156,81 @@ async def switch_clinic(
                 [user_id or "", target_value],
             )
         except Exception as exc:
-            log.warning("Could not switch clinic (continuing): %s", exc)
-            return
+            raise ClinicSwitchError(
+                f"Could not switch clinic to {target_value}: {exc}"
+            ) from exc
 
     await asyncio.sleep(2)
-    await page.wait_for_load_state("networkidle", timeout=30000)
+    try:
+        await page.wait_for_load_state("networkidle", timeout=30000)
+    except Exception:
+        pass
+
+    # changeClinic.change often navigates; wait for dropdown to reappear.
+    actual = ""
+    for _ in range(6):
+        try:
+            await page.wait_for_selector(
+                "#ClinicChange", state="attached", timeout=10000
+            )
+        except Exception:
+            await _settle_app_page(page)
+        actual = await page.evaluate(
+            """() => {
+                const sel = document.querySelector('#ClinicChange');
+                return sel ? String(sel.value || '') : '';
+            }"""
+        )
+        if actual == target_value:
+            break
+        # Soft re-apply if page reloaded with empty/wrong clinic.
+        await page.evaluate(
+            """([targetValue, userId]) => {
+                const sel = document.querySelector('#ClinicChange');
+                if (!sel) return;
+                const opt = Array.from(sel.options).find(o => o.value === targetValue);
+                if (!opt) return;
+                sel.value = targetValue;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                if (typeof changeClinic !== 'undefined' && changeClinic.change && userId) {
+                    changeClinic.change(userId, targetValue);
+                }
+            }""",
+            [target_value, user_id or ""],
+        )
+        await asyncio.sleep(1.5)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
+
+    if actual != target_value:
+        raise ClinicSwitchError(
+            f"Clinic switch did not stick: wanted {target_value}, got {actual!r}"
+        )
+
+
+async def switch_clinic_and_settle(
+    page: Page,
+    context: BrowserContext,
+    config: WebPTConfig,
+    *,
+    company_id: str,
+    facility_id: str,
+    allow_oust: bool | None = None,
+) -> SessionState:
+    """Switch clinic, open scheduler, and refresh auth/CSRF so patientChart sticks."""
+    await switch_clinic(
+        page, company_id=company_id, facility_id=str(facility_id)
+    )
+    await page.goto(
+        SCHEDULER_INDEX_URL,
+        wait_until="domcontentloaded",
+        timeout=45000,
+    )
+    return await ensure_page_authenticated(
+        page, context, config, allow_oust=allow_oust
+    )
 
 
 def ajax_headers(csrf_token: str | None, referer: str) -> dict[str, str]:

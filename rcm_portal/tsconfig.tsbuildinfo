@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/api/forecast.ts","./src/auth/authcontext.tsx","./src/components/layout.tsx","./src/components/ui.tsx","./src/pages/eligibilityqueue.tsx","./src/pages/finance.tsx","./src/pages/login.tsx","./src/pages/platform.tsx","./src/pages/users.tsx"],"errors":true,"version":"5.7.3"}

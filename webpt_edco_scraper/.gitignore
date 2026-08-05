@@ -1,7 +1,9 @@
 .env
 storage_state.json
+.webpt_session.lock
 output/
 __pycache__/
 *.pyc
 .venv/
 venv/
+_debug_*.py

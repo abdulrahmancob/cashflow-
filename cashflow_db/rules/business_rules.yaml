@@ -1,0 +1,70 @@
+# Business rules encoded from RCM / CC / Medical Audit docs.
+# Loaded into ref tables and used by ETL / forecast params.
+
+auth:
+  # end_date always wins over remaining visit count
+  end_date_overrides_remaining: true
+  # auth_number "0" is dummy placeholder, NOT zero visits
+  dummy_auth_number_values: ["0", "00", "n/a", "na", "none"]
+  statuses: [approved, non_ev, on_hold, expired, exhausted]
+  kinds: [hard, dummy]
+  hold_reasons: [cob, missing_referral, insurance_change, md_pending, other]
+  non_ev:
+    # reschedule past turnaround; do NOT cancel
+    cancel_appointments: false
+  on_hold:
+    # cancel ALL upcoming appointments
+    cancel_appointments: true
+
+visit:
+  types: [follow_up, initial, re_examination]
+  re_exam_every_n_visits: 10
+  green_board:
+    follow_up_units: 1
+    initial_units: 2
+    max_units_per_block: 4
+    initial_gap_hours: 1.0
+  note_sla_hours: 24
+
+submission_routes:
+  waystar:
+    share_approx: 0.90
+    automated: true
+  zaya:
+    requires_force_reject_from_waystar: true
+    drop_risk_if_unsubmitted: true
+  manual:
+    use_for: [medicaid, workers_comp, no_fault]
+
+claim_events:
+  internal_vs_payer:
+    internal: [internal_hold, ready_for_submission, force_rejected_waystar, dropped_unsubmitted, self_pay_converted]
+    payer_or_clearinghouse: [submitted, submitted_zaya, clearinghouse_rejected, accepted, payer_denied, era_received]
+
+denial_ownership:
+  front_desk: [wrong_case, bad_demographics, self_pay_mask]
+  authorization: [expired_auth, missing_auth, dummy_auth_misread, missing_referral]
+  coding: [cpt_mismatch, force_reject_drop]
+  medical_audit: [icd_conflict, unsigned_note, medical_necessity]
+  payer_behavior: [partial_denial, payer_delay]
+
+cash_dates:
+  ledger_field: eob_check.check_date
+  liquidity_field: bank_deposit.bank_posting_date
+
+payment_channels: [eft, mail_check, v_card, direct_deposit, ach, other]
+
+forecast_defaults:
+  algorithm_version: "v1-doc-aligned"
+  first_pass_target: 0.80
+  denial_shift_cycles: 1
+  medical_audit_delay_pct: 0.05
+  auth_delay_pct: 0.05
+  high_season_months: [10, 11, 12]
+  liquidity_accuracy_target: 0.98
+
+pr_oa_codes:
+  PR1: deductible
+  PR2: secondary_insurance
+  PR3: copay
+  OA23: secondary_payment_indicator

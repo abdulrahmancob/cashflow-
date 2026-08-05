@@ -320,7 +320,7 @@ async def login_page(
         inline_error = await _login_error_on_page(page)
         if inline_error:
             raise RuntimeError(f"Login failed: {inline_error} | {await _page_snapshot(page)}")
-        if _is_login_url(page.url):
+        if _is_login_url(page.url) and not await _needs_ip_registration(page):
             raise RuntimeError(f"Login did not redirect | {await _page_snapshot(page)}")
 
     if await _needs_ip_registration(page):

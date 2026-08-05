@@ -125,6 +125,27 @@ def load_daily_notes_index(path: Path) -> dict[str, dict[str, str]]:
     return index
 
 
+def _patient_facility_from_notes(
+    notes: dict[str, dict[str, str]],
+) -> dict[str, tuple[str, str]]:
+    """Latest non-blank (facility_name, facility_id) per patient_id from daily notes."""
+    best: dict[str, tuple[date | None, str, str]] = {}
+    for row in notes.values():
+        patient_id = str(row.get("patient_id") or "").strip()
+        facility_name = str(row.get("facility_name") or "").strip()
+        if not patient_id or not facility_name:
+            continue
+        dos = parse_date(row.get("date_of_daily_note"))
+        facility_id = str(row.get("facility_id") or "").strip()
+        prev = best.get(patient_id)
+        if prev is None or (dos is not None and (prev[0] is None or dos >= prev[0])):
+            best[patient_id] = (dos, facility_name, facility_id)
+    return {
+        patient_id: (facility_name, facility_id)
+        for patient_id, (_, facility_name, facility_id) in best.items()
+    }
+
+
 def load_webpt_lines(
     webpt_dir: Path,
     *,
@@ -148,6 +169,7 @@ def load_webpt_lines(
         else {}
     )
     notes = load_daily_notes_index(daily_notes_path)
+    patient_facilities = _patient_facility_from_notes(notes)
 
     lines: list[WebptLine] = []
     missing_patient_ids: set[str] = set()
@@ -176,6 +198,7 @@ def load_webpt_lines(
             dob = format_date(parse_date(note.get("date_of_birth")))
 
         insurance_note = str(row.get("insurance_name") or note.get("insurance_name") or "").strip()
+        note_facility = patient_facilities.get(patient_id, ("", ""))
 
         lines.append(
             WebptLine(
@@ -197,9 +220,22 @@ def load_webpt_lines(
                 ).strip(),
                 note_file=str(row.get("note_file") or note.get("note_file") or "").strip(),
                 dob=dob,
-                case_id=pick_first(enrichment.case_id if enrichment else ""),
-                facility_id=pick_first(enrichment.facility_id if enrichment else ""),
-                facility_name=pick_first(enrichment.facility_name if enrichment else ""),
+                case_id=pick_first(
+                    row.get("case_id"),
+                    note.get("case_id"),
+                    enrichment.case_id if enrichment else "",
+                ),
+                facility_id=pick_first(
+                    row.get("facility_id"),
+                    enrichment.facility_id if enrichment else "",
+                    note.get("facility_id"),
+                    note_facility[1],
+                ),
+                facility_name=pick_first(
+                    enrichment.facility_name if enrichment else "",
+                    note.get("facility_name"),
+                    note_facility[0],
+                ),
                 ins_name=pick_first(
                     enrichment.ins_name if enrichment else "",
                     insurance_note,

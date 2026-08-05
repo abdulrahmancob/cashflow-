@@ -1,5 +1,54 @@
 # ICD-10 denial conflict rules from ICD10_Denial_Management.xlsx Denial Matrix.
-# Each rule fires when ALL of its conditions match the note's diagnosis set.
+# Excel ICD codes are examples; site_maps / bilateral_families generalize them for PT.
+
+# Site-aware symptom ↔ definitive pairs (clinical redundancy / status conflicts).
+site_maps:
+  joint_pain_oa:
+    - id: shoulder
+      left_prefixes: ["M25.51"]
+      right_prefixes: ["M19.01", "M19.11", "M19.21"]
+    - id: hip
+      left_prefixes: ["M25.55"]
+      right_prefixes: ["M16."]
+    - id: knee
+      left_prefixes: ["M25.56"]
+      right_prefixes: ["M17."]
+    - id: ankle_foot
+      left_prefixes: ["M25.57"]
+      right_prefixes: ["M19.07", "M19.17", "M19.27"]
+
+  joint_pain_prosthetic:
+    - id: shoulder
+      left_prefixes: ["M25.51"]
+      right_prefixes: ["Z96.61"]
+    - id: hip
+      left_prefixes: ["M25.55"]
+      right_prefixes: ["Z96.64"]
+    - id: knee
+      left_prefixes: ["M25.56"]
+      right_prefixes: ["Z96.65"]
+    - id: ankle
+      left_prefixes: ["M25.57"]
+      right_prefixes: ["Z96.66"]
+
+# Unilateral R+L pairs where a bilateral combination code exists.
+bilateral_families:
+  - id: hip_oa_primary
+    right: ["M16.11"]
+    left: ["M16.12"]
+    bilateral: ["M16.0"]
+  - id: hip_oa_dysplasia
+    right: ["M16.31"]
+    left: ["M16.32"]
+    bilateral: ["M16.2"]
+  - id: knee_oa_primary
+    right: ["M17.11"]
+    left: ["M17.12"]
+    bilateral: ["M17.0"]
+  - id: knee_oa_post_traumatic
+    right: ["M17.31"]
+    left: ["M17.32"]
+    bilateral: ["M17.2"]
 
 rules:
   - id: clinical_redundancy_lbp_disc
@@ -20,14 +69,13 @@ rules:
       - exact: ["M54.2"]
       - exact: ["M62.81"]
 
-  - id: clinical_redundancy_knee_pain_oa
+  - id: clinical_redundancy_joint_pain_oa
     category: "1. Clinical Redundancy"
     severity: error
-    description: "Knee pain (M25.56x) billed with knee osteoarthritis (M17.*)."
-    correct_approach: "Drop the pain code. Bill the OA diagnosis only (e.g. M17.11)."
-    all_of:
-      - any_prefix: ["M25.56"]
-      - any_prefix: ["M17."]
+    description: "Joint pain (M25.5x) billed with site-matched osteoarthritis."
+    correct_approach: "Drop the pain code. Bill the OA diagnosis only."
+    check: site_pair_map
+    site_map: joint_pain_oa
 
   - id: clinical_redundancy_weakness_cervicalgia
     category: "1. Clinical Redundancy"
@@ -41,22 +89,21 @@ rules:
   - id: vestibular_redundancy
     category: "2. Vestibular Redundancy (H-R Conflict)"
     severity: error
-    description: "Definitive vestibular disorder (H81*) combined with dizziness/gait symptom codes."
+    description: "Definitive vestibular disorder (H81*/H83*) combined with dizziness/gait symptom codes."
     correct_approach: "Bill the H-code only. Dizziness and gait issues are integral symptoms of vestibular disorders."
     all_of:
-      - any_prefix: ["H81"]
+      - any_prefix: ["H81", "H83"]
       - any_of_groups:
           - exact: ["R42"]
           - any_prefix: ["R26"]
 
-  - id: status_vs_acute_prosthetic_knee
+  - id: status_vs_acute_prosthetic
     category: "3. Status vs. Acute Conflict"
     severity: error
-    description: "Knee pain (M25.56x) billed with artificial knee joint status (Z96.65*)."
+    description: "Joint pain (M25.5x) billed with site-matched artificial joint status (Z96.6x)."
     correct_approach: "Do not add the Z-code if treating for standard pain. If the Z-code is present, payers expect a T-series complication code."
-    all_of:
-      - any_prefix: ["M25.56"]
-      - any_prefix: ["Z96.65"]
+    check: site_pair_map
+    site_map: joint_pain_prosthetic
 
   - id: lateralization_unspecified_with_side
     category: "4. Lateralization Example"
@@ -68,11 +115,9 @@ rules:
   - id: bilateral_oa_split
     category: "5. Bilateral Combination Codes"
     severity: error
-    description: "Separate unilateral OA codes (M17.11 + M17.12) where bilateral M17.0 exists."
-    correct_approach: "Use the bilateral code M17.0 instead of separate R/L codes."
-    all_of:
-      - exact: ["M17.11"]
-      - exact: ["M17.12"]
+    description: "Separate unilateral OA codes (R+L) where a bilateral combination code exists."
+    correct_approach: "Use the bilateral combination code instead of separate R/L codes."
+    check: bilateral_split
 
   - id: anatomical_overlap_sciatica_lbp
     category: "6. Anatomical Overlap"
@@ -92,19 +137,29 @@ rules:
       - any_prefix: ["M54.4"]
       - any_prefix: ["M79.6"]
 
-  - id: anatomical_overlap_radiculopathy_sciatica
+  - id: anatomical_overlap_radiculopathy_nerve
     category: "6. Anatomical Overlap"
     severity: error
-    description: "Lumbar radiculopathy (M54.16) billed with sciatica nerve codes (G57*)."
-    correct_approach: "Bill Radiculopathy (M54.16) or Sciatica only — not both."
+    description: "Radiculopathy (M54.1*) billed with overlapping nerve/root codes (G54*/G57*)."
+    correct_approach: "Bill Radiculopathy or the nerve code only — not both."
     all_of:
-      - exact: ["M54.16"]
-      - any_prefix: ["G57"]
+      - any_prefix: ["M54.1"]
+      - any_of_groups:
+          - any_prefix: ["G54"]
+          - any_prefix: ["G57"]
 
-  - id: retired_m54_5
+  - id: anatomical_overlap_cervicalgia_cervical_radiculopathy
+    category: "6. Anatomical Overlap"
+    severity: error
+    description: "Cervicalgia (M54.2) billed with cervical radiculopathy (M54.12)."
+    correct_approach: "Bill cervical radiculopathy only; it covers associated neck pain."
+    all_of:
+      - exact: ["M54.2"]
+      - exact: ["M54.12"]
+
+  - id: invalid_or_nonbillable_icd
     category: "8. Retired Codes"
     severity: error
-    description: "Retired code M54.5 used instead of M54.50 / M54.51 / M54.59."
-    correct_approach: "Replace M54.5 with a current valid alternate (M54.50, M54.51, or M54.59)."
-    all_of:
-      - exact: ["M54.5"]
+    description: "ICD code is missing from the CMS catalog or is a non-billable header (e.g. retired M54.5)."
+    correct_approach: "Replace with a current billable ICD-10-CM code."
+    check: invalid_or_nonbillable

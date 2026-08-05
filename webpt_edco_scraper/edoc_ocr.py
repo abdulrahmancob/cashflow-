@@ -289,6 +289,124 @@ def _code_in_ocr(code: str, ocr_text: str) -> bool:
     return bool(re.search(pattern, ocr_text or "", re.IGNORECASE))
 
 
+_LABEL_VALUE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "physician",
+        re.compile(
+            r"(?:referring\s*physician(?:/npp)?|physician|md/do)\s*[:\-]\s*"
+            r"([A-Za-z][A-Za-z\s,\.\-'/]{2,80})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "npi",
+        re.compile(r"\bNPI\s*[#:]?\s*(\d{10})\b", re.IGNORECASE),
+    ),
+    (
+        "dob",
+        re.compile(
+            r"(?:date\s*of\s*birth|dob)\s*[:\-]\s*"
+            r"(\d{1,2}/\d{1,2}/\d{2,4})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "insurance",
+        re.compile(
+            r"(?:insurance\s*name|primary\s*insurance|insurance)\s*[:\-]\s*"
+            r"([A-Za-z0-9][A-Za-z0-9 ,\.\-&']{2,80})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "frequency",
+        re.compile(
+            r"(?:frequency)\s*[:\-]\s*([^\n]{3,80})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "visits",
+        re.compile(
+            r"(?:visit\s*no\.?|visits?\s*in\s*case|authorized\s*visits)\s*[:\-]\s*"
+            r"([^\n]{1,40})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "poc_date",
+        re.compile(
+            r"(?:plan\s*of\s*care\s*date|date\s*of\s*plan\s*of\s*care|poc\s*date)"
+            r"\s*[:\-]\s*(\d{1,2}/\d{1,2}/\d{2,4})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "certification",
+        re.compile(
+            r"(?:certification|cert\s*period)\s*[:\-]\s*([^\n]{3,80})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "goals",
+        re.compile(
+            r"(?:short\s*term\s*goals?|long\s*term\s*goals?|goals?)\s*[:\-]\s*"
+            r"([^\n]{5,200})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "precautions",
+        re.compile(
+            r"(?:precautions?)\s*[:\-]\s*([^\n]{3,200})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "rom",
+        re.compile(
+            r"(?:range\s*of\s*motion|rom)\s*[:\-]\s*([^\n]{3,120})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "pain",
+        re.compile(
+            r"(?:pain\s*(?:level|score)?)\s*[:\-]\s*([^\n]{1,40})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "signature",
+        re.compile(
+            r"(?:electronically\s*signed\s*by|signature)\s*[:\-]\s*"
+            r"([A-Za-z][A-Za-z\s,\.\-']{2,80})",
+            re.IGNORECASE,
+        ),
+    ),
+]
+
+
+def extract_extended_pdf_fields(ocr_text: str) -> dict[str, str]:
+    """Broader OCR/PDF text fields beyond name/id/diagnosis (Phase 4–5)."""
+    text = ocr_text or ""
+    out: dict[str, str] = {}
+    for name, pattern in _LABEL_VALUE_PATTERNS:
+        m = pattern.search(text)
+        if m:
+            out[f"edoc_ocr_{name}"] = re.sub(r"\s+", " ", m.group(1)).strip(" ,.")
+        else:
+            out[f"edoc_ocr_{name}"] = ""
+    # NPI also from physician parentheses
+    if not out.get("edoc_ocr_npi"):
+        paren = re.search(r"\((\d{10})\)", text)
+        if paren:
+            out["edoc_ocr_npi"] = paren.group(1)
+    out["edoc_ocr_icd_codes"] = "; ".join(parse_icd_codes(text))
+    return out
+
+
 def extract_patient_fields(
     ocr_text: str,
     *,
@@ -316,11 +434,13 @@ def extract_patient_fields(
         extracted_id = expected_digits
 
     extracted_codes = parse_icd_codes(ocr_text or "")
-    return {
+    base = {
         "edoc_ocr_name": extracted_name,
         "edoc_ocr_patient_id": extracted_id,
         "edoc_ocr_diagnosis": "; ".join(extracted_codes),
     }
+    base.update(extract_extended_pdf_fields(ocr_text))
+    return base
 
 
 def validate_ocr_fields(

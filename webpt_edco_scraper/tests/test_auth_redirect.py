@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from auth import (
+    _is_auth0_oops_url,
     _is_auth_redirect_url,
     _is_login_url,
     _is_on_app_domain,
@@ -58,3 +59,18 @@ def test_app_dashboard_is_on_app_domain() -> None:
     url = "https://app.webpt.com/dashboard.php"
     assert _is_on_app_domain(url)
     assert not _is_post_login_interstitial_url(url)
+
+
+def test_auth0_oops_url_detects_authorize_resume() -> None:
+    url = (
+        "https://login.webpt.com/authorize/resume?"
+        "state=MUvphiiWT0oDo2UbF9dHpPeSFmK3I1wQ"
+    )
+    assert _is_auth0_oops_url(url)
+    assert _is_auth_redirect_url(url)
+
+
+def test_auth0_oops_url_rejects_normal_identifier() -> None:
+    assert not _is_auth0_oops_url(
+        "https://login.webpt.com/u/login/identifier?state=abc"
+    )

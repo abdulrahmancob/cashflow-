@@ -1,0 +1,96 @@
+# Scraper image: Playwright + Chromium + Tesseract OCR.
+# Runs as non-root UID 10001. Write access only via /data mounts.
+
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    APP_HOME=/app \
+    HOME=/home/cashflow \
+    PLAYWRIGHT_BROWSERS_PATH=/home/cashflow/.cache/ms-playwright \
+    TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+
+RUN groupadd --gid 10001 cashflow \
+    && useradd --uid 10001 --gid 10001 --create-home --home-dir /home/cashflow cashflow \
+    && mkdir -p /app /data /tmp \
+    && chown -R cashflow:cashflow /app /data /home/cashflow
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        libpq5 \
+        tesseract-ocr \
+        tesseract-ocr-eng \
+        # Playwright OS deps (chromium)
+        libnss3 \
+        libnspr4 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libcups2 \
+        libdrm2 \
+        libdbus-1-3 \
+        libxkbcommon0 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxrandr2 \
+        libgbm1 \
+        libasound2 \
+        libpango-1.0-0 \
+        libcairo2 \
+        libatspi2.0-0 \
+        libwayland-client0 \
+        fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY cashflow_db/requirements.txt /tmp/req-db.txt
+COPY cashflow_ops/requirements.txt /tmp/req-ops.txt
+COPY cashflow_forecast/requirements.txt /tmp/req-fc.txt
+COPY cashflow_reconcile/requirements.txt /tmp/req-rc.txt
+COPY webpt_edco_scraper/requirements.txt /tmp/req-webpt.txt
+COPY revflow_scraper/requirements.txt /tmp/req-revflow.txt
+COPY waystar_scraper/requirements.txt /tmp/req-waystar.txt
+
+RUN pip install --upgrade pip \
+    && pip install \
+        -r /tmp/req-db.txt \
+        -r /tmp/req-ops.txt \
+        -r /tmp/req-fc.txt \
+        -r /tmp/req-rc.txt \
+        -r /tmp/req-webpt.txt \
+        -r /tmp/req-revflow.txt \
+        -r /tmp/req-waystar.txt \
+        psycopg[binary]>=3.2
+
+# Install Chromium for Playwright as root, then chown cache for cashflow user
+RUN playwright install chromium \
+    && playwright install-deps chromium \
+    && mkdir -p /home/cashflow/.cache \
+    && chown -R cashflow:cashflow /home/cashflow
+
+COPY cashflow_db ./cashflow_db
+COPY cashflow_ops ./cashflow_ops
+COPY cashflow_forecast ./cashflow_forecast
+COPY cashflow_reconcile ./cashflow_reconcile
+COPY webpt_edco_scraper ./webpt_edco_scraper
+COPY revflow_scraper ./revflow_scraper
+COPY waystar_scraper ./waystar_scraper
+COPY snowflake_pull ./snowflake_pull
+COPY schemas ./schemas
+COPY docs ./docs
+COPY deploy ./deploy
+COPY pyproject.toml ./pyproject.toml
+
+RUN chmod +x /app/deploy/scripts/*.sh \
+    && chown -R cashflow:cashflow /app
+
+USER 10001:10001
+
+# Default: full daily ops run (Acquire includes scrapers when not skipped).
+# Host cron typically: docker compose run --rm scraper
+CMD ["python", "-m", "cashflow_ops", "run", "--trigger", "task_scheduler"]
