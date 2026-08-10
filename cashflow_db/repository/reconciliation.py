@@ -167,44 +167,73 @@ def replace_visit_aggs(
             patient_name, dob, facility_name, date_of_service,
             total_billed_cpts, total_paid, matched_paid, bonus_paid, unmatched_paid,
             visit_paid_total, unmatched_cpts, paid_lines, pending_lines, visit_status,
+            pending_reason,
             primary_check_number, primary_check_date, primary_check_amount,
             secondary_check_number, secondary_check_date, secondary_check_amount
         ) VALUES (
             %s::uuid, %s, %s, %s, %s, %s, %s, %s,
             %s, %s, %s, %s, %s,
             %s, %s, %s, %s, %s,
+            %s,
             %s, %s, %s, %s, %s, %s
         )
     """
+    def _num(val: Any) -> Any:
+        if val in ("", None):
+            return None
+        if isinstance(val, (int, float)):
+            return val
+        try:
+            return float(str(val).replace(",", "").replace("$", ""))
+        except ValueError:
+            return None
+
+    def _int(val: Any) -> int:
+        if val in ("", None):
+            return 0
+        if isinstance(val, int):
+            return val
+        if isinstance(val, str) and ("=" in val or ";" in val):
+            # CSV-style unmatched CPT detail → count tokens
+            return len([p for p in val.split(";") if p.strip()])
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return 0
+
+    def _empty_none(val: Any) -> Any:
+        return None if val == "" else val
+
     for v in visits:
         client.execute(
             conn,
             sql,
             (
                 run_id,
-                v.get("facility_id"),
-                v.get("case_id"),
-                v.get("webpt_patient_id"),
-                v.get("patient_name"),
-                v.get("dob"),
-                v.get("facility_name"),
-                v.get("date_of_service"),
-                v.get("total_billed_cpts"),
-                v.get("total_paid"),
-                v.get("matched_paid"),
-                v.get("bonus_paid"),
-                v.get("unmatched_paid"),
-                v.get("visit_paid_total"),
-                v.get("unmatched_cpts"),
-                v.get("paid_lines"),
-                v.get("pending_lines"),
-                v.get("visit_status"),
-                v.get("primary_check_number"),
-                v.get("primary_check_date"),
-                v.get("primary_check_amount"),
-                v.get("secondary_check_number"),
-                v.get("secondary_check_date"),
-                v.get("secondary_check_amount"),
+                _empty_none(v.get("facility_id")),
+                _empty_none(v.get("case_id")),
+                _empty_none(v.get("webpt_patient_id")),
+                _empty_none(v.get("patient_name")),
+                _empty_none(v.get("dob")),
+                _empty_none(v.get("facility_name")),
+                _empty_none(v.get("date_of_service")),
+                _int(v.get("total_billed_cpts")),
+                _num(v.get("total_paid")),
+                _num(v.get("matched_paid")),
+                _num(v.get("bonus_paid")),
+                _num(v.get("unmatched_paid")),
+                _num(v.get("visit_paid_total")),
+                _int(v.get("unmatched_cpts")),
+                _int(v.get("paid_lines")),
+                _int(v.get("pending_lines")),
+                _empty_none(v.get("visit_status")),
+                _empty_none(v.get("pending_reason")),
+                _empty_none(v.get("primary_check_number")),
+                _empty_none(v.get("primary_check_date")),
+                _num(v.get("primary_check_amount")),
+                _empty_none(v.get("secondary_check_number")),
+                _empty_none(v.get("secondary_check_date")),
+                _num(v.get("secondary_check_amount")),
             ),
         )
         n += 1

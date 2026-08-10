@@ -159,24 +159,42 @@ def load_payments_from_db(
     return payments, tracked
 
 
+# Max plausible EOB→bank-deposit lag for the loose last4 fallback match.
+LAST4_MAX_LAG_DAYS = 75
+
+
 def _partition_by_tracker(
     payments: list[PaymentLine],
     tracked_refs: dict[str, date | None],
 ) -> tuple[list[PaymentLine], list[PaymentLine]]:
     if not tracked_refs:
         return payments, []
+    # Index normalized keys once (strip + uppercase) so EOB/check case variants hit.
+    norm_index: dict[str, date | None] = {}
+    for key, dep_date in tracked_refs.items():
+        raw = (key or "").strip()
+        if not raw:
+            continue
+        norm_index[raw] = dep_date
+        norm_index[raw.upper()] = dep_date
     in_tracker: list[PaymentLine] = []
     out: list[PaymentLine] = []
     for p in payments:
         ref = (p.check_eft_num or "").strip()
-        if ref and ref in tracked_refs:
+        if ref and (ref in norm_index or ref.upper() in norm_index):
             in_tracker.append(p)
-        else:
-            # also try last4
-            if ref and len(ref) >= 4 and ref[-4:] in tracked_refs:
+            continue
+        # last4 fallback (tracker often records only the last 4 digits).
+        # Unrelated checks can share the same last4, so when both dates are
+        # known require the EOB to sit within a plausible lag of the deposit.
+        last4 = ref[-4:] if ref and len(ref) >= 4 else ""
+        if last4 and (last4 in norm_index or last4.upper() in norm_index):
+            dep_date = norm_index.get(last4, norm_index.get(last4.upper()))
+            eob = parse_date(p.eob_date) if p.eob_date else None
+            if dep_date is None or eob is None or abs((dep_date - eob).days) <= LAST4_MAX_LAG_DAYS:
                 in_tracker.append(p)
-            else:
-                out.append(p)
+                continue
+        out.append(p)
     return in_tracker, out
 
 
@@ -225,12 +243,9 @@ def run_reconciliation_from_db(
                     row[key] = float(str(raw).replace(",", ""))
                 except ValueError:
                     row[key] = None
-        if row.get("date_of_service"):
-            row["date_of_service"] = parse_date(row["date_of_service"]) or row["date_of_service"]
-        if row.get("eob_date"):
-            row["eob_date"] = parse_date(row["eob_date"]) or row["eob_date"]
-        if row.get("dob"):
-            row["dob"] = parse_date(row["dob"]) or row["dob"]
+        for date_key in ("date_of_service", "eob_date", "dob"):
+            # Empty strings are invalid for Postgres date columns — coerce to NULL.
+            row[date_key] = parse_date(row.get(date_key))
         mm = str(row.get("insurance_mismatch") or "").lower()
         row["insurance_mismatch"] = mm in {"1", "true", "yes", "y"}
 
@@ -252,13 +267,48 @@ def run_reconciliation_from_db(
             "primary_check_amount",
             "secondary_check_amount",
         ):
-            if key in v and v[key] not in ("", None):
+            raw = v.get(key)
+            if raw in ("", None):
+                v[key] = None
+            else:
                 try:
-                    v[key] = float(str(v[key]).replace(",", ""))
+                    v[key] = float(str(raw).replace(",", "").replace("$", ""))
                 except ValueError:
-                    pass
-        if v.get("date_of_service"):
-            v["date_of_service"] = parse_date(v["date_of_service"]) or v["date_of_service"]
+                    v[key] = None
+        v["date_of_service"] = parse_date(v.get("date_of_service"))
+        v["dob"] = parse_date(v.get("dob"))
+        for date_key in (
+            "primary_check_date",
+            "secondary_check_date",
+            "deposit_date",
+        ):
+            if date_key in v:
+                v[date_key] = parse_date(v.get(date_key))
+        # Schema: unmatched_cpts is int; matcher emits CSV-style "97140=0.00; ..."
+        raw_unmatched = v.get("unmatched_cpts")
+        if isinstance(raw_unmatched, str):
+            parts = [p.strip() for p in raw_unmatched.split(";") if p.strip()]
+            v["unmatched_cpts"] = len(parts)
+        elif raw_unmatched in ("", None):
+            v["unmatched_cpts"] = 0
+        for int_key in ("total_billed_cpts", "paid_lines", "pending_lines", "unmatched_cpts"):
+            try:
+                v[int_key] = int(v.get(int_key) or 0)
+            except (TypeError, ValueError):
+                v[int_key] = 0
+        for text_key in (
+            "primary_check_number",
+            "secondary_check_number",
+            "facility_id",
+            "case_id",
+            "webpt_patient_id",
+            "patient_name",
+            "facility_name",
+            "visit_status",
+            "pending_reason",
+        ):
+            if v.get(text_key) == "":
+                v[text_key] = None
 
     with connection(database_url) as conn:
         etl_ids = recon_repo.latest_etl_run_ids(
@@ -277,9 +327,16 @@ def run_reconciliation_from_db(
                 conn, run_id, status="success", row_count=n_lines
             )
         except Exception as exc:
-            recon_repo.finish_reconciliation_run(
-                conn, run_id, status="failed", notes=str(exc)[:2000]
-            )
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            try:
+                recon_repo.finish_reconciliation_run(
+                    conn, run_id, status="failed", notes=str(exc)[:2000]
+                )
+            except Exception:
+                pass
             raise
 
     if emit_csv and output_dir is not None:

@@ -78,7 +78,7 @@ def get_service_lines_for_reconcile(
             sl.cpt_code,
             sl.modifiers AS modifier,
             sl.units,
-            sl.billed_amount,
+            NULL::numeric AS billed_amount,
             v.visit_id,
             v.service_date AS date_of_service,
             p.webpt_patient_id,
@@ -100,7 +100,13 @@ def get_service_lines_for_reconcile(
         LEFT JOIN core.patient_case pc ON pc.case_pk = v.case_pk
         LEFT JOIN core.patient_coverage cov ON cov.coverage_id = v.coverage_id
         LEFT JOIN ref.facility f ON f.facility_id = v.facility_id
-        LEFT JOIN core.clinical_note cn ON cn.visit_id = v.visit_id
+        LEFT JOIN LATERAL (
+            SELECT cn.external_daily_note_id, cn.note_file, cn.insurance_name_raw
+            FROM core.clinical_note cn
+            WHERE cn.visit_id = v.visit_id
+            ORDER BY cn.note_date DESC NULLS LAST, cn.version_no DESC
+            LIMIT 1
+        ) cn ON true
         WHERE {' AND '.join(clauses)}
         ORDER BY v.service_date, p.webpt_patient_id, sl.cpt_code
         """,

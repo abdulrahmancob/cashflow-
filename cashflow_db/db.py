@@ -30,6 +30,8 @@ MIGRATIONS = [
     "016_auth.sql",
     "017_eligibility_ops.sql",
     "018_transaction_tracker.sql",
+    "019_recon_pending_reason.sql",
+    "020_mail_dedupe.sql",
 ]
 
 

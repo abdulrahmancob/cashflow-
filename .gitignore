@@ -29,6 +29,8 @@ npm-debug.log*
 .tmp_server_sync/
 .tools/
 .claude/
+tmp_*
+tmp_server_diff/
 
 # Runtime / artifacts / PHI-ish bulk data
 snowflake_pull/artifacts/

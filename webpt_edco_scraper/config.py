@@ -12,7 +12,10 @@ load_dotenv()  # optional cwd overlay
 
 OUTPUT_DIR = BASE_DIR / "output"
 EDOCS_DIR = OUTPUT_DIR / "edocs"
-STORAGE_STATE_PATH = BASE_DIR / "storage_state.json"
+# Prefer deploy path (/data/webpt/...) when WEBPT_STORAGE_STATE is set.
+STORAGE_STATE_PATH = Path(
+    os.getenv("WEBPT_STORAGE_STATE", "").strip() or str(BASE_DIR / "storage_state.json")
+)
 
 BASE_URL = "https://app.webpt.com"
 DASHBOARD_URL = f"{BASE_URL}/dashboard.php"

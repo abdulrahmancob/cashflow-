@@ -74,3 +74,12 @@ export function money(v: unknown): string {
     ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
     : '$0'
 }
+
+/** YYYY-MM → last calendar day as YYYY-MM-DD */
+export function monthLastDay(ym: string): string {
+  const [y, m] = ym.split('-').map(Number)
+  const last = new Date(y, m, 0)
+  const mm = String(last.getMonth() + 1).padStart(2, '0')
+  const dd = String(last.getDate()).padStart(2, '0')
+  return `${last.getFullYear()}-${mm}-${dd}`
+}

@@ -514,6 +514,7 @@ def test_sf_visit_overrides_paid_split_and_denied():
                 "cpt_code": "97110",
                 "status": "pending",
                 "paid_amount": 0.0,
+                "eob_date": date(2026, 6, 10),
                 "source": "reconciliation",
             },
             {
@@ -523,6 +524,7 @@ def test_sf_visit_overrides_paid_split_and_denied():
                 "cpt_code": "97140",
                 "status": "pending",
                 "paid_amount": 0.0,
+                "eob_date": date(2026, 6, 10),
                 "source": "reconciliation",
             },
             {
@@ -537,7 +539,7 @@ def test_sf_visit_overrides_paid_split_and_denied():
         ]
     )
     overrides = {
-        ( "DOEJANE", date(2026, 6, 1)): ("paid", 100.0),
+        ("DOEJANE", date(2026, 6, 1)): ("paid", 100.0),
         ("SMITHBOB", date(2026, 6, 2)): ("denied", 0.0),
     }
     out = apply_sf_visit_overrides(lines, overrides)
@@ -558,6 +560,33 @@ def test_sf_visit_overrides_paid_split_and_denied():
     assert set(classified.loc[classified["name_key"] == "DOEJANE", "outcome_stage"]) == {"paid"}
     assert classified.loc[classified["name_key"] == "SMITHBOB", "outcome_stage"].iloc[0] == "denied"
     assert classified.loc[classified["name_key"] == "SMITHBOB", "expected_amount"].iloc[0] == 0.0
+
+
+def test_remap_emr_overrides_to_name_keys():
+    from cashflow_forecast.sf_visit_overrides import remap_emr_overrides_to_name_keys
+
+    lines = pd.DataFrame(
+        [
+            {
+                "webpt_patient_id": "12345",
+                "patient_name": "Doe, Jane",
+                "name_key": "DOEJANE",
+                "date_of_service": date(2026, 6, 1),
+            },
+            {
+                "webpt_patient_id": "99999",
+                "patient_name": "Other, Person",
+                "name_key": "OTHERPERSON",
+                "date_of_service": date(2026, 6, 1),
+            },
+        ]
+    )
+    emr_overrides = {
+        ("12345", date(2026, 6, 1)): ("paid", 80.0),
+        ("88888", date(2026, 6, 1)): ("denied", 0.0),
+    }
+    out = remap_emr_overrides_to_name_keys(lines, emr_overrides)
+    assert out == {("DOEJANE", date(2026, 6, 1)): ("paid", 80.0)}
 
 
 def test_cash_velocity_overrides_dos_eob_lag(tmp_path):

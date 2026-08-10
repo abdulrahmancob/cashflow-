@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -72,6 +73,27 @@ try:
 
 except Exception:  # noqa: BLE001 — forecast API still works without ops
     pass
+
+
+@app.on_event("startup")
+def _forecast_warmup() -> None:
+    """Preload hot Mission Control frames so the first user is not cold."""
+    if not _use_db():
+        return
+    try:
+        _ = _kpi_summary_base()
+        _ = _read_feature("projected_cash_monthly", "projected_cash_monthly")
+        _ = _read_feature(
+            "projected_cash_monthly_by_facility", "projected_cash_monthly_by_facility"
+        )
+        key = _outcomes_cache_key()
+        _ = _cached_outcomes(key)
+        _ = _cached_risk(_risk_cache_key())
+        _ = _meta_filters_payload(key)
+        _ = _monthly_from_outcomes_json(key)
+        _ = _by_facility_unfiltered_json(key)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # Protect forecast /api/* routes (finance + super_admin). Auth/login and
@@ -198,7 +220,19 @@ def _read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype=str, keep_default_na=False)
 
 
-def _read_feature(kind: str, csv_base: str | None = None) -> pd.DataFrame:
+_STAMP_TTL_SEC = 20.0
+_stamp_cache: tuple[float, str] | None = None
+
+
+def _feature_cache_stamp() -> str:
+    if _use_db():
+        return _latest_forecast_run_stamp()
+    d = _forecast_dir()
+    return f"csv|{d}|{_file_mtime_key(d)}"
+
+
+@lru_cache(maxsize=64)
+def _cached_feature_df(stamp: str, kind: str, csv_base: str) -> pd.DataFrame:
     if _use_db():
         try:
             from cashflow_forecast.db_source import load_feature_df
@@ -213,12 +247,51 @@ def _read_feature(kind: str, csv_base: str | None = None) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _read_feature(kind: str, csv_base: str | None = None) -> pd.DataFrame:
+    # Copy: callers often mutate columns (amount coercion, filters).
+    return _cached_feature_df(_feature_cache_stamp(), kind, csv_base or "").copy()
+
+
+def _json_cell(value: Any) -> Any:
+    """Make a cell JSON-safe (fix broken UTF-8 / NaN that crash to_json)."""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, float) and (value != value):  # NaN
+        return None
+    if isinstance(value, str):
+        # Replace lone surrogates / invalid sequences pandas may leave in object cols
+        return value.encode("utf-8", "replace").decode("utf-8")
+    if isinstance(value, (dict, list)):
+        try:
+            return json.loads(
+                json.dumps(value, default=str, ensure_ascii=False).encode(
+                    "utf-8", "replace"
+                ).decode("utf-8")
+            )
+        except Exception:
+            return str(value)
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except Exception:
+            return str(value)
+    return value
+
+
 def _records(df: pd.DataFrame, limit: int | None = None) -> list[dict[str, Any]]:
     if df.empty:
         return []
     out = df if limit is None else df.head(limit)
-    # Convert NaN to None for JSON
-    return json.loads(out.to_json(orient="records", date_format="iso"))
+    # Nested payload is already flattened into columns for Mission Control / drill
+    if "payload" in out.columns:
+        out = out.drop(columns=["payload"])
+    rows = out.to_dict(orient="records")
+    return [{k: _json_cell(v) for k, v in row.items()} for row in rows]
 
 
 def _file_mtime_key(path: Path) -> str:
@@ -228,17 +301,48 @@ def _file_mtime_key(path: Path) -> str:
         return "0"
 
 
+def _latest_forecast_run_stamp() -> str:
+    """Cache-bust when a new successful forecast_run lands in DB.
+
+    Stamp is TTL-cached so every request does not hit Postgres before lru_cache.
+    """
+    global _stamp_cache
+    now = time.monotonic()
+    if _stamp_cache is not None and (now - _stamp_cache[0]) < _STAMP_TTL_SEC:
+        return _stamp_cache[1]
+    stamp = "none"
+    try:
+        from cashflow_db.repository import connection
+
+        with connection() as conn:
+            row = conn.execute(
+                """
+                SELECT forecast_run_id::text AS id, created_at
+                FROM analytics.forecast_run
+                WHERE status = 'success'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+        if row:
+            stamp = f"{row['id']}|{row['created_at']}"
+    except Exception:
+        pass
+    _stamp_cache = (now, stamp)
+    return stamp
+
+
 def _outcomes_cache_key() -> str:
     """Invalidate when outcome_stages rebuild or DB mode toggles."""
     if _use_db():
-        return f"db|{os.environ.get('CASHFLOW_DATABASE_URL', 'default')}"
+        return f"db|{_latest_forecast_run_stamp()}"
     d = _forecast_dir()
     return f"{d}|{_file_mtime_key(d / 'outcome_stages.csv')}"
 
 
 def _risk_cache_key() -> str:
     if _use_db():
-        return f"db-risk|{os.environ.get('CASHFLOW_DATABASE_URL', 'default')}"
+        return f"db-risk|{_latest_forecast_run_stamp()}"
     d = _forecast_dir()
     return f"{d}|{_file_mtime_key(d / 'risk_flags.csv')}"
 
@@ -429,26 +533,28 @@ def _filter_outcomes_by_dates(
 ) -> pd.DataFrame:
     """Filter by cash dates: scheduled land day for AR stages, eob_date for paid.
 
-    Non-paid stages use original_forecast_date when present (pre-pack schedule)
-    so Mission Control Expected land still shows on days before as_of.
+    Non-paid stages use the packed forecast_date (when cash will actually land)
+    so past-due AR shows on future capacity days, not on dates already past.
     """
     d0, d1 = _resolve_date_bounds(date_from, date_to, months)
     if df.empty or (d0 is None and d1 is None):
         return df
     land_col = (
-        "original_forecast_date"
-        if "original_forecast_date" in df.columns
-        else "forecast_date"
+        "forecast_date"
+        if "forecast_date" in df.columns
+        else "original_forecast_date"
     )
     if land_col not in df.columns and "eob_date" not in df.columns:
         return df
     if land_col in df.columns:
         land_ok = _series_in_range(df[land_col], d0, d1)
-        if land_col == "original_forecast_date" and "forecast_date" in df.columns:
-            # Rows missing original fall back to packed forecast_date.
+        if land_col == "forecast_date" and "original_forecast_date" in df.columns:
+            # Rows missing the packed date fall back to the pre-pack schedule.
             miss = pd.to_datetime(df[land_col], errors="coerce").isna()
             if miss.any():
-                land_ok = land_ok | (miss & _series_in_range(df["forecast_date"], d0, d1))
+                land_ok = land_ok | (
+                    miss & _series_in_range(df["original_forecast_date"], d0, d1)
+                )
     else:
         land_ok = pd.Series(False, index=df.index)
     ed_ok = (
@@ -463,8 +569,12 @@ def _filter_outcomes_by_dates(
 
 
 def _land_date_col(outcomes: pd.DataFrame) -> str:
+    if "forecast_date" in outcomes.columns:
+        return "forecast_date"
     if "original_forecast_date" in outcomes.columns:
         return "original_forecast_date"
+    if "expected_pay_date" in outcomes.columns:
+        return "expected_pay_date"
     return "forecast_date"
 
 
@@ -545,16 +655,20 @@ def _projected_from_outcomes(
     months: list[str] | None = None,
 ) -> pd.DataFrame:
     """Sum expected_amount by forecast month for projectable stages."""
-    if outcomes.empty:
+    if outcomes.empty or "outcome_stage" not in outcomes.columns:
         return pd.DataFrame(columns=["period", "amount", "line_count"])
     land_col = _land_date_col(outcomes)
-    proj = outcomes[
+    if land_col not in outcomes.columns:
+        return pd.DataFrame(columns=["period", "amount", "line_count"])
+    amt = pd.to_numeric(outcomes.get("expected_amount"), errors="coerce").fillna(0.0)
+    proj = outcomes.loc[
         outcomes["outcome_stage"].isin(_PROJECT_STAGES)
         & outcomes[land_col].notna()
-        & (outcomes["expected_amount"] > 0)
+        & (amt > 0)
     ].copy()
     if proj.empty:
         return pd.DataFrame(columns=["period", "amount", "line_count"])
+    proj["expected_amount"] = pd.to_numeric(proj["expected_amount"], errors="coerce").fillna(0.0)
     proj["period"] = _month_from_forecast_date(proj[land_col])
     proj = proj[proj["period"].notna() & proj["period"].ne("NaT")]
     if months:
@@ -568,14 +682,52 @@ def _projected_from_outcomes(
     return g
 
 
+@lru_cache(maxsize=4)
+def _monthly_from_outcomes_json(outcomes_key: str) -> str:
+    rolled = _projected_from_outcomes(_cached_outcomes(outcomes_key))
+    return json.dumps(_records(rolled))
+
+
+@lru_cache(maxsize=4)
+def _by_facility_unfiltered_json(outcomes_key: str) -> str:
+    outcomes = _cached_outcomes(outcomes_key)
+    land_col = _land_date_col(outcomes)
+    if (
+        outcomes.empty
+        or land_col not in outcomes.columns
+        or "facility_name" not in outcomes.columns
+    ):
+        return "[]"
+    amt = pd.to_numeric(outcomes.get("expected_amount"), errors="coerce").fillna(0.0)
+    proj = outcomes.loc[
+        outcomes["outcome_stage"].isin(_PROJECT_STAGES)
+        & outcomes[land_col].notna()
+        & (amt > 0)
+    ].copy()
+    if proj.empty:
+        return "[]"
+    proj["expected_amount"] = pd.to_numeric(
+        proj["expected_amount"], errors="coerce"
+    ).fillna(0.0)
+    agg = (
+        proj.groupby("facility_name", as_index=False)["expected_amount"]
+        .sum()
+        .rename(columns={"expected_amount": "amount"})
+        .sort_values("amount", ascending=False)
+        .head(25)
+    )
+    agg["amount"] = agg["amount"].round(2)
+    return json.dumps(_records(agg))
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "forecast": str(_forecast_dir()), "audit": str(_audit_dir())}
 
 
-@app.get("/api/meta/filters")
-def meta_filters() -> dict[str, Any]:
-    outcomes = _cached_outcomes(_outcomes_cache_key())
+@lru_cache(maxsize=4)
+def _meta_filters_payload(cache_key: str) -> dict[str, Any]:
+    outcomes = _cached_outcomes(cache_key)
     risk = _cached_risk(_risk_cache_key())
     monthly = _read_feature("projected_cash_monthly", "projected_cash_monthly")
     date_min, date_max = "2026-01-01", "2026-08-31"
@@ -612,6 +764,11 @@ def meta_filters() -> dict[str, Any]:
     }
 
 
+@app.get("/api/meta/filters")
+def meta_filters() -> dict[str, Any]:
+    return _meta_filters_payload(_outcomes_cache_key())
+
+
 def _scoped_outcomes(
     *,
     facility: str | None = None,
@@ -635,6 +792,41 @@ def _scoped_outcomes(
     )
 
 
+@lru_cache(maxsize=8)
+def _kpi_summary_base_cached(stamp: str) -> str:
+    """JSON blob of kpi_summary keyed by forecast stamp / file mtime."""
+    path = _forecast_dir() / "kpi_summary.json"
+    if path.exists():
+        try:
+            return path.read_text(encoding="utf-8")
+        except Exception:
+            pass
+    if _use_db():
+        try:
+            feat = _read_feature("kpi_summary", "kpi_summary")
+            if not feat.empty:
+                row = feat.iloc[0].to_dict()
+                row.pop("feature_key", None)
+                row.pop("forecast_run_id", None)
+                return json.dumps(row, default=str)
+        except Exception:
+            pass
+    return "{}"
+
+
+def _kpi_summary_base() -> dict[str, Any]:
+    """Prefer kpi_summary.json; fall back to DB forecast_feature kpi_summary."""
+    if _use_db():
+        stamp = _latest_forecast_run_stamp()
+    else:
+        stamp = f"file|{_file_mtime_key(_forecast_dir() / 'kpi_summary.json')}"
+    try:
+        data = json.loads(_kpi_summary_base_cached(stamp))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
 @app.get("/api/kpi")
 def kpi(
     facility: str | None = None,
@@ -644,12 +836,36 @@ def kpi(
     date_from: str | None = None,
     date_to: str | None = None,
 ) -> dict[str, Any]:
-    path = _forecast_dir() / "kpi_summary.json"
-    base = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    base = _kpi_summary_base()
     fac, insurers, stages = _split_multi(facility), _split_multi(ins), _split_multi(stage)
     months = _split_multi(month)
     d0, d1 = _resolve_date_bounds(date_from, date_to, months)
     filtered = bool(fac or insurers or stages or months or d0 or d1)
+
+    # Unfiltered Mission Control: serve pre-aggregated kpi_summary (no full outcomes scan).
+    if not filtered:
+        actual_global = float(base.get("actual_cash_received") or 0)
+        return {
+            **base,
+            "actual_cash_received": actual_global,
+            "actual_cash_received_filtered": actual_global,
+            "on_track_amount": float(base.get("on_track_amount") or 0),
+            "on_track_count": int(base.get("on_track_count") or 0),
+            "overdue_amount": float(base.get("overdue_amount") or 0),
+            "overdue_count": int(base.get("overdue_count") or 0),
+            "denied_amount": float(base.get("denied_amount") or 0),
+            "denied_count": int(base.get("denied_count") or 0),
+            "paid_count": int(base.get("paid_count") or 0),
+            "projected_cash_in": float(base.get("projected_cash_in") or 0),
+            "projected_cash_may_aug": float(
+                base.get("projected_cash_may_aug") or base.get("projected_cash_in") or 0
+            ),
+            "risk_exposure_amount": float(base.get("risk_exposure_amount") or 0),
+            "risk_visit_count": int(base.get("risk_visit_count") or 0),
+            "filtered": False,
+            "date_from": None,
+            "date_to": None,
+        }
 
     outcomes = _scoped_outcomes(
         facility=facility,
@@ -772,19 +988,24 @@ def projected_monthly(
             date_to=date_to,
         )
         # Already date-filtered; roll up by month (no second month filter if day range set)
-        return _records(
-            _projected_from_outcomes(
-                outcomes, months=None if (date_from or date_to) else (months or None)
-            )
+        rolled = _projected_from_outcomes(
+            outcomes, months=None if (date_from or date_to) else (months or None)
         )
+        if not rolled.empty or fac or insurers or stages or d0 or d1:
+            return _records(rolled)
 
-    df = _read_csv(_prefer("projected_cash_monthly"))
+    # Fast path: pre-aggregated feature (when present).
+    df = _read_feature("projected_cash_monthly", "projected_cash_monthly")
     if df.empty:
-        return []
-    df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0)
-    if months:
-        df = df[df["period"].astype(str).isin(months)]
-    return _records(df)
+        df = _read_csv(_prefer("projected_cash_monthly"))
+    if not df.empty:
+        df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0)
+        if months:
+            df = df[df["period"].astype(str).isin(months)]
+        return _records(df)
+
+    # DB installs may lack monthly feature rows — roll up from cached outcomes.
+    return json.loads(_monthly_from_outcomes_json(_outcomes_cache_key()))
 
 
 @app.get("/api/projected/daily")
@@ -826,7 +1047,9 @@ def projected_daily(
         g["amount"] = g["amount"].round(2)
         return _records(g)
 
-    df = _read_csv(_prefer("projected_cash_daily"))
+    df = _read_feature("projected_cash_daily", "projected_cash_daily")
+    if df.empty:
+        df = _read_csv(_prefer("projected_cash_daily"))
     if not df.empty:
         df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0)
         if d0 or d1:
@@ -850,7 +1073,7 @@ def projected_by_facility(
 ) -> list[dict[str, Any]]:
     months, fac, insurers = _split_multi(month), _split_multi(facility), _split_multi(ins)
     d0, d1 = _resolve_date_bounds(date_from, date_to, months)
-    if insurers or d0 or d1:
+    def _by_facility_from_outcomes() -> list[dict[str, Any]]:
         outcomes = _scoped_outcomes(
             facility=facility,
             ins=ins,
@@ -859,16 +1082,22 @@ def projected_by_facility(
             date_to=date_to,
         )
         land_col = _land_date_col(outcomes)
-        proj = outcomes[
+        if land_col not in outcomes.columns or "facility_name" not in outcomes.columns:
+            return []
+        amt = pd.to_numeric(outcomes.get("expected_amount"), errors="coerce").fillna(0.0)
+        proj = outcomes.loc[
             outcomes["outcome_stage"].isin(_PROJECT_STAGES)
             & outcomes[land_col].notna()
-            & (outcomes["expected_amount"] > 0)
+            & (amt > 0)
         ].copy()
         if proj.empty:
             return []
         if not (date_from or date_to) and months:
             proj["period"] = _month_from_forecast_date(proj[land_col])
             proj = proj[proj["period"].isin(months)]
+        proj["expected_amount"] = pd.to_numeric(
+            proj["expected_amount"], errors="coerce"
+        ).fillna(0.0)
         agg = (
             proj.groupby("facility_name", as_index=False)["expected_amount"]
             .sum()
@@ -879,26 +1108,47 @@ def projected_by_facility(
         agg["amount"] = agg["amount"].round(2)
         return _records(agg)
 
-    df = _read_csv(_prefer("projected_cash_monthly_by_facility"))
-    if df.empty:
-        return []
-    df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0)
-    if months:
-        df = df[df["period"].astype(str).isin(months)]
-    if fac:
-        if "" in fac or "(blank)" in fac:
-            blank = df["facility_name"].astype(str).str.strip().eq("")
-            named = df["facility_name"].isin([f for f in fac if f and f != "(blank)"])
-            df = df[blank | named]
-        else:
-            df = df[df["facility_name"].isin(fac)]
-    agg = (
-        df.groupby("facility_name", as_index=False)["amount"]
-        .sum()
-        .sort_values("amount", ascending=False)
-        .head(25)
+    # Ins / day-range (incl. month→bounds) need outcomes; else try feature first.
+    if insurers or d0 or d1:
+        rows = _by_facility_from_outcomes()
+        if rows or insurers or d0 or d1:
+            return rows
+
+    df = _read_feature(
+        "projected_cash_monthly_by_facility", "projected_cash_monthly_by_facility"
     )
-    return _records(agg)
+    if df.empty:
+        df = _read_csv(_prefer("projected_cash_monthly_by_facility"))
+    if not df.empty:
+        df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0)
+        if months:
+            df = df[df["period"].astype(str).isin(months)]
+        if fac:
+            if "" in fac or "(blank)" in fac:
+                blank = df["facility_name"].astype(str).str.strip().eq("")
+                named = df["facility_name"].isin([f for f in fac if f and f != "(blank)"])
+                df = df[blank | named]
+            else:
+                df = df[df["facility_name"].isin(fac)]
+        agg = (
+            df.groupby("facility_name", as_index=False)["amount"]
+            .sum()
+            .sort_values("amount", ascending=False)
+            .head(25)
+        )
+        return _records(agg)
+
+    # Unfiltered (or facility-only without feature rows): cached outcomes rollup.
+    rows = json.loads(_by_facility_unfiltered_json(_outcomes_cache_key()))
+    if fac:
+        wanted = set(fac)
+        rows = [
+            r
+            for r in rows
+            if (str(r.get("facility_name") or "") in wanted)
+            or (("" in wanted or "(blank)" in wanted) and not str(r.get("facility_name") or "").strip())
+        ]
+    return rows
 
 
 @app.get("/api/projected/by-insurance")
@@ -940,7 +1190,11 @@ def projected_by_insurance(
         agg["amount"] = agg["amount"].round(2)
         return _records(agg)
 
-    df = _read_csv(_prefer("projected_cash_monthly_by_insurance"))
+    df = _read_feature(
+        "projected_cash_monthly_by_insurance", "projected_cash_monthly_by_insurance"
+    )
+    if df.empty:
+        df = _read_csv(_prefer("projected_cash_monthly_by_insurance"))
     if df.empty:
         return []
     df["amount"] = pd.to_numeric(df.get("amount"), errors="coerce").fillna(0)
@@ -1093,6 +1347,28 @@ def insights(
     }
 
 
+_DRILL_OUTCOME_COLS = (
+    "patient_name",
+    "webpt_patient_id",
+    "facility_name",
+    "ins_name",
+    "case_id",
+    "cpt_code",
+    "modifier",
+    "date_of_service",
+    "outcome_stage",
+    "expected_amount",
+    "forecast_date",
+    "original_forecast_date",
+    "expected_pay_date",
+    "eob_date",
+    "paid_amount",
+    "overdue_days",
+    "denied_amount",
+    "denial_category",
+)
+
+
 @app.get("/api/drill/outcomes")
 def drill_outcomes(
     facility: str | None = None,
@@ -1118,6 +1394,9 @@ def drill_outcomes(
             if col in df.columns:
                 mask |= df[col].astype(str).str.contains(q, case=False, na=False)
         df = df.loc[mask]
+    keep = [c for c in _DRILL_OUTCOME_COLS if c in df.columns]
+    if keep:
+        df = df[keep]
     return _records(df, limit)
 
 

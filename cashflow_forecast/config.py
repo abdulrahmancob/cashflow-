@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -50,5 +51,9 @@ CAPACITY_DRIFT_NORM_WARN = 0.6
 FLAT_VISIT_TOLERANCE = 1.0
 FLAT_VISIT_MODE_SHARE = 0.70
 
-# Default as-of date for pilot (override via CLI)
-DEFAULT_AS_OF = date(2026, 7, 17)
+# Default as-of date: today in clinic timezone (override via CLI --as-of)
+CLINIC_TZ = ZoneInfo("Africa/Cairo")
+
+
+def default_as_of() -> date:
+    return datetime.now(CLINIC_TZ).date()

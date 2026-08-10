@@ -199,17 +199,25 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "load-all":
         limit = args.limit
-        results = {
+        results: dict = {
             "rules": load_rules(),
             "schedule": load_schedule(limit=limit),
             "webpt": load_webpt(limit=limit),
             "patient_payments": load_patient_payments(limit=limit),
             "revflow": load_revflow(limit_files=limit),
             "tracker": load_tracker(),
-            "mail": load_mail(),
-            "snowflake_kpi": load_snowflake_kpi(limit=limit),
-            "waystar": load_waystar(limit=limit),
         }
+        # Optional for reconcile: missing mail soft-skips inside load_mail
+        results["mail"] = load_mail()
+        # Optional staging loaders — do not fail the whole warehouse for probe/env gaps
+        for name, fn in (
+            ("snowflake_kpi", lambda: load_snowflake_kpi(limit=limit)),
+            ("waystar", lambda: load_waystar(limit=limit)),
+        ):
+            try:
+                results[name] = fn()
+            except Exception as exc:
+                results[name] = {"skipped": True, "error": str(exc)[:500]}
         if args.with_forecast_csv:
             results["forecast"] = load_forecast_from_csv()
         print(json.dumps(results, indent=2))

@@ -161,8 +161,13 @@ def build_august_forward_lines(
     # Patient enrichment
     pat = patients.copy() if patients is not None and not patients.empty else pd.DataFrame()
     if not pat.empty:
-        pat = pat.drop_duplicates(subset=["patient_id"], keep="last")
-        pat_idx = pat.set_index("patient_id")
+        if "patient_id" not in pat.columns and "webpt_patient_id" in pat.columns:
+            pat["patient_id"] = pat["webpt_patient_id"]
+        if "patient_id" in pat.columns:
+            pat = pat.drop_duplicates(subset=["patient_id"], keep="last")
+            pat_idx = pat.set_index("patient_id")
+        else:
+            pat_idx = pd.DataFrame()
     else:
         pat_idx = pd.DataFrame()
 

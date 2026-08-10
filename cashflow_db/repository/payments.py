@@ -78,7 +78,14 @@ def get_eob_payments_unified(conn: psycopg.Connection) -> list[dict[str, Any]]:
         JOIN billing.eob_check ec ON ec.eob_check_id = el.eob_check_id
         LEFT JOIN core.patient p ON p.patient_id = el.patient_id
         LEFT JOIN core.patient_history ph ON ph.patient_id = p.patient_id AND ph.is_current
-        LEFT JOIN core.visit v ON v.patient_id = el.patient_id AND v.service_date = el.date_of_service
+        -- LATERAL LIMIT 1: multi-case same-day visits must not duplicate payment rows
+        LEFT JOIN LATERAL (
+            SELECT v.facility_id
+            FROM core.visit v
+            WHERE v.patient_id = el.patient_id AND v.service_date = el.date_of_service
+            ORDER BY v.created_at DESC
+            LIMIT 1
+        ) v ON true
         LEFT JOIN ref.facility f ON f.facility_id = v.facility_id
         ORDER BY ec.eob_date, el.date_of_service
         """,

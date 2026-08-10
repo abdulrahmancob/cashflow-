@@ -10,7 +10,13 @@ from scipy.optimize import linear_sum_assignment
 
 from .insurance_map import InsuranceRule, payor_matches_insurance
 from .load_webpt import WebptLine
-from .normalize import format_date, format_money, parse_date, split_carcs
+from .normalize import (
+    format_date,
+    format_money,
+    name_keys_compatible,
+    parse_date,
+    split_carcs,
+)
 from .parse_revflow_eob import PaymentLine, is_bonus_payment
 from .load_transaction_tracker import apply_deposit_dates
 
@@ -243,12 +249,59 @@ def _assign_collision_scopes(
     return scopes
 
 
+def _soft_name_collision(
+    webpt: WebptLine,
+    payment: PaymentLine,
+    webpt_by_dos: dict[str, list[WebptLine]],
+) -> bool:
+    """True if another WebPT patient on same DOS is also soft-compatible with payment."""
+    for other in webpt_by_dos.get(webpt.date_of_service, []):
+        if other.patient_id == webpt.patient_id:
+            continue
+        if name_keys_compatible(other.name_key, payment.name_key):
+            return True
+    return False
+
+
+def _soft_candidates(
+    webpt: WebptLine,
+    *,
+    pool: list[PaymentLine],
+    used_payment_ids: set[int],
+    allowed_payment_ids: set[int] | None,
+    webpt_by_dos: dict[str, list[WebptLine]],
+    require_cpt: bool,
+    sibling_cpts: set[str] | None = None,
+) -> list[PaymentLine]:
+    out: list[PaymentLine] = []
+    for item in pool:
+        if id(item) in used_payment_ids:
+            continue
+        if allowed_payment_ids is not None and id(item) not in allowed_payment_ids:
+            continue
+        if require_cpt and item.cpt_code != webpt.cpt_code:
+            # Cross-CPT visit fallback only for paid lines, and never for a CPT
+            # that a sibling line of the same visit bills (it must claim it).
+            if item.paid_amount <= 0 or item.cpt_code in (sibling_cpts or set()):
+                continue
+        if not name_keys_compatible(webpt.name_key, item.name_key):
+            continue
+        if _soft_name_collision(webpt, item, webpt_by_dos):
+            continue
+        out.append(item)
+    return out
+
+
 def _match_one_line(
     webpt: WebptLine,
     *,
     by_full: dict[tuple, list[PaymentLine]],
     by_no_mod: dict[tuple, list[PaymentLine]],
     by_visit: dict[tuple, list[PaymentLine]],
+    by_dos_cpt_mod: dict[tuple, list[PaymentLine]],
+    by_dos_cpt: dict[tuple, list[PaymentLine]],
+    by_dos: dict[str, list[PaymentLine]],
+    webpt_by_dos: dict[str, list[WebptLine]],
     used_payment_ids: set[int],
     allowed_payment_ids: set[int] | None,
     rules: list[InsuranceRule],
@@ -259,11 +312,24 @@ def _match_one_line(
     full_key = (webpt.name_key, webpt.date_of_service, webpt.cpt_code, webpt.modifier)
     no_mod_key = (webpt.name_key, webpt.date_of_service, webpt.cpt_code)
     visit_key = (webpt.name_key, webpt.date_of_service)
+    dos = webpt.date_of_service
+    # CPTs billed by the other lines of this same visit — a cross-CPT visit
+    # fallback must never steal a payment a sibling line matches exactly.
+    sibling_cpts = {
+        w.cpt_code
+        for w in webpt_by_dos.get(dos, [])
+        if w.patient_id == webpt.patient_id and w is not webpt
+    }
 
     lookup_by_level = {
         "line": by_full,
         "line_no_modifier": by_no_mod,
         "visit": by_visit,
+    }
+    soft_pools = {
+        "line": by_dos_cpt_mod.get((dos, webpt.cpt_code, webpt.modifier), []),
+        "line_no_modifier": by_dos_cpt.get((dos, webpt.cpt_code), []),
+        "visit": by_dos.get(dos, []),
     }
     for key, level in (
         (full_key, "line"),
@@ -277,15 +343,45 @@ def _match_one_line(
             and (allowed_payment_ids is None or id(item) in allowed_payment_ids)
         ]
         if level == "visit":
-            candidates = [
-                item
-                for item in candidates
-                if item.cpt_code == webpt.cpt_code or item.paid_amount > 0
-            ]
+            same_cpt = [item for item in candidates if item.cpt_code == webpt.cpt_code]
+            if same_cpt:
+                candidates = same_cpt
+            else:
+                candidates = [
+                    item
+                    for item in candidates
+                    if item.paid_amount > 0 and item.cpt_code not in sibling_cpts
+                ]
+        if not candidates:
+            # Soft name fallback (compound surname / hyphen / apos / unicode; lev opt-in)
+            candidates = _soft_candidates(
+                webpt,
+                pool=soft_pools[level],
+                used_payment_ids=used_payment_ids,
+                allowed_payment_ids=allowed_payment_ids,
+                webpt_by_dos=webpt_by_dos,
+                require_cpt=(level == "visit"),
+                sibling_cpts=sibling_cpts,
+            )
+            if level == "visit" and candidates:
+                same_cpt = [c for c in candidates if c.cpt_code == webpt.cpt_code]
+                if same_cpt:
+                    candidates = same_cpt
+            if level == "line":
+                # soft line also requires matching modifier when present on webpt
+                if webpt.modifier:
+                    candidates = [
+                        c for c in candidates if (c.modifier or "") == webpt.modifier
+                    ]
+            if level == "line_no_modifier":
+                candidates = [c for c in candidates if c.cpt_code == webpt.cpt_code]
+            if candidates:
+                match_level = f"soft_{level}"
         if candidates:
             payment = _pick_payment(candidates)
             used_payment_ids.add(id(payment))
-            match_level = level
+            if match_level == "none":
+                match_level = level
             break
 
     insurance_values = [webpt.ins_name, webpt.insurance_note]
@@ -310,7 +406,7 @@ def _match_one_line(
         status=status,
         match_level=match_level,
         confidence=_confidence(
-            match_level=match_level,
+            match_level=match_level.replace("soft_", "") if match_level.startswith("soft_") else match_level,
             insurance_mismatch=not insurance_ok,
             has_payment=True,
         ),
@@ -327,12 +423,22 @@ def match_lines(
     by_full: dict[tuple, list[PaymentLine]] = defaultdict(list)
     by_no_mod: dict[tuple, list[PaymentLine]] = defaultdict(list)
     by_visit: dict[tuple, list[PaymentLine]] = defaultdict(list)
+    by_dos_cpt_mod: dict[tuple, list[PaymentLine]] = defaultdict(list)
+    by_dos_cpt: dict[tuple, list[PaymentLine]] = defaultdict(list)
+    by_dos: dict[str, list[PaymentLine]] = defaultdict(list)
+    webpt_by_dos: dict[str, list[WebptLine]] = defaultdict(list)
+
+    for line in webpt_lines:
+        webpt_by_dos[line.date_of_service].append(line)
 
     for payment in payments:
         dos = _normalize_dos(payment.date_of_service)
         by_full[(payment.name_key, dos, payment.cpt_code, payment.modifier)].append(payment)
         by_no_mod[(payment.name_key, dos, payment.cpt_code)].append(payment)
         by_visit[(payment.name_key, dos)].append(payment)
+        by_dos_cpt_mod[(dos, payment.cpt_code, payment.modifier)].append(payment)
+        by_dos_cpt[(dos, payment.cpt_code)].append(payment)
+        by_dos[dos].append(payment)
 
     collision_keys = _collision_keys(webpt_lines)
     collision_scopes = _assign_collision_scopes(
@@ -356,6 +462,10 @@ def match_lines(
                 by_full=by_full,
                 by_no_mod=by_no_mod,
                 by_visit=by_visit,
+                by_dos_cpt_mod=by_dos_cpt_mod,
+                by_dos_cpt=by_dos_cpt,
+                by_dos=by_dos,
+                webpt_by_dos=webpt_by_dos,
                 used_payment_ids=used_payment_ids,
                 allowed_payment_ids=allowed,
                 rules=rules,
@@ -396,7 +506,7 @@ def _check_fields_from_rollup(checks: dict[str, dict]) -> dict[str, str]:
     )
     for (num_key, date_key, amount_key), (check_num, meta) in zip(slots, ordered):
         fields[num_key] = check_num
-        fields[date_key] = meta["date"]
+        fields[date_key] = format_date(parse_date(meta.get("date"))) or str(meta.get("date") or "")
         fields[amount_key] = format_money(meta["amount"])
     return fields
 
@@ -475,6 +585,30 @@ def _visit_bucket_key(webpt: WebptLine) -> tuple[str, str, str, str]:
     )
 
 
+def _pending_reason_for_visit(
+    *,
+    pending_lines: int,
+    status_counts: Counter,
+) -> str:
+    """Secondary diagnostic when visit_status stays pending (product semantics unchanged)."""
+    if pending_lines > 0:
+        return "awaiting_payment"
+    zero = int(status_counts.get("zero_pay", 0))
+    pr = int(status_counts.get("patient_responsibility", 0))
+    sec = int(status_counts.get("secondary_pending", 0))
+    other = sum(status_counts.values()) - zero - pr - sec
+    active = sum(1 for n in (zero, pr, sec) if n > 0)
+    if active > 1 or (active >= 1 and other > 0):
+        return "mixed"
+    if zero > 0:
+        return "zero_pay_rollup"
+    if pr > 0:
+        return "patient_responsibility"
+    if sec > 0:
+        return "secondary_pending"
+    return "awaiting_payment"
+
+
 def aggregate_visits(
     matched_lines: list[MatchedLine],
     orphan_payments: list[PaymentLine] | None = None,
@@ -505,6 +639,7 @@ def aggregate_visits(
                 "unmatched_cpt_parts": [],
                 "paid_lines": 0,
                 "pending_lines": 0,
+                "line_status_counts": Counter(),
                 "checks": {},
                 "source_files": set(),
                 "check_nums": set(),
@@ -513,6 +648,9 @@ def aggregate_visits(
             by_name_dos[(webpt.name_key, webpt.date_of_service)].append(bucket)
 
         bucket["total_billed_cpts"] += 1
+        st = (item.status or "").strip().lower()
+        if st:
+            bucket["line_status_counts"][st] += 1
         if item.payment is not None:
             payment = item.payment
             bucket["matched_paid"] += payment.paid_amount
@@ -577,6 +715,14 @@ def aggregate_visits(
             visit_status = "partial"
         else:
             visit_status = "pending"
+        # Diagnostic only — does not change visit_status / KPI definition.
+        status_counts: Counter = bucket.pop("line_status_counts", Counter())
+        pending_reason = ""
+        if visit_status == "pending":
+            pending_reason = _pending_reason_for_visit(
+                pending_lines=int(bucket["pending_lines"]),
+                status_counts=status_counts,
+            )
         checks = bucket.pop("checks")
         apply_deposit_dates(checks, deposit_dates)
         matched_paid = float(bucket.pop("matched_paid"))
@@ -595,6 +741,7 @@ def aggregate_visits(
         )
         bucket["unmatched_cpts"] = "; ".join(unmatched_parts)
         bucket["visit_status"] = visit_status
+        bucket["pending_reason"] = pending_reason
         bucket.update(_check_fields_from_rollup(checks))
         rows.append(bucket)
     rows.sort(

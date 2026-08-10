@@ -3,12 +3,53 @@
 from __future__ import annotations
 
 import json
+import math
 from datetime import date
 from typing import Any, Iterable
 
 import psycopg
 
 from cashflow_db.repository import client
+
+
+def _json_safe(value: Any) -> Any:
+    """Convert NaN/Inf/NA to None so json.dumps emits valid JSONB."""
+    if value is None:
+        return None
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return None
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    # pandas / numpy scalars
+    try:
+        import pandas as pd
+
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError, ImportError):
+        pass
+    return value
+
+
+def _date_or_none(value: Any) -> Any:
+    value = _json_safe(value)
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
+def _empty_str_none(value: Any) -> Any:
+    value = _json_safe(value)
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "nat"}:
+        return None
+    return text
 
 
 def create_forecast_run(
@@ -105,27 +146,31 @@ def insert_predictions(
             "forecast_shift_days", "risk_flags", "risk_score",
             "webpt_patient_id", "case_id", "cpt_code", "date_of_service",
         }}
+        visit_id = r.get("visit_id")
+        if visit_id is not None and str(visit_id).strip() in {"", "nan", "None", "NaT"}:
+            visit_id = None
+        risk_score = _json_safe(r.get("risk_score"))
         client.execute(
             conn,
             sql,
             (
                 run_id,
-                r.get("visit_id"),
+                visit_id,
                 stage_s,
-                r.get("expected_amount"),
-                r.get("expected_pay_date"),
-                r.get("overdue_days"),
-                r.get("denied_amount"),
+                _json_safe(r.get("expected_amount")),
+                _date_or_none(r.get("expected_pay_date")),
+                _json_safe(r.get("overdue_days")),
+                _json_safe(r.get("denied_amount")),
                 r.get("denial_category"),
-                r.get("sla_lag_days"),
-                r.get("forecast_shift_days"),
-                json.dumps(risk, default=str),
-                r.get("risk_score"),
-                r.get("webpt_patient_id"),
-                r.get("case_id"),
-                r.get("cpt_code"),
-                r.get("date_of_service"),
-                json.dumps(payload, default=str),
+                _json_safe(r.get("sla_lag_days")),
+                _json_safe(r.get("forecast_shift_days")),
+                json.dumps(_json_safe(risk), default=str),
+                risk_score,
+                _empty_str_none(r.get("webpt_patient_id")),
+                _empty_str_none(r.get("case_id")),
+                _empty_str_none(r.get("cpt_code")),
+                _date_or_none(r.get("date_of_service")),
+                json.dumps(_json_safe(payload), default=str),
             ),
         )
         n += 1
@@ -159,7 +204,7 @@ def replace_feature_table(
                 run_id,
                 feature_kind,
                 str(r.get("feature_key") or r.get("insurance") or r.get("payer") or n),
-                json.dumps(r, default=str),
+                json.dumps(_json_safe(r), default=str),
             ),
         )
         n += 1

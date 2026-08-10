@@ -18,14 +18,16 @@ x-logging: &default-logging
 x-app-env: &app-env
   CASHFLOW_DATABASE_URL: ${CASHFLOW_DATABASE_URL}
   DATABASE_URL: ${CASHFLOW_DATABASE_URL}
-  WEBPT_OUTPUT_DIR: /data/webpt
-  WEBPT_LEGACY_OUTPUT_DIR: /data/webpt/legacy
+  WEBPT_OUTPUT_DIR: ${WEBPT_OUTPUT_DIR:-/data/webpt/jan_aug_2026}
+  WEBPT_LEGACY_OUTPUT_DIR: ${WEBPT_LEGACY_OUTPUT_DIR:-/data/webpt/legacy}
   WEBPT_SCRAPER_DIR: /app/webpt_edco_scraper
-  REVFLOW_OUTPUT_DIR: /data/revflow
+  SCHEDULE_VISITS_CSV: ${SCHEDULE_VISITS_CSV:-/data/webpt/jan_aug_2026/schedule_visits_2026-01-01_2026-08-30.csv}
+  PATIENT_PAYMENTS_CSV: ${PATIENT_PAYMENTS_CSV:-/data/webpt/jan_aug_2026/patient_payments_202601_202608.csv}
+  REVFLOW_OUTPUT_DIR: ${REVFLOW_OUTPUT_DIR:-/data/revflow}
   REVFLOW_SCRAPER_DIR: /app/revflow_scraper
   WAYSTAR_OUTPUT_DIR: /data/waystar
   WAYSTAR_SCRAPER_DIR: /app/waystar_scraper
-  CASE_PIPELINE_DIR: /data/exports/side_by_side_case
+  CASE_PIPELINE_DIR: ${CASE_PIPELINE_DIR:-/data/exports/side_by_side_case}
   SNOWFLAKE_OUTPUT_DIR: /data/exports/snowflake
   CASHFLOW_OPS_ARTIFACTS_DIR: /data/exports/ops
   TRACKER_XLSX: ${TRACKER_XLSX:-/data/webpt/Transaction Tracker 2026.xlsx}

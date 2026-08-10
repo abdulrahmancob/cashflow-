@@ -17,6 +17,21 @@ except ImportError:  # pragma: no cover
     parse_revflow_csv = None
 
 
+def _flatten_manifest_item(item: dict) -> dict:
+    """Merge nested scraper ``selection`` onto the item for loader lookups.
+
+    RevFlow export.py writes eob_key/company_id/check under ``selection``;
+    top-level keys are typically only key/path/status/selection.
+    """
+    flat = dict(item)
+    sel = item.get("selection")
+    if isinstance(sel, dict):
+        for key, value in sel.items():
+            if flat.get(key) in (None, ""):
+                flat[key] = value
+    return flat
+
+
 def _manifest_index(root: Path) -> dict[str, dict]:
     path = root / "manifest.json"
     if not path.exists():
@@ -27,16 +42,20 @@ def _manifest_index(root: Path) -> dict[str, dict]:
     for item in exports:
         if not isinstance(item, dict):
             continue
+        flat = _flatten_manifest_item(item)
         for key in (
+            flat.get("path"),
+            flat.get("filename"),
+            flat.get("export_path"),
             item.get("path"),
             item.get("filename"),
             item.get("export_path"),
         ):
             if key:
-                out[Path(str(key)).name] = item
-        # also by eob_key
-        if item.get("eob_key"):
-            out[str(item["eob_key"])] = item
+                out[Path(str(key)).name] = flat
+        # also by eob_key (from selection after flatten)
+        if flat.get("eob_key"):
+            out[str(flat["eob_key"])] = flat
     return out
 
 
@@ -107,11 +126,14 @@ def load_revflow(
                     VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'revflow', %s, %s::uuid
                     )
-                    ON CONFLICT (source_system, source_natural_key)
-                        WHERE source_natural_key IS NOT NULL
+                    ON CONFLICT (eob_key, check_eft_num, eob_date)
                     DO UPDATE SET
                         paid_amount_sum = EXCLUDED.paid_amount_sum,
                         payor_raw = COALESCE(EXCLUDED.payor_raw, billing.eob_check.payor_raw),
+                        source_file = EXCLUDED.source_file,
+                        source_natural_key = COALESCE(
+                            billing.eob_check.source_natural_key, EXCLUDED.source_natural_key
+                        ),
                         etl_run_id = EXCLUDED.etl_run_id
                     RETURNING eob_check_id
                     """,
@@ -249,7 +271,7 @@ def load_revflow(
                         counts["events"] += 1
 
                     line_no += 1
-                    conn.execute(
+                    cl = conn.execute(
                         """
                         INSERT INTO billing.claim_line (
                             claim_id, visit_id, service_line_id, line_no,
@@ -265,6 +287,7 @@ def load_revflow(
                         DO UPDATE SET
                             claim_id = EXCLUDED.claim_id,
                             etl_run_id = EXCLUDED.etl_run_id
+                        RETURNING claim_line_id
                         """,
                         (
                             claim_id,
@@ -277,7 +300,7 @@ def load_revflow(
                             f"{row['service_line_id']}",
                             etl_id,
                         ),
-                    )
+                    ).fetchone()
                     counts["claim_lines"] += 1
 
                     # try link eob_line by patient+dos+cpt
@@ -330,6 +353,10 @@ def load_revflow(
 
             finish_etl_run(conn, etl_id, status="success", row_count=sum(counts.values()))
         except Exception as exc:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             finish_etl_run(conn, etl_id, status="failed", notes=str(exc)[:2000])
             raise
     return counts

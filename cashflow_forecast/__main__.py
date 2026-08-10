@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -17,7 +17,7 @@ from cashflow_forecast.aggregations import (
     risk_by_insurance,
 )
 from cashflow_forecast.audit_linker import link_audit_to_waystar
-from cashflow_forecast.config import DEFAULT_AS_OF, REPO_ROOT
+from cashflow_forecast.config import REPO_ROOT, default_as_of
 from cashflow_forecast.deposit_capacity import (
     build_deposit_events_from_actual,
     build_deposit_events_from_checks,
@@ -38,6 +38,8 @@ from cashflow_forecast.forecast_engine import (
     projected_cash_monthly_by_facility_insurance,
 )
 from cashflow_forecast.forward_volume import (
+    AUG_END,
+    AUG_START,
     attach_forward_expected_amounts,
     build_august_forward_lines,
 )
@@ -59,6 +61,7 @@ from cashflow_forecast.payer_payment_model import (
 from cashflow_forecast.sf_visit_overrides import (
     apply_sf_visit_overrides,
     load_sf_override_keys,
+    load_sf_override_keys_from_db,
     resolve_override_path,
 )
 from cashflow_forecast.land_accuracy import (
@@ -96,8 +99,19 @@ def _resolve_path(path: str | Path) -> Path:
 
 def _parse_as_of(text: str | None) -> date:
     if not text:
-        return DEFAULT_AS_OF
+        return default_as_of()
     return datetime.strptime(text, "%Y-%m-%d").date()
+
+
+def _forward_window(as_of: date) -> tuple[date, date]:
+    """Forward-volume projection window: strictly after as_of, to month end.
+
+    Before the pilot month (Aug 2026) the full month is projected; afterwards
+    the window rolls with as_of so projections never overlap loaded visits.
+    """
+    start = max(AUG_START, as_of + timedelta(days=1))
+    month_end = (start.replace(day=1) + timedelta(days=45)).replace(day=1) - timedelta(days=1)
+    return start, max(AUG_END, month_end)
 
 
 def _ensure_recon_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -109,6 +123,55 @@ def _ensure_recon_columns(df: pd.DataFrame) -> pd.DataFrame:
         out["source"] = "reconciliation"
     if "units" not in out.columns:
         out["units"] = 1.0
+    return out
+
+
+def _exclude_recon_covered_ar(
+    ar: pd.DataFrame,
+    recon_lines: pd.DataFrame,
+    visit_aggs: pd.DataFrame,
+) -> pd.DataFrame:
+    """Drop clinical-AR rows already represented in reconciliation output.
+
+    The reconciliation run emits one row per WebPT service line in its window
+    (matched or pending), so re-adding the same line as synthetic pending AR
+    double-counts it. Lines of visits reconciliation already marked paid are
+    dropped as well.
+    """
+    if ar is None or ar.empty:
+        return ar
+
+    out = ar.copy()
+    out["date_of_service"] = pd.to_datetime(out["date_of_service"], errors="coerce").dt.date
+    n0 = len(out)
+
+    def _norm(series: pd.Series) -> pd.Series:
+        return series.astype(str).str.strip()
+
+    line_cols = {"webpt_patient_id", "date_of_service", "cpt_code"}
+    if recon_lines is not None and not recon_lines.empty and line_cols <= set(recon_lines.columns):
+        rl = recon_lines
+        rl_dos = pd.to_datetime(rl["date_of_service"], errors="coerce").dt.date
+        covered = set(zip(_norm(rl["webpt_patient_id"]), rl_dos, _norm(rl["cpt_code"])))
+        keys = list(zip(_norm(out["webpt_patient_id"]), out["date_of_service"], _norm(out["cpt_code"])))
+        out = out[[k not in covered for k in keys]]
+
+    agg_cols = {"webpt_patient_id", "date_of_service", "visit_status"}
+    if (
+        not out.empty
+        and visit_aggs is not None
+        and not visit_aggs.empty
+        and agg_cols <= set(visit_aggs.columns)
+    ):
+        closed = visit_aggs[visit_aggs["visit_status"].astype(str) == "paid"]
+        if not closed.empty:
+            closed_dos = pd.to_datetime(closed["date_of_service"], errors="coerce").dt.date
+            closed_keys = set(zip(_norm(closed["webpt_patient_id"]), closed_dos))
+            vkeys = list(zip(_norm(out["webpt_patient_id"]), out["date_of_service"]))
+            out = out[[k not in closed_keys for k in vkeys]]
+
+    if len(out) != n0:
+        log.info("Clinical AR lines: %d -> %d after reconciliation dedupe", n0, len(out))
     return out
 
 
@@ -169,10 +232,27 @@ def cmd_build(args: argparse.Namespace) -> int:
             log.error("No reconciliation_line rows — run: python -m cashflow_reconcile --from-db")
             return 1
         log.info("  %d recon lines", len(recon_lines))
+        # SF paid/denied visit overrides (same EOB gate as CSV path)
+        sf_overrides = load_sf_override_keys_from_db(recon_lines)
+        if sf_overrides:
+            recon_lines = apply_sf_visit_overrides(
+                recon_lines,
+                sf_overrides,
+                require_line_eob_for_paid=True,
+            )
+            recon_lines = _ensure_recon_columns(recon_lines)
+        else:
+            log.info("No SF paid/denied overrides from snowflake_visit_kpi")
+        visits_df = dbs.load_reconciliation_visits_df()
+        if not visits_df.empty and "visit_paid_total" in visits_df.columns:
+            visits_df["visit_paid_total"] = pd.to_numeric(
+                visits_df["visit_paid_total"], errors="coerce"
+            ).fillna(0)
         may_lines = dbs.load_clinical_ar_lines_df(
             service_from=date(2026, 1, 1),
             service_to=date(2026, 5, 31),
         )
+        may_lines = _exclude_recon_covered_ar(may_lines, recon_lines, visits_df)
         may_lines = _ensure_recon_columns(may_lines) if not may_lines.empty else may_lines
         patients = dbs.load_patients_df()
         log.info("Patients: %d", len(patients))
@@ -217,13 +297,56 @@ def cmd_build(args: argparse.Namespace) -> int:
         plans = dbs.load_plans_of_care_df()
         if not plans.empty:
             log.info("Building August forward volume from PoC (DB)…")
-            notes = dbs.load_clinical_ar_lines_df()  # reuse grain; forward uses plans+patients
+            # Service-line grain doubles as CPT-mix + facility/insurance fallback source
+            sl = dbs.load_clinical_ar_lines_df()
+            if not sl.empty:
+                sl = sl.copy()
+                sl["patient_id"] = sl["webpt_patient_id"].astype(str)
+                sl["date_of_daily_note"] = pd.to_datetime(
+                    sl["date_of_service"], errors="coerce"
+                ).dt.date
+                sl["units"] = pd.to_numeric(sl.get("units"), errors="coerce").fillna(1.0)
+                notes_df = sl[["patient_id", "date_of_daily_note", "patient_name"]].copy()
+                notes_df["facility_name"] = sl.get("facility_name", "")
+                notes_df["insurance_name"] = sl.get("ins_name", "")
+                cpt_df = sl[
+                    ["patient_id", "cpt_code", "modifier", "units", "date_of_daily_note"]
+                ].copy()
+            else:
+                notes_df = pd.DataFrame()
+                cpt_df = pd.DataFrame()
+            # auth_remaining = visits_authorized − visits already used (per patient)
+            if not patients.empty and "auth_ins_visits" in patients.columns:
+                patients = patients.copy()
+                auth = pd.to_numeric(patients["auth_ins_visits"], errors="coerce")
+                if not sl.empty:
+                    used = sl.groupby("patient_id")["date_of_daily_note"].nunique()
+                    used_by_pid = (
+                        patients["patient_id"].astype(str).map(used).fillna(0)
+                        if "patient_id" in patients.columns
+                        else patients["webpt_patient_id"].astype(str).map(used).fillna(0)
+                    )
+                else:
+                    used_by_pid = 0
+                patients["auth_remaining"] = (auth - used_by_pid).clip(lower=0)
+            # Only project visits after as_of — earlier days are already real
+            # visits in the warehouse and would double-count.
+            fwd_start, fwd_end = _forward_window(as_of)
             forward_lines, forward_summary = build_august_forward_lines(
                 plans,
                 patients,
-                notes.iloc[0:0],
-                notes.iloc[0:0],
+                notes_df,
+                cpt_df,
                 fee_estimator=fees,
+                window_start=fwd_start,
+                window_end=fwd_end,
+            )
+            log.info(
+                "  %d forward lines (%d patients, window %s..%s)",
+                len(forward_lines),
+                forward_summary["webpt_patient_id"].nunique() if not forward_summary.empty else 0,
+                fwd_start,
+                fwd_end,
             )
         frames = [recon_lines]
         if not may_lines.empty:
@@ -232,11 +355,6 @@ def cmd_build(args: argparse.Namespace) -> int:
             frames.append(forward_lines)
         lines = _ensure_recon_columns(pd.concat(frames, ignore_index=True, sort=False))
         payments = dbs.load_payments_unified_df()
-        visits_df = dbs.load_reconciliation_visits_df()
-        if not visits_df.empty and "visit_paid_total" in visits_df.columns:
-            visits_df["visit_paid_total"] = pd.to_numeric(
-                visits_df["visit_paid_total"], errors="coerce"
-            ).fillna(0)
         denials_all = dbs.load_denials_df()
         if denials_all.empty:
             denials = None

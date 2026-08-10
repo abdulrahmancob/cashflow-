@@ -16,6 +16,7 @@ from cashflow_reconcile.matcher import (
 from cashflow_reconcile.normalize import (
     name_key_from_revflow,
     name_key_from_webpt,
+    name_keys_compatible,
     parse_date,
     parse_money,
 )
@@ -47,6 +48,23 @@ class NormalizeTests(unittest.TestCase):
     def test_parse_money(self):
         self.assertEqual(parse_money("$1,234.56"), 1234.56)
         self.assertEqual(parse_money("($120.00)"), -120.0)
+
+    def test_name_keys_compatible_compound_surname(self):
+        webpt = name_key_from_webpt("ALMONTE REYES, IRIS")
+        eob = name_key_from_revflow("ALMONTE", "IRIS")
+        self.assertEqual(webpt, "ALMONTEREYESIRIS")
+        self.assertEqual(eob, "ALMONTEIRIS")
+        self.assertTrue(name_keys_compatible(webpt, eob))
+        self.assertTrue(name_keys_compatible(eob, webpt))
+
+    def test_name_keys_compatible_levenshtein_opt_in_only(self):
+        a, b = "ROSADOELIZBETH", "ROSADOELIZABETH"
+        self.assertFalse(name_keys_compatible(a, b, allow_levenshtein=False))
+        self.assertTrue(name_keys_compatible(a, b, allow_levenshtein=True))
+        # Distinct people must not match without lev
+        self.assertFalse(
+            name_keys_compatible("SMITHJOHN", "SMYTHJOHN", allow_levenshtein=False)
+        )
 
 
 class RevflowParserTests(unittest.TestCase):
@@ -136,6 +154,79 @@ class MatcherTests(unittest.TestCase):
         matched = [item for item in result.lines if item.payment is not None]
         self.assertEqual(len(matched), 2)
         self.assertTrue(all(item.status in {"paid", "secondary_pending"} for item in matched))
+
+    def test_soft_match_compound_surname(self):
+        rules = load_insurance_rules()
+        webpt = _make_webpt(
+            "54244649",
+            "2026-02-19",
+            "97110",
+            patient_name="ALMONTE REYES, IRIS",
+            name_key="ALMONTEREYESIRIS",
+        )
+        pay = _make_payment(
+            cpt="97110",
+            paid=40.0,
+            check="CHK1",
+            eob_date="03/01/2026",
+            date_of_service="02/19/2026",
+            name_key="ALMONTEIRIS",
+            first_name="IRIS",
+            last_name="ALMONTE",
+        )
+        result = match_lines([webpt], [pay], rules)
+        self.assertEqual(len(result.lines), 1)
+        self.assertIsNotNone(result.lines[0].payment)
+        self.assertTrue(result.lines[0].match_level.startswith("soft_"))
+
+    def test_pending_reason_zero_pay_rollup(self):
+        rules = load_insurance_rules()
+        webpt = _make_webpt("9", "2026-02-19", "97110")
+        pay = _make_payment(
+            cpt="97110",
+            paid=0.0,
+            check="CHK0",
+            eob_date="03/01/2026",
+            date_of_service="02/19/2026",
+            name_key=webpt.name_key,
+        )
+        result = match_lines([webpt], [pay], rules)
+        visits = aggregate_visits(result.lines)
+        self.assertEqual(visits[0]["visit_status"], "pending")
+        self.assertEqual(visits[0]["pending_reason"], "zero_pay_rollup")
+
+    def test_soft_match_blocked_on_collision(self):
+        rules = load_insurance_rules()
+        a = _make_webpt(
+            "1",
+            "2026-02-19",
+            "97110",
+            patient_name="ALMONTE REYES, IRIS",
+            name_key="ALMONTEREYESIRIS",
+        )
+        b = _make_webpt(
+            "2",
+            "2026-02-19",
+            "97110",
+            patient_name="ALMONTE, IRIS",
+            name_key="ALMONTEIRIS",
+        )
+        pay = _make_payment(
+            cpt="97110",
+            paid=40.0,
+            check="CHK1",
+            eob_date="03/01/2026",
+            date_of_service="02/19/2026",
+            name_key="ALMONTEIRIS",
+            first_name="IRIS",
+            last_name="ALMONTE",
+        )
+        result = match_lines([a, b], [pay], rules)
+        # Exact match on b should consume; soft for a must not steal if collision,
+        # or exact b gets it. a should remain pending if only one payment.
+        paid = [x for x in result.lines if x.payment is not None]
+        self.assertEqual(len(paid), 1)
+        self.assertEqual(paid[0].webpt.patient_id, "2")
 
 
 class PaymentRowsTests(unittest.TestCase):
@@ -330,10 +421,10 @@ class AggregateVisitsCheckTests(unittest.TestCase):
         self.assertEqual(len(visits), 1)
         visit = visits[0]
         self.assertEqual(visit["primary_check_number"], "CHECK-A")
-        self.assertEqual(visit["primary_check_date"], "07/02/2026")
+        self.assertEqual(visit["primary_check_date"], "2026-07-02")
         self.assertEqual(visit["primary_check_amount"], "86.36")
         self.assertEqual(visit["secondary_check_number"], "CHECK-B")
-        self.assertEqual(visit["secondary_check_date"], "07/10/2026")
+        self.assertEqual(visit["secondary_check_date"], "2026-07-10")
         self.assertEqual(visit["secondary_check_amount"], "38.81")
         self.assertEqual(visit["total_paid"], "125.17")
         self.assertEqual(visit["matched_paid"], "125.17")
@@ -826,7 +917,7 @@ class AggregateVisitsCheckTests(unittest.TestCase):
         # Without deposits: CHECK-A (06/01) is primary.
         visit = aggregate_visits(lines)[0]
         self.assertEqual(visit["primary_check_number"], "CHECK-A")
-        self.assertEqual(visit["primary_check_date"], "06/01/2026")
+        self.assertEqual(visit["primary_check_date"], "2026-06-01")
 
         # Bank dates flip chronology: CHECK-B deposited earlier than CHECK-A.
         deposit_dates = {
@@ -835,9 +926,9 @@ class AggregateVisitsCheckTests(unittest.TestCase):
         }
         visit = aggregate_visits(lines, deposit_dates=deposit_dates)[0]
         self.assertEqual(visit["primary_check_number"], "CHECK-B")
-        self.assertEqual(visit["primary_check_date"], "06/10/2026")
+        self.assertEqual(visit["primary_check_date"], "2026-06-10")
         self.assertEqual(visit["secondary_check_number"], "CHECK-A")
-        self.assertEqual(visit["secondary_check_date"], "06/12/2026")
+        self.assertEqual(visit["secondary_check_date"], "2026-06-12")
 
     def test_deposit_date_miss_keeps_eob_date(self):
         lines = [
@@ -850,7 +941,7 @@ class AggregateVisitsCheckTests(unittest.TestCase):
             )
         ]
         visit = aggregate_visits(lines, deposit_dates={"OTHER": "07/10/2026"})[0]
-        self.assertEqual(visit["primary_check_date"], "07/02/2026")
+        self.assertEqual(visit["primary_check_date"], "2026-07-02")
 
     def test_orphan_does_not_attach_when_name_dos_ambiguous(self):
         lines = [

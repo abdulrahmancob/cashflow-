@@ -145,16 +145,35 @@ def export_case_daily_notes(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    print(f"[phase-b] loading manifests under {cases_dir} ...", flush=True)
     manifest_idx = _load_manifest_index(cases_dir)
+    print(f"[phase-b] manifest index size={len(manifest_idx)}", flush=True)
+    print(f"[phase-b] globbing daily_note PDFs under {cases_dir} ...", flush=True)
     pdfs = iter_case_daily_note_pdfs(cases_dir)
     log.info("Found %d case PDF(s) under %s", len(pdfs), cases_dir)
+    print(f"[phase-b] Found {len(pdfs)} case PDF(s)", flush=True)
 
     daily_rows: list[dict[str, str]] = []
     cpt_rows: list[dict[str, str]] = []
     errors: list[str] = []
     skipped_no_case = 0
 
-    for pdf_path in pdfs:
+    total_pdfs = len(pdfs)
+    for i, pdf_path in enumerate(pdfs, start=1):
+        if i == 1 or i % 500 == 0 or i == total_pdfs:
+            log.info(
+                "Case extract progress %d/%d notes=%d cpt=%d errors=%d",
+                i,
+                total_pdfs,
+                len(daily_rows),
+                len(cpt_rows),
+                len(errors),
+            )
+            print(
+                f"[phase-b] progress {i}/{total_pdfs} notes={len(daily_rows)} "
+                f"cpt={len(cpt_rows)} errors={len(errors)}",
+                flush=True,
+            )
         try:
             facility_id, case_id = parse_facility_case_from_path(pdf_path)
         except ValueError as exc:

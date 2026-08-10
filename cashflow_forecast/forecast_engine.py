@@ -183,29 +183,31 @@ def actual_cash_buckets_by_facility(
 
 
 def _land_date_col(outcomes: pd.DataFrame) -> str:
-    """Bank-comparable land day: pre-pack original when present."""
-    if "original_forecast_date" in outcomes.columns:
-        return "original_forecast_date"
-    return "forecast_date"
+    """Cash land day: post-pack forecast_date (when cash will actually land)."""
+    if "forecast_date" in outcomes.columns:
+        return "forecast_date"
+    return "original_forecast_date"
 
 
 def _projected_base(outcomes: pd.DataFrame) -> pd.DataFrame:
-    """Cash Expected Land stages only (bank-comparable; excludes denied/rejected)."""
+    """Cash Expected Land stages only (bank-comparable; excludes denied/rejected).
+
+    Uses the packed forecast_date so past-due AR lands on future capacity days
+    instead of stacking on dates already in the past.
+    """
     col = _land_date_col(outcomes)
     proj = outcomes[
         outcomes["outcome_stage"].isin(["on_track", "overdue"])
-        & outcomes[col].notna()
         & (outcomes["expected_amount"] > 0)
     ].copy()
-    # Normalize aggregation column name for _agg_cash callers.
     if col != "forecast_date":
-        # Prefer original; fill gaps from packed forecast_date.
-        if "forecast_date" in proj.columns:
-            miss = proj[col].isna()
-            if miss.any():
-                proj.loc[miss, col] = proj.loc[miss, "forecast_date"]
         proj["forecast_date"] = proj[col]
-    return proj
+    elif "original_forecast_date" in proj.columns:
+        # Fill any gaps left by packing from the pre-pack land date.
+        miss = proj["forecast_date"].isna()
+        if miss.any():
+            proj.loc[miss, "forecast_date"] = proj.loc[miss, "original_forecast_date"]
+    return proj[proj["forecast_date"].notna()]
 
 
 def projected_cash_buckets(outcomes: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -271,12 +273,14 @@ def kpi_summary(
     paid_n = int((outcomes["outcome_stage"] == "paid").sum())
     zero_n = int((outcomes["outcome_stage"] == "zero_pay").sum())
 
+    # Same definition as the projected charts (on_track + overdue) so the KPI
+    # headline always matches the trajectory totals.
     projected = on_track_amt + overdue_amt
-    # Resubmission-shifted rejected/denied contribute to future projected via forecast_date
+    # Resubmission-shifted rejected/denied reported separately, NOT folded in.
     shifted = outcomes[
         (outcomes["forecast_shift_days"] > 0) & (outcomes["expected_amount"] > 0)
     ]
-    projected_with_shift = projected + float(shifted["expected_amount"].sum())
+    resubmission_amt = float(shifted["expected_amount"].sum())
 
     risk_exposure = float(risk_flags["exposure_amount"].sum()) if not risk_flags.empty else 0.0
     risk_n = int(risk_flags["webpt_patient_id"].nunique()) if not risk_flags.empty else 0
@@ -289,7 +293,8 @@ def kpi_summary(
     return {
         "as_of": as_of.isoformat(),
         "actual_cash_received": round(actual, 2),
-        "projected_cash_in": round(projected_with_shift, 2),
+        "projected_cash_in": round(projected, 2),
+        "resubmission_shifted_amount": round(resubmission_amt, 2),
         "projected_cash_may_aug": round(may_aug_projected, 2),
         "on_track_amount": round(on_track_amt, 2),
         "on_track_count": on_track_n,

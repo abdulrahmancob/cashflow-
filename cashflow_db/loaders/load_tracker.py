@@ -151,8 +151,29 @@ def load_mail(
     path: Path | None = None,
     database_url: str | None = None,
 ) -> dict[str, int]:
+    """Load mail checks CSV into ops.mail_work_item.
+
+    Optional for reconcile: missing file is skipped (success/0 rows), not a
+    hard failure. No in-repo readers of mail_work_item for match/forecast.
+    """
     path = path or MAIL_CHECKS_CSV
-    counts = {"mail_items": 0}
+    counts = {"mail_items": 0, "skipped": 0}
+
+    if not path.is_file():
+        with connect(database_url) as conn:
+            etl_id = start_etl_run(conn, "mail", str(path))
+            finish_etl_run(
+                conn,
+                etl_id,
+                status="success",
+                row_count=0,
+                notes=(
+                    f"skipped: missing file {path} "
+                    "(optional for reconcile; no in-repo match consumers)"
+                ),
+            )
+        counts["skipped"] = 1
+        return counts
 
     with connect(database_url) as conn:
         etl_id = start_etl_run(conn, "mail", str(path))
@@ -180,6 +201,15 @@ def load_mail(
                             source_natural_key, etl_run_id
                         )
                         VALUES (%s, %s, %s, %s, %s, 'open', 'mail', %s, %s::uuid)
+                        ON CONFLICT (source_system, source_natural_key)
+                            WHERE source_natural_key IS NOT NULL
+                        DO UPDATE SET
+                            payer_label = EXCLUDED.payer_label,
+                            collector = EXCLUDED.collector,
+                            item_type = EXCLUDED.item_type,
+                            notes = EXCLUDED.notes,
+                            previously_posted_flag = EXCLUDED.previously_posted_flag,
+                            etl_run_id = EXCLUDED.etl_run_id
                         """,
                         (
                             payer,
@@ -194,6 +224,10 @@ def load_mail(
                     counts["mail_items"] += 1
             finish_etl_run(conn, etl_id, status="success", row_count=counts["mail_items"])
         except Exception as exc:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
             finish_etl_run(conn, etl_id, status="failed", notes=str(exc)[:2000])
             raise
     return counts

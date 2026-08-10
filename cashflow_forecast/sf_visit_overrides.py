@@ -175,3 +175,110 @@ def resolve_override_path(recon_dir: Path) -> Path | None:
     if visits.exists():
         return visits
     return None
+
+
+def load_sf_emr_override_keys_from_db(
+    *,
+    database_url: str | None = None,
+) -> dict[tuple[str, date], tuple[str, float]]:
+    """
+    Load (emr_id, DOS) -> (status, paid_total) from analytics.snowflake_visit_kpi.
+
+    paid_total = insurance_payment + co_insurance_payment + client_payment
+    (same composition as snowflake_pull.compare_visits).
+    """
+    try:
+        from cashflow_db.repository import connection
+    except ImportError:
+        log.warning("cashflow_db unavailable — no SF overrides from DB")
+        return {}
+
+    sql = """
+        SELECT
+            emr_id,
+            date_of_service,
+            LOWER(TRIM(status)) AS status,
+            COALESCE(insurance_payment, 0)
+              + COALESCE(co_insurance_payment, 0)
+              + COALESCE(client_payment, 0) AS total_paid
+        FROM analytics.snowflake_visit_kpi
+        WHERE LOWER(TRIM(status)) IN ('paid', 'denied')
+          AND emr_id IS NOT NULL
+          AND date_of_service IS NOT NULL
+    """
+    out: dict[tuple[str, date], tuple[str, float]] = {}
+    with connection(database_url) as conn:
+        rows = conn.execute(sql).fetchall()
+    for row in rows:
+        emr = str(row["emr_id"] or "").strip()
+        dos_raw = row["date_of_service"]
+        if hasattr(dos_raw, "isoformat"):
+            dos = dos_raw if isinstance(dos_raw, date) else dos_raw
+            if not isinstance(dos, date):
+                dos = parse_date(str(dos_raw))
+        else:
+            dos = parse_date(str(dos_raw or ""))
+        status = str(row["status"] or "").strip().lower()
+        if not emr or not dos or status not in OVERRIDE_STATUSES:
+            continue
+        paid = float(row["total_paid"] or 0)
+        out[(emr, dos)] = (status, paid)
+    log.info("Loaded %d SF paid/denied override keys from snowflake_visit_kpi", len(out))
+    return out
+
+
+def remap_emr_overrides_to_name_keys(
+    lines: pd.DataFrame,
+    emr_overrides: dict[tuple[str, date], tuple[str, float]],
+) -> dict[tuple[str, date], tuple[str, float]]:
+    """
+    Map (emr_id, DOS) overrides onto (name_key, DOS) using recon line identity.
+
+    Prefers ``webpt_patient_id`` (EMR) on lines; falls back to normalizing
+    ``patient_name`` only when EMR is absent (weaker; skipped if emr overrides
+    cannot match).
+    """
+    if lines is None or lines.empty or not emr_overrides:
+        return {}
+
+    out: dict[tuple[str, date], tuple[str, float]] = {}
+    has_emr = "webpt_patient_id" in lines.columns
+    for _, row in lines.iterrows():
+        dos = row.get("date_of_service")
+        if isinstance(dos, str):
+            dos = parse_date(dos)
+        if not isinstance(dos, date):
+            continue
+        emr = ""
+        if has_emr:
+            emr = str(row.get("webpt_patient_id") or "").strip()
+        if not emr:
+            continue
+        hit = emr_overrides.get((emr, dos))
+        if hit is None:
+            continue
+        nk = str(row.get("name_key") or "").strip()
+        if not nk:
+            nk = normalize_name_key(str(row.get("patient_name") or ""))
+        if not nk:
+            continue
+        # Prefer paid over denied if duplicate keys collide
+        prev = out.get((nk, dos))
+        if prev is None or (hit[0] == "paid" and prev[0] != "paid"):
+            out[(nk, dos)] = hit
+    log.info(
+        "Remapped %d EMR SF overrides onto %d name_key visit keys",
+        len(emr_overrides),
+        len(out),
+    )
+    return out
+
+
+def load_sf_override_keys_from_db(
+    lines: pd.DataFrame,
+    *,
+    database_url: str | None = None,
+) -> dict[tuple[str, date], tuple[str, float]]:
+    """Load SF paid/denied overrides from KPI and key them for recon lines."""
+    emr_keys = load_sf_emr_override_keys_from_db(database_url=database_url)
+    return remap_emr_overrides_to_name_keys(lines, emr_keys)

@@ -25,10 +25,13 @@ class ReconciliationStage:
         outputs: dict[str, Any] = {}
         alerts: list[dict[str, Any]] = []
 
-        # 1) Match
+        # 1) Match — full history rebuild, NOT the scrape window.
+        # Each reconciliation run replaces the previous one and downstream
+        # consumers (forecast, portal) read only the latest run, so a windowed
+        # match would silently drop everything outside the lookback window.
         try:
             match = reconcile.reconcile_from_db(
-                service_from=ctx.window_start,
+                service_from=None,
                 service_to=ctx.window_end,
                 dry_run=dry,
             )

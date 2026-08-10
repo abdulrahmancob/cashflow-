@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 import { forecastApi, money, type Filters } from '../api/forecast'
+import { FinanceFilters } from '../components/FinanceFilters'
 import { Card, KpiCard } from '../components/ui'
 
 const empty: Filters = {
@@ -29,7 +30,7 @@ const empty: Filters = {
 export function FinancePage() {
   const { tab } = useParams()
   const view = tab || 'mission'
-  const [filters] = useState<Filters>(empty)
+  const [filters, setFilters] = useState<Filters>(empty)
   const [kpi, setKpi] = useState<Record<string, number | string | boolean>>({})
   const [monthly, setMonthly] = useState<Array<{ period: string; amount: number }>>([])
   const [daily, setDaily] = useState<Array<{ period: string; amount: number }>>([])
@@ -45,42 +46,45 @@ export function FinancePage() {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        setError('')
-        if (view === 'mission') {
-          const [k, m, f] = await Promise.all([
-            forecastApi.kpi(filters),
-            forecastApi.projectedMonthly(filters),
-            forecastApi.projectedByFacility(filters),
-          ])
-          if (!cancelled) {
-            setKpi(k)
-            setMonthly(m)
-            setByFacility(f.slice(0, 12))
+    const handle = window.setTimeout(() => {
+      ;(async () => {
+        try {
+          setError('')
+          if (view === 'mission') {
+            const [k, m, f] = await Promise.all([
+              forecastApi.kpi(filters),
+              forecastApi.projectedMonthly(filters),
+              forecastApi.projectedByFacility(filters),
+            ])
+            if (!cancelled) {
+              setKpi(k)
+              setMonthly(m)
+              setByFacility(f.slice(0, 12))
+            }
+          } else if (view === 'cash') {
+            const [d, a] = await Promise.all([
+              forecastApi.projectedDaily(filters),
+              forecastApi.actualDaily(filters),
+            ])
+            if (!cancelled) {
+              setDaily(d)
+              setActual(a)
+            }
+          } else if (view === 'insights') {
+            const i = await forecastApi.insights(filters)
+            if (!cancelled) setInsights(i)
+          } else if (view === 'drill') {
+            const rows = await forecastApi.drillOutcomes(filters)
+            if (!cancelled) setDrill(rows.slice(0, 100))
           }
-        } else if (view === 'cash') {
-          const [d, a] = await Promise.all([
-            forecastApi.projectedDaily(filters),
-            forecastApi.actualDaily(filters),
-          ])
-          if (!cancelled) {
-            setDaily(d)
-            setActual(a)
-          }
-        } else if (view === 'insights') {
-          const i = await forecastApi.insights(filters)
-          if (!cancelled) setInsights(i)
-        } else if (view === 'drill') {
-          const rows = await forecastApi.drillOutcomes(filters)
-          if (!cancelled) setDrill(rows.slice(0, 100))
+        } catch (e) {
+          if (!cancelled) setError(String((e as Error).message || e))
         }
-      } catch (e) {
-        if (!cancelled) setError(String((e as Error).message || e))
-      }
-    })()
+      })()
+    }, 250)
     return () => {
       cancelled = true
+      window.clearTimeout(handle)
     }
   }, [view, filters])
 
@@ -119,6 +123,8 @@ export function FinancePage() {
           {error}
         </div>
       )}
+
+      <FinanceFilters filters={filters} onChange={setFilters} />
 
       {view === 'mission' && (
         <>

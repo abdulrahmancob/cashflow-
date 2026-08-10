@@ -60,6 +60,14 @@ def replace_payor_behavior_summary(
     return n
 
 
+def _date_or_none(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+    return value
+
+
 def replace_checks_timeline(
     conn: psycopg.Connection,
     *,
@@ -89,8 +97,8 @@ def replace_checks_timeline(
                 reconciliation_run_id,
                 r.get("check_eft_num"),
                 r.get("payor_raw") or r.get("payor"),
-                r.get("eob_date"),
-                r.get("deposit_date"),
+                _date_or_none(r.get("eob_date")),
+                _date_or_none(r.get("deposit_date")),
                 r.get("paid_amount"),
                 json.dumps(r, default=str),
             ),

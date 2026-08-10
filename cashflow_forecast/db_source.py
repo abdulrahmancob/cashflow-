@@ -96,7 +96,12 @@ def load_clinical_ar_lines_df(
 def load_patients_df(*, database_url: str | None = None) -> pd.DataFrame:
     with connection(database_url) as conn:
         ph = visit_repo.get_patients_enriched(conn)
-    return _rows_to_df(ph)
+    df = _rows_to_df(ph)
+    # Forward PoC / extract loaders key on patient_id (= WebPT EMR id)
+    if not df.empty and "patient_id" not in df.columns and "webpt_patient_id" in df.columns:
+        df = df.copy()
+        df["patient_id"] = df["webpt_patient_id"]
+    return df
 
 def load_denials_df(*, database_url: str | None = None) -> pd.DataFrame:
     with connection(database_url) as conn:
@@ -161,7 +166,14 @@ def write_forecast_run(
                 )
             forecast_repo.finish_forecast_run(conn, run_id, status="success")
         except Exception:
-            forecast_repo.finish_forecast_run(conn, run_id, status="failed")
+            try:
+                conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                forecast_repo.finish_forecast_run(conn, run_id, status="failed")
+            except Exception:  # noqa: BLE001
+                log.exception("Could not mark forecast_run %s failed", run_id)
             raise
     log.info("Wrote forecast_run %s (%d predictions)", run_id, len(pred_rows))
     return run_id
@@ -173,7 +185,19 @@ def load_outcome_stages_latest_df(*, database_url: str | None = None) -> pd.Data
         rows = forecast_repo.get_predictions_for_run(conn)
         if not rows:
             rows = forecast_repo.get_outcome_stages_latest(conn)
-    return _rows_to_df(rows)
+    df = _rows_to_df(rows)
+    if df.empty or "payload" not in df.columns:
+        return df
+    # Flatten payload so Mission Control can see forecast_date / facility_name / etc.
+    payloads = [p if isinstance(p, dict) else {} for p in df["payload"].tolist()]
+    flat = pd.json_normalize(payloads)
+    if flat.empty:
+        return df
+    flat.index = df.index
+    for col in flat.columns:
+        if col not in df.columns:
+            df[col] = flat[col]
+    return df
 
 
 def load_feature_df(
