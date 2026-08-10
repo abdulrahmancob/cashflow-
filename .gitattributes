@@ -1,0 +1,7 @@
+# Shell scripts must always be LF (run on Linux servers; CRLF breaks bash).
+*.sh text eol=lf
+# Keep SQL/compose/env templates LF for clean server-side diffs.
+*.sql text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.env.example text eol=lf
