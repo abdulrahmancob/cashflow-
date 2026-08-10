@@ -115,44 +115,98 @@ def load_revflow(
                 check_natural = (
                     f"{first.check_eft_num}:{first.eob_date}:{path.name}"
                 )
-                check = conn.execute(
+                eob_key_val = safe_str(meta.get("eob_key")) or first.eob_key or None
+                check_num_val = (
+                    safe_str(first.check_eft_num) or safe_str(meta.get("check_eft_num"))
+                )
+                eob_date_val = parse_date(first.eob_date) or parse_date(meta.get("eob_date"))
+                payor_val = safe_str(first.payor) or safe_str(meta.get("payor"))
+                paid_sum = sum((p.paid_amount or 0) for p in payments)
+
+                # Two-step upsert: the natural key (file identity) and the
+                # logical identity (eob_key, check, date) can drift between
+                # loads (e.g. catalog later supplies eob_key), so a single
+                # ON CONFLICT arbiter raises on the other unique index.
+                existing = conn.execute(
                     """
-                    INSERT INTO billing.eob_check (
-                        eob_key, company_id, check_eft_num, payor_raw,
-                        check_date, eob_date, report_from, report_to,
-                        paid_amount_sum, source_file, source_system,
-                        source_natural_key, etl_run_id
-                    )
-                    VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'revflow', %s, %s::uuid
-                    )
-                    ON CONFLICT (eob_key, check_eft_num, eob_date)
-                    DO UPDATE SET
-                        paid_amount_sum = EXCLUDED.paid_amount_sum,
-                        payor_raw = COALESCE(EXCLUDED.payor_raw, billing.eob_check.payor_raw),
-                        source_file = EXCLUDED.source_file,
-                        source_natural_key = COALESCE(
-                            billing.eob_check.source_natural_key, EXCLUDED.source_natural_key
-                        ),
-                        etl_run_id = EXCLUDED.etl_run_id
-                    RETURNING eob_check_id
+                    SELECT eob_check_id FROM billing.eob_check
+                    WHERE source_system = 'revflow' AND source_natural_key = %s
                     """,
-                    (
-                        safe_str(meta.get("eob_key")) or first.eob_key or None,
-                        safe_str(meta.get("company_id")) or first.company_id or None,
-                        safe_str(first.check_eft_num) or safe_str(meta.get("check_eft_num")),
-                        safe_str(first.payor) or safe_str(meta.get("payor")),
-                        parse_date(first.eob_date) or parse_date(meta.get("eob_date")),
-                        parse_date(first.eob_date) or parse_date(meta.get("eob_date")),
-                        parse_date(first.report_from),
-                        parse_date(first.report_to),
-                        sum((p.paid_amount or 0) for p in payments),
-                        path.name,
-                        check_natural,
-                        etl_id,
-                    ),
+                    (check_natural,),
                 ).fetchone()
-                eob_check_id = str(check["eob_check_id"])
+                if existing is None:
+                    existing = conn.execute(
+                        """
+                        SELECT eob_check_id FROM billing.eob_check
+                        WHERE eob_key IS NOT DISTINCT FROM %s
+                          AND check_eft_num IS NOT DISTINCT FROM %s
+                          AND eob_date IS NOT DISTINCT FROM %s
+                        """,
+                        (eob_key_val, check_num_val, eob_date_val),
+                    ).fetchone()
+                if existing is not None:
+                    eob_check_id = str(existing["eob_check_id"])
+                    conn.execute(
+                        """
+                        UPDATE billing.eob_check SET
+                            eob_key = COALESCE(eob_key, %s),
+                            company_id = COALESCE(company_id, %s),
+                            payor_raw = COALESCE(%s, payor_raw),
+                            check_date = COALESCE(%s, check_date),
+                            eob_date = COALESCE(%s, eob_date),
+                            report_from = COALESCE(%s, report_from),
+                            report_to = COALESCE(%s, report_to),
+                            paid_amount_sum = %s,
+                            source_file = %s,
+                            source_natural_key = COALESCE(source_natural_key, %s),
+                            etl_run_id = %s::uuid
+                        WHERE eob_check_id = %s::uuid
+                        """,
+                        (
+                            eob_key_val,
+                            safe_str(meta.get("company_id")) or first.company_id or None,
+                            payor_val,
+                            eob_date_val,
+                            eob_date_val,
+                            parse_date(first.report_from),
+                            parse_date(first.report_to),
+                            paid_sum,
+                            path.name,
+                            check_natural,
+                            etl_id,
+                            eob_check_id,
+                        ),
+                    )
+                else:
+                    check = conn.execute(
+                        """
+                        INSERT INTO billing.eob_check (
+                            eob_key, company_id, check_eft_num, payor_raw,
+                            check_date, eob_date, report_from, report_to,
+                            paid_amount_sum, source_file, source_system,
+                            source_natural_key, etl_run_id
+                        )
+                        VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'revflow', %s, %s::uuid
+                        )
+                        RETURNING eob_check_id
+                        """,
+                        (
+                            eob_key_val,
+                            safe_str(meta.get("company_id")) or first.company_id or None,
+                            check_num_val,
+                            payor_val,
+                            eob_date_val,
+                            eob_date_val,
+                            parse_date(first.report_from),
+                            parse_date(first.report_to),
+                            paid_sum,
+                            path.name,
+                            check_natural,
+                            etl_id,
+                        ),
+                    ).fetchone()
+                    eob_check_id = str(check["eob_check_id"])
                 counts["eob_checks"] += 1
 
                 for p in payments:
