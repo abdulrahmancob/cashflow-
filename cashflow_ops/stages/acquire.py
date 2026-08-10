@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import logging
+import os
 from typing import Any
 
 from cashflow_ops.adapters import case_pipeline, revflow, snowflake, waystar, webpt
@@ -11,6 +12,14 @@ from cashflow_ops.config import CASE_PIPELINE_DIR, REVFLOW_OUTPUT, WEBPT_OUTPUT
 from cashflow_ops.contracts import ArtifactSpec, FailurePolicy, RunContext, StageResult
 
 log = logging.getLogger(__name__)
+
+
+def _env_blank(*keys: str) -> bool:
+    """True when any required env key is missing/blank."""
+    for key in keys:
+        if not (os.getenv(key) or "").strip():
+            return True
+    return False
 
 
 class AcquireStage:
@@ -50,6 +59,33 @@ class AcquireStage:
         skip_revflow = skip or bool(skip_map.get("revflow", {}).get("skip"))
         skip_waystar = skip or bool(skip_map.get("waystar", {}).get("skip"))
         skip_snow = skip or bool(skip_map.get("snowflake", {}).get("skip"))
+
+        # Soft-skip scrapers when credentials are not wired into the container.
+        # Missing secrets must not hard-fail Acquire (worker pass still loads warehouse).
+        cred_skips: list[tuple[str, tuple[str, ...]]] = [
+            ("webpt", ("WEBPT_USERNAME", "WEBPT_PASSWORD")),
+            ("revflow", ("REVFLOW_USERNAME", "REVFLOW_PASSWORD")),
+            ("waystar", ("WAYSTAR_USER", "WAYSTAR_PASS")),
+            ("snowflake", ("SNOWFLAKE_ACCOUNT", "SNOWFLAKE_USER", "SNOWFLAKE_PASSWORD")),
+        ]
+        for sys_key, keys in cred_skips:
+            if skip:
+                break
+            if _env_blank(*keys):
+                skip_map[sys_key] = {
+                    "skip": True,
+                    "reason": "credentials_missing",
+                    "keys": list(keys),
+                }
+                if sys_key == "webpt":
+                    skip_webpt = True
+                elif sys_key == "revflow":
+                    skip_revflow = True
+                elif sys_key == "waystar":
+                    skip_waystar = True
+                elif sys_key == "snowflake":
+                    skip_snow = True
+
         for sys_key, info in skip_map.items():
             if info.get("skip"):
                 alerts.append(
@@ -64,7 +100,7 @@ class AcquireStage:
                     ctx.run_id,
                     event_key=f"{sys_key}_maintenance",
                     stage_key="acquire",
-                    message=f"{sys_key} in maintenance/probe-down",
+                    message=f"{sys_key} skipped: {info.get('reason')}",
                     severity="warning",
                     entity_key=f"system={sys_key}",
                     payload=info,
