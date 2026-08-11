@@ -3,12 +3,32 @@
 from __future__ import annotations
 
 import json
+import logging
+import os
 from pathlib import Path
 
 from cashflow_db.config import REVFLOW_OUTPUT
 from cashflow_db.db import connect, finish_etl_run, start_etl_run
 from cashflow_db.loaders.base import ensure_cpt, upsert_patient
 from cashflow_db.util import parse_date, parse_money, safe_str
+
+log = logging.getLogger(__name__)
+
+# Commit cadence for long incremental loads (avoid one giant transaction).
+_COMMIT_EVERY_FILES = 25
+_COMMIT_EVERY_LINES = 2000
+
+
+def _bootstrap_claims_default(explicit: bool | None) -> bool:
+    """Daily load-all should skip claim bootstrap unless explicitly enabled."""
+    if explicit is not None:
+        return explicit
+    raw = (os.getenv("CASHFLOW_REVFLOW_BOOTSTRAP_CLAIMS") or "").strip().lower()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    return False
 
 # Reuse existing RevFlow parser when available
 try:
@@ -73,7 +93,7 @@ def load_revflow(
     root: Path | None = None,
     database_url: str | None = None,
     limit_files: int | None = None,
-    bootstrap_claims: bool = True,
+    bootstrap_claims: bool | None = None,
 ) -> dict[str, int]:
     if parse_revflow_csv is None:
         raise RuntimeError("cashflow_reconcile.parse_revflow_eob is required")
@@ -81,6 +101,7 @@ def load_revflow(
     root = root or REVFLOW_OUTPUT
     exports_dir = root / "exports"
     counts = {"eob_checks": 0, "eob_lines": 0, "claims": 0, "claim_lines": 0, "events": 0}
+    do_bootstrap = _bootstrap_claims_default(bootstrap_claims)
 
     with connect(database_url) as conn:
         etl_id = start_etl_run(conn, "revflow", str(root))
@@ -99,6 +120,11 @@ def load_revflow(
             files = sorted(exports_dir.glob("*.csv"))
             if limit_files:
                 files = files[:limit_files]
+
+            patient_cache: dict[str, str] = {}
+            cpt_seen: set[str] = set()
+            files_since_commit = 0
+            lines_since_commit = 0
 
             for path in files:
                 meta = manifest.get(path.name) or {}
@@ -210,15 +236,24 @@ def load_revflow(
                 counts["eob_checks"] += 1
 
                 for p in payments:
-                    patient_id = upsert_patient(
-                        conn,
-                        webpt_patient_id=None,
-                        patient_name=f"{p.last_name}, {p.first_name}",
-                        revflow_patient_id=p.revflow_patient_id or None,
-                        etl_run_id=etl_id,
-                        source_system="revflow",
-                    )
-                    ensure_cpt(conn, p.cpt_code or None)
+                    rf_pid = safe_str(p.revflow_patient_id)
+                    if rf_pid and rf_pid in patient_cache:
+                        patient_id = patient_cache[rf_pid]
+                    else:
+                        patient_id = upsert_patient(
+                            conn,
+                            webpt_patient_id=None,
+                            patient_name=f"{p.last_name}, {p.first_name}",
+                            revflow_patient_id=rf_pid,
+                            etl_run_id=etl_id,
+                            source_system="revflow",
+                        )
+                        if rf_pid and patient_id:
+                            patient_cache[rf_pid] = patient_id
+                    cpt = safe_str(p.cpt_code)
+                    if cpt and cpt not in cpt_seen:
+                        ensure_cpt(conn, cpt)
+                        cpt_seen.add(cpt)
                     pr_codes = []
                     for token in (p.carcs or "").replace(",", " ").split():
                         t = token.strip().upper()
@@ -254,10 +289,10 @@ def load_revflow(
                         """,
                         (
                             eob_check_id,
-                            safe_str(p.revflow_patient_id),
+                            rf_pid,
                             patient_id,
                             parse_date(p.date_of_service),
-                            safe_str(p.cpt_code),
+                            cpt,
                             safe_str(p.modifier),
                             p.units,
                             p.billed_amount,
@@ -272,8 +307,24 @@ def load_revflow(
                         ),
                     )
                     counts["eob_lines"] += 1
+                    lines_since_commit += 1
 
-            if bootstrap_claims:
+                files_since_commit += 1
+                if (
+                    files_since_commit >= _COMMIT_EVERY_FILES
+                    or lines_since_commit >= _COMMIT_EVERY_LINES
+                ):
+                    conn.commit()
+                    files_since_commit = 0
+                    lines_since_commit = 0
+                    log.info(
+                        "revflow load checkpoint: checks=%s lines=%s files_done=%s",
+                        counts["eob_checks"],
+                        counts["eob_lines"],
+                        path.name,
+                    )
+
+            if do_bootstrap:
                 # Create claim per (patient_id, DOS) from visit_service_line when present,
                 # else from eob_line without claim_line.
                 visits = conn.execute(

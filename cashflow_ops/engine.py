@@ -241,9 +241,9 @@ def execute_run(ctx: RunContext) -> str:
             sla_breached=False,
         )
 
-        sla_failed = False
+        # SLA breach is observability-only: alert + metric, never fail/stop the DAG.
+        # Real stage failures still come from StageResult.failed / exceptions.
         if sla_sec is not None and duration > sla_sec:
-            sla_failed = True
             metrics.finish_job_runtime(
                 ctx.run_id,
                 key,
@@ -271,14 +271,10 @@ def execute_run(ctx: RunContext) -> str:
                 message=msg,
                 payload={"duration_sec": duration, "sla_sec": sla_sec},
             )
+            log.warning("%s", msg)
 
         final_status = result.status
         error_message = result.error_message
-        if sla_failed and result.status == StageStatus.SUCCESS:
-            final_status = StageStatus.FAILED
-            error_message = (
-                f"SLA breach: {duration:.1f}s > {sla_sec}s"
-            )
         if (
             final_status == StageStatus.FAILED
             and stage.on_failure == FailurePolicy.CONTINUE_WITH_ALERT
@@ -303,16 +299,13 @@ def execute_run(ctx: RunContext) -> str:
         )
         log.info("stage END %s status=%s duration=%.1fs", key, final_status.value, duration)
 
-        failed_hard = (
-            result.status == StageStatus.FAILED or sla_failed
-        ) and stage.on_failure == FailurePolicy.STOP
-        if result.status == StageStatus.FAILED or sla_failed:
+        if result.status == StageStatus.FAILED:
             _handle_failure(
                 ctx, stage, error_message or result.error_message or "stage failed"
             )
-        if failed_hard:
-            _stop_run(ctx.run_id, key)
-            return ctx.run_id
+            if stage.on_failure == FailurePolicy.STOP:
+                _stop_run(ctx.run_id, key)
+                return ctx.run_id
 
 
 def _stop_run(run_id: str, failed_stage: str) -> None:

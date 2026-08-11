@@ -33,6 +33,7 @@ MIGRATIONS = [
     "019_recon_pending_reason.sql",
     "020_mail_dedupe.sql",
     "021_fk_indexes.sql",
+    "022_acquire_sla.sql",
 ]
 
 

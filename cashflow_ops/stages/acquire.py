@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import concurrent.futures
+import json
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 from cashflow_ops.adapters import case_pipeline, revflow, snowflake, waystar, webpt
@@ -20,6 +22,31 @@ def _env_blank(*keys: str) -> bool:
         if not (os.getenv(key) or "").strip():
             return True
     return False
+
+
+def _env_truthy(name: str) -> bool:
+    return (os.getenv(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _cases_remaining() -> int | None:
+    """Read drain health.json; None when file missing/unreadable."""
+    health = Path(CASE_PIPELINE_DIR) / "reports" / "health.json"
+    if not health.is_file():
+        return None
+    try:
+        data = json.loads(health.read_text(encoding="utf-8"))
+        return int(data.get("cases_remaining") or 0)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _should_skip_case_download() -> tuple[bool, str]:
+    if _env_truthy("CASHFLOW_OPS_SKIP_CASE_DOWNLOAD"):
+        return True, "CASHFLOW_OPS_SKIP_CASE_DOWNLOAD=1"
+    remaining = _cases_remaining()
+    if remaining is not None and remaining <= 0:
+        return True, "cases_remaining=0"
+    return False, ""
 
 
 class AcquireStage:
@@ -136,18 +163,31 @@ class AcquireStage:
                 }
             )
 
-        # Build + download cases (still WebPT session)
+        # Build + download cases (still WebPT session). Skip when drain is done
+        # or explicitly disabled — nightly should not re-download the full case pack.
         sched_matches = sorted(WEBPT_OUTPUT.glob("schedule_visits_*.csv"))
         schedule_csv = sched_matches[-1] if sched_matches else WEBPT_OUTPUT / "schedule_visits.csv"
+        skip_case_dl, skip_case_reason = _should_skip_case_download()
+        skip_cases = skip_webpt or skip_case_dl
+        if skip_case_dl and not skip_webpt:
+            alerts.append(
+                {
+                    "severity": "info",
+                    "alert_key": "case_download_skipped",
+                    "message": f"case download skipped: {skip_case_reason}",
+                }
+            )
+            log.info("case download skipped: %s", skip_case_reason)
+
         build = case_pipeline.build_case_schedule(
             schedule_export=schedule_csv,
             start=start,
             end=end,
             dry_run=dry,
-            skip=skip_webpt,
+            skip=skip_cases,
         )
         outputs["case_schedule_build"] = build.to_dict()
-        if not build.ok and not skip_webpt:
+        if not build.ok and not skip_cases:
             failures.append(f"case schedule build: {build.stderr[-500:]}")
 
         download = case_pipeline.run_case_download(
@@ -155,11 +195,12 @@ class AcquireStage:
             start=start,
             end=end,
             dry_run=dry,
-            skip=skip_webpt,
+            skip=skip_cases,
             phase="download",
         )
         outputs["case_download"] = download.to_dict()
-        if not download.ok and not skip_webpt:
+        outputs["case_download_skipped"] = skip_cases
+        if not download.ok and not skip_cases:
             failures.append(f"case download: {download.stderr[-500:]}")
 
         # --- Parallel non-WebPT acquires ---
@@ -228,7 +269,7 @@ class AcquireStage:
         outputs["audit_prep"] = {"status": "ready"}
 
         # Only hard-fail WebPT/RevFlow when not in maintenance skip
-        if skip_webpt:
+        if skip_webpt or skip_cases:
             failures = [f for f in failures if not f.startswith(("webpt", "case "))]
         if skip_revflow:
             failures = [f for f in failures if not f.startswith("revflow")]

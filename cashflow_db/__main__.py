@@ -46,6 +46,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_rf = sub.add_parser("load-revflow")
     p_rf.add_argument("--limit-files", type=int, default=None)
+    p_rf.add_argument(
+        "--bootstrap-claims",
+        action="store_true",
+        help="Also bootstrap billing.claim/claim_line from visit_service_line (slow; off by default)",
+    )
 
     sub.add_parser("load-tracker")
     sub.add_parser("load-mail")
@@ -176,7 +181,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(load_patient_payments(limit=args.limit), indent=2))
         return 0
     if args.cmd == "load-revflow":
-        print(json.dumps(load_revflow(limit_files=args.limit_files), indent=2))
+        print(
+            json.dumps(
+                load_revflow(
+                    limit_files=args.limit_files,
+                    bootstrap_claims=True if args.bootstrap_claims else None,
+                ),
+                indent=2,
+            )
+        )
         return 0
     if args.cmd == "load-tracker":
         print(json.dumps(load_tracker(), indent=2))
@@ -204,7 +217,8 @@ def main(argv: list[str] | None = None) -> int:
             "schedule": load_schedule(limit=limit),
             "webpt": load_webpt(limit=limit),
             "patient_payments": load_patient_payments(limit=limit),
-            "revflow": load_revflow(limit_files=limit),
+            # Claim bootstrap is opt-in (slow full-table pass); daily load skips it.
+            "revflow": load_revflow(limit_files=limit, bootstrap_claims=False),
             "tracker": load_tracker(),
         }
         # Optional for reconcile: missing mail soft-skips inside load_mail
