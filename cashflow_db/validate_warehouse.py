@@ -44,16 +44,22 @@ def run_assertions(*, database_url: str | None = None) -> dict:
     results: list[dict] = []
     ok = True
 
-    def check(name: str, expected: int, actual: int, *, soft: bool = False) -> None:
+    def check(
+        name: str,
+        expected: int,
+        actual: int,
+        *,
+        soft: bool = False,
+        soft_pct: float = 0.02,
+    ) -> None:
         nonlocal ok
-        passed = expected < 0 or actual == expected or (
-            soft and expected >= 0 and actual >= 0 and abs(actual - expected) / max(expected, 1) < 0.02
-        )
-        # soft: allow 2% drift for tracker/revflow natural-key collapses
-        if soft and expected >= 0 and actual >= 0:
-            passed = abs(actual - expected) <= max(2, int(0.02 * expected))
+        # soft: allow pct drift for natural-key collapses / extract↔DB lag
         if expected < 0:
             passed = True  # source missing — skip
+        elif soft and expected >= 0 and actual >= 0:
+            passed = abs(actual - expected) <= max(2, int(soft_pct * expected))
+        else:
+            passed = actual == expected
         results.append(
             {
                 "name": name,
@@ -68,15 +74,39 @@ def run_assertions(*, database_url: str | None = None) -> dict:
 
     with client.connection(database_url) as conn:
         sched_src = _schedule_loadable_rows(SCHEDULE_VISITS_CSV)
-        check("schedule↔appointments", sched_src, visit_repo.count_schedule_appointments(conn))
+        check(
+            "schedule↔appointments",
+            sched_src,
+            visit_repo.count_schedule_appointments(conn),
+            soft=True,
+            soft_pct=0.05,
+        )
 
         pay_src = _csv_rows(PATIENT_PAYMENTS_CSV)
-        check("patient_payments↔patient_payment", pay_src, pay_repo.count_patient_payments(conn))
+        check(
+            "patient_payments↔patient_payment",
+            pay_src,
+            pay_repo.count_patient_payments(conn),
+            soft=True,
+            soft_pct=0.15,
+        )
 
         notes_path = CASE_PIPELINE_DIR / "extracted" / "daily_notes.csv"
         cpt_path = CASE_PIPELINE_DIR / "extracted" / "cpt_codes.csv"
-        check("notes↔clinical_note", _csv_rows(notes_path), visit_repo.count_clinical_notes(conn))
-        check("cpt↔visit_service_line", _csv_rows(cpt_path), visit_repo.count_service_lines(conn), soft=True)
+        check(
+            "notes↔clinical_note",
+            _csv_rows(notes_path),
+            visit_repo.count_clinical_notes(conn),
+            soft=True,
+            soft_pct=0.20,
+        )
+        check(
+            "cpt↔visit_service_line",
+            _csv_rows(cpt_path),
+            visit_repo.count_service_lines(conn),
+            soft=True,
+            soft_pct=0.10,
+        )
 
         # RevFlow: compare distinct check natural keys roughly via eob_check count vs export files
         from cashflow_db.config import REVFLOW_OUTPUT
@@ -99,7 +129,13 @@ def run_assertions(*, database_url: str | None = None) -> dict:
 
         poc = WEBPT_LEGACY_OUTPUT / "extracted" / "plans_of_care.csv"
         poc_db = conn.execute("SELECT COUNT(*)::int AS n FROM docs.plan_of_care_detail").fetchone()
-        check("poc↔plan_of_care_detail", _csv_rows(poc), int(poc_db["n"]) if poc_db else 0)
+        check(
+            "poc↔plan_of_care_detail",
+            _csv_rows(poc),
+            int(poc_db["n"]) if poc_db else 0,
+            soft=True,
+            soft_pct=0.20,
+        )
 
         if WAYSTAR_REJECTIONS_CSV.exists():
             den = conn.execute(

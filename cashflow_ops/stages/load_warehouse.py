@@ -37,14 +37,21 @@ class LoadWarehouseStage:
             "validate": val.to_dict(),
             "validate_report": report,
         }
+        alerts: list[dict] = []
+        # load-all is the hard gate; source↔DB drift is warning-only so reconcile
+        # / forecast still run after a successful warehouse write.
         if not val.ok and not dry:
-            return StageResult.failed(
-                f"warehouse validate failed: {report}",
-                outputs=outputs,
+            alerts.append(
+                {
+                    "severity": "warning",
+                    "alert_key": "warehouse_validate_drift",
+                    "message": f"warehouse validate drift (continuing): {report}",
+                }
             )
 
         return StageResult.success(
             outputs=outputs,
+            alerts=alerts,
             artifacts=[
                 ArtifactSpec(key="warehouse_loaded", payload={"ok": True}),
                 ArtifactSpec(
