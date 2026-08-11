@@ -14,22 +14,22 @@ def test_skip_case_download_env(monkeypatch):
     assert "CASHFLOW_OPS_SKIP_CASE_DOWNLOAD" in reason
 
 
-def test_skip_case_download_when_remaining_zero(monkeypatch, tmp_path):
+def test_skip_case_download_when_remaining_low(monkeypatch, tmp_path):
     monkeypatch.delenv("CASHFLOW_OPS_SKIP_CASE_DOWNLOAD", raising=False)
     health = tmp_path / "reports" / "health.json"
     health.parent.mkdir(parents=True)
-    health.write_text(json.dumps({"cases_remaining": 0}), encoding="utf-8")
+    health.write_text(json.dumps({"cases_remaining": 2}), encoding="utf-8")
     monkeypatch.setattr(acquire_mod, "CASE_PIPELINE_DIR", tmp_path)
     skip, reason = acquire_mod._should_skip_case_download()
     assert skip is True
-    assert reason == "cases_remaining=0"
+    assert reason == "cases_remaining=2"
 
 
-def test_no_skip_when_remaining_positive(monkeypatch, tmp_path):
+def test_no_skip_when_remaining_high(monkeypatch, tmp_path):
     monkeypatch.delenv("CASHFLOW_OPS_SKIP_CASE_DOWNLOAD", raising=False)
     health = tmp_path / "reports" / "health.json"
     health.parent.mkdir(parents=True)
-    health.write_text(json.dumps({"cases_remaining": 12}), encoding="utf-8")
+    health.write_text(json.dumps({"cases_remaining": 1200}), encoding="utf-8")
     monkeypatch.setattr(acquire_mod, "CASE_PIPELINE_DIR", tmp_path)
     skip, reason = acquire_mod._should_skip_case_download()
     assert skip is False

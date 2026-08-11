@@ -44,8 +44,10 @@ def _should_skip_case_download() -> tuple[bool, str]:
     if _env_truthy("CASHFLOW_OPS_SKIP_CASE_DOWNLOAD"):
         return True, "CASHFLOW_OPS_SKIP_CASE_DOWNLOAD=1"
     remaining = _cases_remaining()
-    if remaining is not None and remaining <= 0:
-        return True, "cases_remaining=0"
+    # Align with nightly_pipeline drain gate: when remaining is tiny/zero the
+    # long-running case pack is effectively done; do not re-download nightly.
+    if remaining is not None and remaining <= 500:
+        return True, f"cases_remaining={remaining}"
     return False, ""
 
 
