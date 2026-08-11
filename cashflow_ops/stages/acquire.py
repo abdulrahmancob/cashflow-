@@ -242,9 +242,32 @@ class AcquireStage:
         outputs["revflow"] = {
             k: (v.to_dict() if hasattr(v, "to_dict") else v) for k, v in rf.items()
         } if isinstance(rf, dict) else rf
+        revflow_step_failures: list[str] = []
         for step_name, step_res in (rf.items() if isinstance(rf, dict) else []):
             if hasattr(step_res, "ok") and not step_res.ok and not step_res.skipped:
-                failures.append(f"revflow.{step_name}: {step_res.stderr[-300:]}")
+                revflow_step_failures.append(
+                    f"revflow.{step_name}: {step_res.stderr[-300:]}"
+                )
+        # If RevFlow browser/IP fails but prior exports exist, keep Acquire alive so
+        # warehouse/reconcile/forecast can still run from the latest files on disk.
+        prior_rf = revflow.count_exports()
+        if revflow_step_failures:
+            if prior_rf > 0:
+                alerts.append(
+                    {
+                        "severity": "warning",
+                        "alert_key": "revflow_failed_using_prior_exports",
+                        "message": (
+                            f"RevFlow scrape failed; using {prior_rf} existing export files. "
+                            + "; ".join(revflow_step_failures)[:400]
+                        ),
+                    }
+                )
+                log.warning(
+                    "RevFlow failed with %d prior exports retained", prior_rf
+                )
+            else:
+                failures.extend(revflow_step_failures)
 
         for key in ("waystar_rejected", "waystar_denials", "snowflake"):
             res = parallel_results.get(key)
