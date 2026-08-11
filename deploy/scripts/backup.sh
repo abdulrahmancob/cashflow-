@@ -8,11 +8,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck disable=SC1091
-set -a
-[[ -f "${ROOT}/.env" ]] && source "${ROOT}/.env"
-set +a
+cd "${ROOT}"
 
+# Do not bash-source .env (values may contain spaces). compose --env-file loads it.
+DATA_ROOT="$(grep -E '^DATA_ROOT=' "${ROOT}/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
 DATA_ROOT="${DATA_ROOT:-/data}"
 BACKUP_ROOT="${DATA_ROOT}/backups"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
@@ -20,7 +19,6 @@ STAMP="$(date +%Y%m%d_%H%M%S)"
 DEST="${BACKUP_ROOT}/${STAMP}"
 
 mkdir -p "${DEST}"
-cd "${ROOT}"
 
 echo "[backup] starting ${STAMP}"
 
@@ -38,6 +36,6 @@ for dir in webpt revflow waystar ocr exports; do
 done
 
 echo "[backup] wrote ${DEST}"
-find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d -mtime "+${KEEP_DAYS}" -exec rm -rf {} +
+find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d -mtime "+${KEEP_DAYS}" -exec rm -rf {} + 2>/dev/null || true
 echo "[backup] pruned backups older than ${KEEP_DAYS} days"
 echo "[backup] done"
