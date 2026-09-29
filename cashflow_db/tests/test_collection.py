@@ -617,3 +617,87 @@ def test_account_number_sql_avoids_psycopg_percent_placeholder():
     assert "PV4%" not in ACCOUNT_NUMBER_SQL
     assert "%'" not in ACCOUNT_NUMBER_SQL
     assert "left(upper(" in ACCOUNT_NUMBER_SQL
+
+
+def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
+    from cashflow_db.repository.eligibility import (
+        PAID_OR_DEDUCT_SQL,
+        PR3_UNPAID_SQL,
+        ROUTED_COLLECTION_SQL,
+        WAYSTAR_COLLECTION_EXIT_REASON,
+        WAYSTAR_PAID_CHECK_SQL,
+        waystar_paid_exit_sql,
+    )
+
+    paid_check = WAYSTAR_PAID_CHECK_SQL
+    assert "total_remit_amount, 0) > 0" in paid_check
+    assert "total_remit_amount, 0) = 0" not in paid_check
+    assert "ZEROPAY%%" in paid_check
+    assert "[0-9]" in paid_check
+    assert "remit_numbers" in paid_check
+    assert "waystar_webpt_map" in paid_check
+    assert "c.from_date = wi.dos" in paid_check
+
+    sql = waystar_paid_exit_sql()
+    assert "source_visit_status = 'paid'" in sql
+    assert "- 'source_visit_status'" in sql
+    assert "THEN 'denied'" in sql
+    assert "ELSE 'overdue'" in sql
+    assert "'exited_from', c.exited_from" in sql
+    assert "exited_from_at" in sql
+    assert "ops.eligibility_history" in sql
+    assert "exited_from,\n            'paid'" in sql
+    assert WAYSTAR_COLLECTION_EXIT_REASON in sql
+    assert f"NOT ({ROUTED_COLLECTION_SQL})" in sql
+    assert "arbitration" in ROUTED_COLLECTION_SQL
+    assert "actiontaken" in ROUTED_COLLECTION_SQL
+    assert "submittedwithoutauth" in ROUTED_COLLECTION_SQL
+    assert paid_check in sql
+    assert f"({DENIED_VISIT_SQL})" in sql
+    assert f"({OVERDUE_PENDING_SQL}) AND NOT ({PR3_UNPAID_SQL})" in sql
+    assert sql.count(PR3_UNPAID_SQL) == 1
+    assert "'{}'::jsonb" in sql
+    assert "ZEROPAY%%" in sql
+
+    sheet_sql, _params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="sheet",
+    )
+    assert f"NOT {DENIED_VISIT_SQL}" in sheet_sql
+    assert f"NOT {COLLECTION_VISIT_SQL}" in sheet_sql
+    assert "collection_queue_member" not in sheet_sql
+    assert "'paid'" in PAID_OR_DEDUCT_SQL
+    assert PAID_OR_DEDUCT_SQL in DENIED_VISIT_SQL
+    assert PAID_OR_DEDUCT_SQL in OVERDUE_PENDING_SQL
+
+    refresh_src = (ROOT / "cashflow_db" / "repository" / "eligibility.py").read_text(
+        encoding="utf-8"
+    )
+    refresh_fn = refresh_src.split("def refresh_collection_queue", 1)[1].split(
+        "\ndef ", 1
+    )[0]
+    assert refresh_fn.find("_promote_waystar_paid_collection") < refresh_fn.find(
+        "DELETE FROM analytics.collection_queue_member"
+    )
+    assert 'counts["promoted_paid"]' in refresh_fn
+
+    loader = (ROOT / "cashflow_db" / "loaders" / "load_waystar_claims.py").read_text(
+        encoding="utf-8"
+    )
+    load_fn = loader.split("def load_waystar_claims", 1)[1].split("\ndef ", 1)[0]
+    assert "if claims_path:" in load_fn
+    assert "refresh_collection_queue" in load_fn
+    assert load_fn.find('status="success"') < load_fn.find("refresh_collection_queue")
+
+    generator = (
+        ROOT / "cashflow_db" / "services" / "eligibility_generator.py"
+    ).read_text(encoding="utf-8")
+    generate_fn = generator.split("def generate_eligibility_work_items", 1)[1]
+    assert generate_fn.find("upsert_from_visit") < generate_fn.find(
+        "refresh_collection_queue"
+    )

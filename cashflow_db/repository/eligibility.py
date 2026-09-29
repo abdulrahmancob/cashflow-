@@ -239,6 +239,30 @@ WAYSTAR_HAS_DETAILS_SQL = """EXISTS (
       AND NULLIF(btrim(el.carcs), '') IS NOT NULL
 )"""
 
+# A real EFT/check number. ZEROPAY notices and non-numeric tokens are not checks.
+# Percents are doubled because this fragment is executed through psycopg.
+_WAYSTAR_REAL_CHECK_SQL = """EXISTS (
+    SELECT 1
+    FROM unnest(COALESCE(c.remit_numbers, ARRAY[]::text[])) AS num
+    WHERE NULLIF(btrim(num), '') IS NOT NULL
+      AND upper(btrim(num)) NOT LIKE 'ZEROPAY%%'
+      AND btrim(num) ~ '[0-9]'
+)"""
+
+# Mapped Waystar claim on the same EMR + DOS with money and a real check.
+WAYSTAR_PAID_CHECK_SQL = f"""EXISTS (
+    SELECT 1
+    FROM billing.waystar_webpt_map m
+    JOIN billing.waystar_claim c
+      ON c.claim_key = m.waystar_claim_key
+     AND c.from_date = wi.dos
+    WHERE m.webpt_patient_id = wi.emr_patient_id
+      AND COALESCE(c.total_remit_amount, 0) > 0
+      AND {_WAYSTAR_REAL_CHECK_SQL}
+)"""
+
+WAYSTAR_COLLECTION_EXIT_REASON = "Exited collection after Waystar payment and check"
+
 WAYSTAR_PAST_SLA_SQL = """EXISTS (
     SELECT 1
     FROM analytics.forecast_prediction fp
@@ -2891,8 +2915,78 @@ def work_item_has_pr3(conn: psycopg.Connection, work_item_id: str) -> bool:
     return row is not None
 
 
+def waystar_paid_exit_sql() -> str:
+    """Promote denied and overdue visits that Waystar has paid with a real check."""
+    scope = f"""
+        {ELIGIBILITY_MIN_DOS_SQL}
+        AND {ELIGIBILITY_MAX_DOS_SQL}
+        AND {KEEP_WORK_ITEM_SQL}
+    """
+    return f"""
+        WITH candidates AS (
+            SELECT
+                wi.work_item_id,
+                CASE
+                    WHEN ({DENIED_VISIT_SQL}) THEN 'denied'
+                    ELSE 'overdue'
+                END AS exited_from
+            FROM ops.eligibility_work_item wi
+            WHERE {scope}
+              AND NOT ({ROUTED_COLLECTION_SQL})
+              AND {WAYSTAR_PAID_CHECK_SQL}
+              AND (
+                    ({DENIED_VISIT_SQL})
+                 OR (({OVERDUE_PENDING_SQL}) AND NOT ({PR3_UNPAID_SQL}))
+              )
+        ),
+        updated AS (
+            UPDATE ops.eligibility_work_item wi
+            SET
+                source_visit_status = 'paid',
+                manual_overrides = CASE
+                    WHEN lower(btrim(COALESCE(
+                        wi.manual_overrides->>'source_visit_status', ''
+                    ))) = 'denied'
+                        THEN COALESCE(wi.manual_overrides, '{{}}'::jsonb)
+                             - 'source_visit_status'
+                    ELSE wi.manual_overrides
+                END,
+                context = COALESCE(wi.context, '{{}}'::jsonb) || jsonb_build_object(
+                    'exited_from', c.exited_from,
+                    'exited_from_at', to_char(CURRENT_DATE, 'YYYY-MM-DD')
+                ),
+                updated_at = now()
+            FROM candidates c
+            WHERE wi.work_item_id = c.work_item_id
+            RETURNING wi.work_item_id, c.exited_from
+        )
+        INSERT INTO ops.eligibility_history (
+            work_item_id, column_name, old_value, new_value, reason_text
+        )
+        SELECT
+            work_item_id,
+            'source_visit_status',
+            exited_from,
+            'paid',
+            '{WAYSTAR_COLLECTION_EXIT_REASON}'
+        FROM updated
+        """
+
+
+def _promote_waystar_paid_collection(conn: psycopg.Connection) -> int:
+    """Set denied and overdue visits to paid once Waystar has money and a check.
+
+    Arbitration, action, and at-risk rows stay put. A PR-3 visit stays put unless
+    it is actually denied or overdue. History and context.exited_from keep the
+    bucket the visit left.
+    """
+    cur = conn.execute(waystar_paid_exit_sql())
+    return cur.rowcount
+
+
 def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
     """Rebuild Collection tab membership off the request path."""
+    promoted = _promote_waystar_paid_collection(conn)
     client.execute(conn, "DELETE FROM analytics.collection_queue_member")
     client.execute(
         conn,
@@ -3059,6 +3153,7 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
             (bucket,),
         )
         counts[bucket] = cur.rowcount
+    counts["promoted_paid"] = promoted
     return counts
 
 COLLECTION_DENIED_CHARGED_SQL = """COALESCE(
