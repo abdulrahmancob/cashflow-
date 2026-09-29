@@ -695,18 +695,369 @@ def merge_source(sources: list[str]) -> str:
     return min(usable, key=lambda src: _SOURCE_RANK.get(src, 99))
 
 
+def _visible_edit_distance(left: str, right: str) -> int:
+    if abs(len(left) - len(right)) > 2:
+        return 99
+    prev = list(range(len(right) + 1))
+    for index, char in enumerate(left, 1):
+        current = [index]
+        for other_index, other in enumerate(right, 1):
+            current.append(
+                min(
+                    current[-1] + 1,
+                    prev[other_index] + 1,
+                    prev[other_index - 1] + (char != other),
+                )
+            )
+        prev = current
+    return prev[-1]
+
+
+_VISIBLE_BUCKETS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("zocdoc", re.compile(r"zoc\s*doc", re.I)),
+    ("social_media", re.compile(r"social\s+media|redes\s+sociales|facebook|instagram", re.I)),
+    ("google", re.compile(r"\bgoogle\b", re.I)),
+    ("website", re.compile(r"web\s*site|\bwebsite\b|sitio\s+web", re.I)),
+    ("doctor", re.compile(r"\b(?:doctor|m[eé]dico|medico|remisi[oó]n)\b", re.I)),
+    (
+        "friend_family",
+        re.compile(r"friend|family|word\s+of\s+mouth|boca\s+en\s+boca|amigo|familia", re.I),
+    ),
+    ("insurance", re.compile(r"\binsurance\b|seguro", re.I)),
+    ("walk_in", re.compile(r"walk[\s-]*in", re.I)),
+    ("phone", re.compile(r"\bphone\b|tel[eé]fon", re.I)),
+    ("other", re.compile(r"\bothers?\b|\botros?\b|lives\s+nearby|\bnearby\b|especif", re.I)),
+)
+_VISIBLE_FUZZY = (
+    ("google", "google"),
+    ("zocdoc", "zocdoc"),
+    ("doctor", "doctor"),
+    ("social_media", "social"),
+    ("friend_family", "friend"),
+    ("friend_family", "family"),
+    ("friend_family", "mouth"),
+    ("walk_in", "walk"),
+    ("other", "other"),
+    ("other", "nearby"),
+    ("phone", "phone"),
+    ("website", "website"),
+    ("insurance", "insurance"),
+)
+_VISIBLE_HINT_RE = re.compile(r"^\(?\s*(?:type|escriba|typedoctor)", re.I)
+_VISIBLE_STOP_RE = re.compile(
+    r"insurance information|workers|medicare coverage|primary insurance",
+    re.I,
+)
+
+
+def _visible_fuzzy(token: str) -> str | None:
+    folded = re.sub(r"[^a-z]", "", token.lower())
+    if len(folded) < 4:
+        return None
+    best_name = None
+    best_dist = 99
+    for name, canon in _VISIBLE_FUZZY:
+        dist = _visible_edit_distance(folded, canon)
+        if dist < best_dist:
+            best_name, best_dist = name, dist
+    if best_dist <= 1:
+        return best_name
+    return None
+
+
+def choose_visible_mark(scores: list[tuple[str, float]]) -> str:
+    by_name: dict[str, float] = {}
+    for name, score in scores:
+        by_name[name] = max(score, by_name.get(name, 0.0))
+    ordered = sorted(by_name.items(), key=lambda item: item[1], reverse=True)
+    if not ordered or ordered[0][1] < 0.10:
+        return "unmarked"
+    top_name, top = ordered[0]
+    second = ordered[1][1] if len(ordered) > 1 else 0.0
+    if top >= 0.55 and top >= second + 0.20:
+        return top_name
+    if top >= second + 0.08:
+        return top_name
+    marked = [name for name, score in ordered if score >= 0.10 and top - score <= 0.04]
+    if len(marked) == 1:
+        return marked[0]
+    if len(marked) > 1:
+        return min(marked, key=lambda name: _SOURCE_RANK.get(name, 99))
+    return "unmarked"
+
+
+def _checkbox_fill(image, word: dict, text_h: int) -> float:
+    h = max(12, text_h)
+    x0 = max(0, word["x"] - int(h * 4.2))
+    x1 = min(image.width, word["x"] - 1)
+    y0 = max(0, word["y"] - int(h * 0.25))
+    y1 = min(image.height, word["y"] + min(word["h"], h) + int(h * 0.35))
+    if x1 - x0 < 8 or y1 - y0 < 8:
+        return 0.0
+    crop = image.crop((x0, y0, x1, y1)).convert("L")
+    width, height = crop.size
+    pixels = list(crop.getdata())
+    dark = [pixel < 160 for pixel in pixels]
+    seen = [False] * (width * height)
+    best_gap = 10**9
+    best_fill = 0.0
+    min_side = max(8, int(h * 0.85))
+    max_side = int(h * 2.3)
+    for start, on in enumerate(dark):
+        if not on or seen[start]:
+            continue
+        stack = [start]
+        seen[start] = True
+        cells: list[int] = []
+        while stack:
+            cur = stack.pop()
+            cells.append(cur)
+            x = cur % width
+            for nxt in (cur - 1, cur + 1, cur - width, cur + width):
+                if nxt < 0 or nxt >= width * height or seen[nxt] or not dark[nxt]:
+                    continue
+                if abs((nxt % width) - x) > 1:
+                    continue
+                seen[nxt] = True
+                stack.append(nxt)
+        if len(cells) < 12:
+            continue
+        xs = [cell % width for cell in cells]
+        ys = [cell // width for cell in cells]
+        left, right = min(xs), max(xs)
+        top, bottom = min(ys), max(ys)
+        side_w = right - left + 1
+        side_h = bottom - top + 1
+        if side_w < int(h * 0.40) or side_h < int(h * 0.40) or side_w > max_side or side_h > max_side:
+            continue
+        if max(side_w, side_h) > min(side_w, side_h) * 2.3:
+            continue
+        gap = word["x"] - (x0 + right)
+        if gap < h * 0.08 or gap > h * 4.0:
+            continue
+        pad_x = max(1, int(side_w * 0.22))
+        pad_y = max(1, int(side_h * 0.22))
+        if right - pad_x <= left + pad_x or bottom - pad_y <= top + pad_y:
+            continue
+        inner = [
+            pixels[y * width + x]
+            for y in range(top + pad_y, bottom - pad_y + 1)
+            for x in range(left + pad_x, right - pad_x + 1)
+        ]
+        if len(inner) < 4:
+            continue
+        fill = sum(1 for pixel in inner if pixel < 160) / len(inner)
+        if (side_w < min_side or side_h < min_side) and fill < 0.70:
+            continue
+        if gap < best_gap:
+            best_gap = gap
+            best_fill = fill
+    return best_fill
+
+
+def _visible_lines(image) -> list[dict]:
+    import pytesseract
+
+    try:
+        data = pytesseract.image_to_data(image, lang="eng+spa", output_type=pytesseract.Output.DICT)
+    except Exception:
+        data = pytesseract.image_to_data(image, lang="eng", output_type=pytesseract.Output.DICT)
+    words = []
+    for index, raw in enumerate(data["text"]):
+        text = (raw or "").strip()
+        if not text or int(data["conf"][index]) < 0:
+            continue
+        words.append(
+            {
+                "text": text,
+                "x": int(data["left"][index]),
+                "y": int(data["top"][index]),
+                "w": int(data["width"][index]),
+                "h": max(8, int(data["height"][index])),
+            }
+        )
+    words.sort(key=lambda word: (word["y"], word["x"]))
+    grouped: list[dict] = []
+    for word in words:
+        center = word["y"] + word["h"] / 2
+        if grouped and abs(center - grouped[-1]["cy"]) <= 14:
+            grouped[-1]["words"].append(word)
+            grouped[-1]["cy"] = sum(item["y"] + item["h"] / 2 for item in grouped[-1]["words"]) / len(
+                grouped[-1]["words"]
+            )
+        else:
+            grouped.append({"cy": center, "words": [word]})
+    for line in grouped:
+        line["words"].sort(key=lambda word: word["x"])
+        line["text"] = " ".join(word["text"] for word in line["words"])
+    return grouped
+
+
+def _visible_word_at(words: list[dict], text: str, start: int) -> dict:
+    cursor = 0
+    for word in words:
+        end = cursor + len(word["text"])
+        if start < end:
+            return word
+        cursor = end + 1
+    return words[-1]
+
+
+def _visible_options(words: list[dict]) -> list[tuple[str, dict]]:
+    text = " ".join(word["text"] for word in words)
+    if not text or _VISIBLE_HINT_RE.search(text):
+        return []
+    occupied = [False] * len(text)
+    found: list[tuple[str, dict]] = []
+    seen: set[int] = set()
+    for name, pattern in _VISIBLE_BUCKETS:
+        for match in pattern.finditer(text):
+            if any(occupied[match.start() : match.end()]):
+                continue
+            for index in range(match.start(), match.end()):
+                occupied[index] = True
+            first = _visible_word_at(words, text, match.start())
+            if id(first) in seen:
+                continue
+            seen.add(id(first))
+            found.append((name, first))
+    for word in words:
+        if id(word) in seen:
+            continue
+        guessed = _visible_fuzzy(word["text"])
+        if guessed:
+            seen.add(id(word))
+            found.append((guessed, word))
+    return found
+
+
+def _rescue_option_words(image, line: dict) -> list[dict]:
+    import pytesseract
+
+    words = line["words"]
+    if any(pattern.search(line["text"]) for _name, pattern in _VISIBLE_BUCKETS):
+        return words
+    tops = [word["y"] for word in words]
+    bottoms = [word["y"] + word["h"] for word in words]
+    y0 = max(0, min(tops) - 4)
+    y1 = min(image.height, max(bottoms) + 4)
+    if y1 - y0 < 12 or y1 - y0 > 150:
+        return words
+    bands = [(y0, y1)]
+    if y1 - y0 > 40:
+        bands.append((y0 + (y1 - y0) // 2, y1))
+    extra = list(words)
+    for top, bottom in bands:
+        crop = image.crop((0, top, image.width, bottom))
+        try:
+            data = pytesseract.image_to_data(
+                crop, lang="eng", config="--psm 6", output_type=pytesseract.Output.DICT
+            )
+        except Exception:
+            continue
+        for index, raw in enumerate(data["text"]):
+            text = (raw or "").strip()
+            if not text or int(data["conf"][index]) < 0:
+                continue
+            if not any(pattern.search(text) for _name, pattern in _VISIBLE_BUCKETS) and _visible_fuzzy(text) is None:
+                continue
+            extra.append(
+                {
+                    "text": text,
+                    "x": int(data["left"][index]),
+                    "y": top + int(data["top"][index]),
+                    "w": int(data["width"][index]),
+                    "h": max(8, int(data["height"][index])),
+                }
+            )
+    return extra
+
+
+def score_visible_page(image) -> str:
+    grouped = _visible_lines(image)
+    hear_at = next((index for index, line in enumerate(grouped) if _HEAR_RE.search(line["text"])), None)
+    if hear_at is None:
+        return "no_question"
+    found: list[tuple[str, dict]] = []
+    for line in grouped[hear_at:]:
+        stopped = line is not grouped[hear_at] and (
+            _VISIBLE_STOP_RE.search(line["text"])
+            or (
+                re.match(r"insurance\b", line["text"], re.I)
+                and not re.search(r"recommend|seguro", line["text"], re.I)
+            )
+        )
+        if stopped:
+            break
+        words = line["words"]
+        if line is grouped[hear_at]:
+            match = _HEAR_RE.search(line["text"])
+            cut = match.end() if match else 0
+            cursor = 0
+            kept = []
+            for word in words:
+                if cursor >= cut:
+                    kept.append(word)
+                cursor += len(word["text"]) + 1
+            words = kept
+            line = {**line, "words": words, "text": " ".join(word["text"] for word in words)}
+        words = _rescue_option_words(image, line)
+        found.extend(_visible_options(words))
+    heights = sorted(min(word["h"], 36) for _name, word in found)
+    text_h = heights[len(heights) // 2] if heights else 18
+    scores = [(name, _checkbox_fill(image, word, text_h)) for name, word in found]
+    return choose_visible_mark(scores)
+
+
+def refine_unmarked_source(path: Path, source: str) -> str:
+    if source != "unmarked_options":
+        return source
+    try:
+        import fitz
+        from PIL import Image
+    except Exception:
+        return source
+    try:
+        doc = fitz.open(path)
+    except Exception:
+        return source
+    try:
+        for index, page in enumerate(doc):
+            if index >= 4:
+                break
+            native = page.get_text() or ""
+            if len(native) >= NATIVE_MIN_CHARS and not _HEAR_RE.search(native):
+                continue
+            pix = page.get_pixmap(matrix=fitz.Matrix(1.6, 1.6), alpha=False)
+            image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+            picked = score_visible_page(image)
+            if picked == "no_question":
+                continue
+            if picked == "unmarked":
+                return source
+            return picked
+    except Exception:
+        return source
+    finally:
+        doc.close()
+    return source
+
+
 def classify_one(path_str: str, tessdata: str, spa_ok: bool) -> dict[str, str]:
     path = Path(path_str)
     try:
         text, method = extract_pdf_text(path, tessdata, spa_ok)
         shape_id, shape_label = form_fingerprint(text)
+        source = classify_source(text)
+        if source == "unmarked_options":
+            source = refine_unmarked_source(path, source)
         return {
             "path": path_str,
             "method": method,
             "language": detect_language(text),
             "shape_id": shape_id,
             "shape_label": shape_label,
-            "source": classify_source(text),
+            "source": source,
             "chars": str(len(text)),
             "error": "",
         }
@@ -935,6 +1286,12 @@ def _self_check() -> int:
     shape_b, _ = form_fingerprint(spanish)
     assert shape_a != shape_b
     assert shape_a == form_fingerprint(english)[0]
+    assert choose_visible_mark([("google", 0.13), ("doctor", 0.0)]) == "google"
+    assert choose_visible_mark([("other", 1.0), ("friend_family", 0.74)]) == "other"
+    assert choose_visible_mark([("friend_family", 0.29)]) == "friend_family"
+    assert choose_visible_mark([("other", 0.81), ("zocdoc", 0.0)]) == "other"
+    assert choose_visible_mark([("doctor", 0.26)]) == "doctor"
+    assert choose_visible_mark([("doctor", 0.0), ("google", 0.0)]) == "unmarked"
     emit("self_check=ok")
     return 0
 
