@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import date, datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Iterator
 
 import psycopg
 
@@ -2572,6 +2572,49 @@ _PR_SORTABLE = {
     "facility_name": "base.facility_name",
 }
 
+_WORK_ITEM_SELECT = f"""
+            wi.work_item_id,
+            COALESCE(f.name, wi.facility_name) AS facility_name,
+            wi.emr_patient_id, wi.dos,
+            {ACCOUNT_NUMBER_SQL} AS account_number,
+            wi.patient_name, wi.dob, wi.insurance_name, wi.source_visit_status,
+            wi.eligibility_status, wi.reference_number, wi.notes,
+            wi.context, wi.manual_overrides,
+            wi.assigned_to, wi.assigned_at, wi.completed_at,
+            wi.locked_by, wi.locked_at, wi.lock_expires_at,
+            wi.updated_by, wi.updated_at, wi.created_at, wi.priority,
+            au.display_name AS assigned_to_name,
+            au.collector_code AS assigned_to_code,
+            uu.display_name AS updated_by_name,
+            lu.display_name AS locked_by_name
+"""
+
+_EXPORT_BATCH = 2000
+
+
+def _finish_work_item_rows(
+    conn: psycopg.Connection,
+    rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Apply the same overlays the sheet list uses, then drop raw context."""
+    overlay_live_sf(conn, rows)
+    overlay_live_recon(conn, rows)
+    overlay_pr1_reductions(conn, rows)
+    overlay_rtm_amounts(conn, rows)
+    overlay_oa23_amounts(conn, rows)
+    overlay_denial_reasons(conn, rows)
+    for row in rows:
+        attach_sheet_fields(row)
+    overlay_tracker_dates(conn, rows)
+    overlay_eft_totals(conn, rows)
+    overlay_ledger_totals(conn, rows)
+    items: list[dict[str, Any]] = []
+    for row in rows:
+        apply_manual_overrides(row)
+        row.pop("context", None)
+        items.append(_drop_overlay_keys(row))
+    return items
+
 
 def list_work_items(
     conn: psycopg.Connection,
@@ -2663,20 +2706,7 @@ def list_work_items(
         conn,
         f"""
         SELECT
-            wi.work_item_id,
-            COALESCE(f.name, wi.facility_name) AS facility_name,
-            wi.emr_patient_id, wi.dos,
-            {ACCOUNT_NUMBER_SQL} AS account_number,
-            wi.patient_name, wi.dob, wi.insurance_name, wi.source_visit_status,
-            wi.eligibility_status, wi.reference_number, wi.notes,
-            wi.context, wi.manual_overrides,
-            wi.assigned_to, wi.assigned_at, wi.completed_at,
-            wi.locked_by, wi.locked_at, wi.lock_expires_at,
-            wi.updated_by, wi.updated_at, wi.created_at, wi.priority,
-            au.display_name AS assigned_to_name,
-            au.collector_code AS assigned_to_code,
-            uu.display_name AS updated_by_name,
-            lu.display_name AS locked_by_name
+            {_WORK_ITEM_SELECT}
         FROM ops.eligibility_work_item wi
         LEFT JOIN ref.facility f ON f.webpt_facility_id = wi.facility_name
         LEFT JOIN auth.app_user au ON au.user_id = wi.assigned_to
@@ -2690,22 +2720,7 @@ def list_work_items(
         """,
         [*params, page_size, offset],
     )
-    overlay_live_sf(conn, rows)
-    overlay_live_recon(conn, rows)
-    overlay_pr1_reductions(conn, rows)
-    overlay_rtm_amounts(conn, rows)
-    overlay_oa23_amounts(conn, rows)
-    overlay_denial_reasons(conn, rows)
-    for row in rows:
-        attach_sheet_fields(row)
-    overlay_tracker_dates(conn, rows)
-    overlay_eft_totals(conn, rows)
-    overlay_ledger_totals(conn, rows)
-    items = []
-    for row in rows:
-        apply_manual_overrides(row)
-        row.pop("context", None)
-        items.append(_drop_overlay_keys(row))
+    items = _finish_work_item_rows(conn, rows)
     return {
         "items": items,
         "total": total,
@@ -2713,6 +2728,72 @@ def list_work_items(
         "page_size": page_size,
         "pages": (total + page_size - 1) // page_size if page_size else 0,
     }
+
+
+def iter_export_work_items(
+    conn: psycopg.Connection,
+    *,
+    q: str | None = None,
+    facility: list[str] | None = None,
+    month: list[str] | None = None,
+    insurance: list[str] | None = None,
+    status: list[str] | None = None,
+    visit_status: list[str] | None = None,
+    check_date: list[str] | None = None,
+    assigned_to: list[str] | None = None,
+    unassigned: bool = False,
+    queue: str | None = None,
+    bucket: str | None = None,
+    collection_status: list[str] | None = None,
+    root_cause: list[str] | None = None,
+    batch_size: int = _EXPORT_BATCH,
+) -> Iterator[dict[str, Any]]:
+    """Yield sheet rows for Excel export.
+
+    Walks ``work_item_id`` with a keyset so an all-months export does not
+    recount the table or re-scan earlier pages with OFFSET.
+    """
+    where, params = _build_filters(
+        q=q,
+        facility=facility,
+        month=month,
+        insurance=insurance,
+        status=status,
+        visit_status=visit_status,
+        check_date=check_date,
+        assigned_to=assigned_to,
+        unassigned=unassigned,
+        queue=queue,
+        bucket=bucket,
+        collection_status=collection_status,
+        root_cause=root_cause,
+    )
+    batch_size = min(max(1, batch_size), _EXPORT_BATCH)
+    after_id: Any = None
+    while True:
+        rows = client.fetchall(
+            conn,
+            f"""
+            SELECT
+                {_WORK_ITEM_SELECT}
+            FROM ops.eligibility_work_item wi
+            LEFT JOIN ref.facility f ON f.webpt_facility_id = wi.facility_name
+            LEFT JOIN auth.app_user au ON au.user_id = wi.assigned_to
+            LEFT JOIN auth.app_user uu ON uu.user_id = wi.updated_by
+            LEFT JOIN auth.app_user lu ON lu.user_id = wi.locked_by
+            WHERE {where}
+              AND (%s::uuid IS NULL OR wi.work_item_id > %s::uuid)
+            ORDER BY wi.work_item_id
+            LIMIT %s
+            """,
+            [*params, after_id, after_id, batch_size],
+        )
+        if not rows:
+            break
+        yield from _finish_work_item_rows(conn, rows)
+        if len(rows) < batch_size:
+            break
+        after_id = rows[-1]["work_item_id"]
 
 
 # Matches PR-2 / PR2 exactly inside ';'-joined pr_oa_codes; never PR-26 / PR-27.

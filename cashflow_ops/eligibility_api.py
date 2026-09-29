@@ -399,37 +399,28 @@ def export_items(
     ws = wb.create_sheet(sheet_name)
     ws.append(eligibility.sheet_export_headers(queue))
     assigned = parse_uuid_list(assigned_to)
-    page = 1
-    page_size = 2000
+    # sort_by/sort_dir stay on the route so existing export URLs still
+    # validate. The file is walked by work_item_id so an all-months export
+    # does not recount or OFFSET through the whole sheet.
+    _ = (sort_by, sort_dir)
     with connection() as conn:
-        while True:
-            data = eligibility.list_work_items(
-                conn,
-                q=q,
-                facility=facility,
-                month=month,
+        for row in eligibility.iter_export_work_items(
+            conn,
+            q=q,
+            facility=facility,
+            month=month,
             insurance=insurance,
             status=status,
             visit_status=visit_status,
             check_date=check_date,
             assigned_to=assigned,
-                unassigned=unassigned,
-                sort_by=sort_by,
-                sort_dir=sort_dir,
-                page=page,
-                page_size=page_size,
-                queue=queue,
-                bucket=bucket,
-                collection_status=collection_status,
-                root_cause=root_cause,
-            )
-            items = data.get("items") or []
-            for row in items:
-                ws.append(eligibility.sheet_export_row(row, queue))
-            pages = int(data.get("pages") or 0)
-            if not items or page >= pages:
-                break
-            page += 1
+            unassigned=unassigned,
+            queue=queue,
+            bucket=bucket,
+            collection_status=collection_status,
+            root_cause=root_cause,
+        ):
+            ws.append(eligibility.sheet_export_row(row, queue))
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
