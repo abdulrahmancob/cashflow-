@@ -146,15 +146,67 @@ def _group_cases(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
     return items
 
 
+def _order_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One clinic at a time, and every case of a patient before the next patient."""
+    return sorted(
+        cases,
+        key=lambda case: (
+            case.get("facility_id") or "",
+            case.get("patient_id") or "",
+            case.get("case_id") or "",
+        ),
+    )
+
+
 def _slice_cases(
     cases: list[dict[str, Any]], shard_index: int, shard_count: int
 ) -> list[dict[str, Any]]:
+    """Give each account whole clinics. A patient who spans clinics stays on one account."""
     if shard_count <= 1:
-        return cases
-    count = len(cases)
-    start = (count * shard_index) // shard_count
-    end = (count * (shard_index + 1)) // shard_count
-    return cases[start:end]
+        return _order_cases(cases)
+    by_facility: dict[str, list[dict[str, Any]]] = {}
+    for case in cases:
+        by_facility.setdefault(case.get("facility_id") or "", []).append(case)
+    parent = {facility: facility for facility in by_facility}
+
+    def find(facility: str) -> str:
+        while parent[facility] != facility:
+            parent[facility] = parent[parent[facility]]
+            facility = parent[facility]
+        return facility
+
+    def union(left: str, right: str) -> None:
+        root_left, root_right = find(left), find(right)
+        if root_left != root_right:
+            parent[root_right] = root_left
+
+    patient_facilities: dict[str, set[str]] = {}
+    for case in cases:
+        patient_facilities.setdefault(case.get("patient_id") or "", set()).add(
+            case.get("facility_id") or ""
+        )
+    for facilities in patient_facilities.values():
+        grouped = list(facilities)
+        for other in grouped[1:]:
+            union(grouped[0], other)
+
+    components: dict[str, list[str]] = {}
+    for facility in by_facility:
+        components.setdefault(find(facility), []).append(facility)
+
+    def weight(facilities: list[str]) -> int:
+        return sum(len(case["dos"]) for facility in facilities for case in by_facility[facility])
+
+    loads = [0] * shard_count
+    assigned: list[list[str]] = [[] for _ in range(shard_count)]
+    for facilities in sorted(components.values(), key=weight, reverse=True):
+        target = min(range(shard_count), key=lambda index: (loads[index], index))
+        assigned[target].extend(facilities)
+        loads[target] += weight(facilities)
+    chosen: list[dict[str, Any]] = []
+    for facility in assigned[shard_index]:
+        chosen.extend(by_facility[facility])
+    return _order_cases(chosen)
 
 
 def _is_daily(note: Any) -> bool:
@@ -520,10 +572,13 @@ def run(
     all_cases = _group_cases(missing)
     cases = _slice_cases(all_cases, shard_index, shard_count)
     shard_visits = sum(len(case["dos"]) for case in cases)
+    shard_facilities = len({case.get("facility_id") or "" for case in cases})
     summary: dict[str, Any] = {
         "missing_visits": shard_visits,
         "total_missing_visits": len(missing),
         "target_cases": len(cases),
+        "facilities": shard_facilities,
+        "ocr_workers": workers,
         "total_cases": len(all_cases),
         "days": days,
         "since": since,
@@ -536,9 +591,11 @@ def run(
         "publish_errors": 0,
     }
     log.info(
-        "note-catchup missing_visits=%s cases=%s days=%s since=%s shard=%s/%s on_date=%s",
+        "note-catchup missing_visits=%s cases=%s facilities=%s ocr_workers=%s days=%s since=%s shard=%s/%s on_date=%s",
         shard_visits,
         len(cases),
+        shard_facilities,
+        workers,
         days,
         since or "-",
         shard_index,
