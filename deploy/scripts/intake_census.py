@@ -461,23 +461,36 @@ def extract_pdf_text(path: Path, tessdata: str, spa_ok: bool) -> tuple[str, str]
     return text, method
 
 
+_STRONG_SPA = (
+    "formulario",
+    "paciente",
+    "nacimiento",
+    "redes sociales",
+    "cómo se",
+    "como se entero",
+)
+_STRONG_ENG = (
+    "patient",
+    "intake",
+    "how did you hear",
+    "date of birth",
+    "please check what applies",
+)
+
+
 def detect_language(text: str) -> str:
     if not text or len(text.strip()) < 20:
         return "unknown"
     low = text.lower()
-    spa = sum(1 for word in _SPA_WORDS if word in low)
-    eng = sum(1 for word in _ENG_WORDS if word in low)
-    if _ACCENT_RE.search(low):
-        spa += 2
-    if spa >= 3 and eng >= 3 and abs(spa - eng) <= 2:
-        return "bilingual"
-    if spa >= 2 and spa > eng:
+    spa = sum(1 for word in _STRONG_SPA if word in low)
+    eng = sum(1 for word in _STRONG_ENG if word in low)
+    if spa and eng:
+        if abs(spa - eng) <= 1:
+            return "bilingual"
+        return "spanish" if spa > eng else "english"
+    if spa:
         return "spanish"
-    if eng >= 2 and eng >= spa:
-        return "english"
-    if spa > eng and spa >= 1:
-        return "spanish"
-    if eng > spa and eng >= 1:
+    if eng:
         return "english"
     return "unknown"
 
@@ -491,7 +504,23 @@ def _normalize_line(raw: str) -> str:
     return re.sub(r"\s+", " ", line).strip()
 
 
+_SHAPE_BITS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("en_hear", re.compile(r"how did you hear|please check what applies", re.IGNORECASE)),
+    ("es_form", re.compile(r"formulario|redes sociales|c[oó]mo se enter", re.IGNORECASE)),
+    ("patient_info", re.compile(r"patient information|informaci[oó]n del paciente", re.IGNORECASE)),
+    ("doctor_opt", re.compile(r"doctor.?s referral|recomend", re.IGNORECASE)),
+    ("zocdoc_opt", re.compile(r"zoc\s*doc", re.IGNORECASE)),
+    ("social_opt", re.compile(r"social media|redes sociales", re.IGNORECASE)),
+    ("google_opt", re.compile(r"\bgoogle\b", re.IGNORECASE)),
+)
+
+
 def form_fingerprint(text: str) -> tuple[str, str]:
+    hits = [name for name, pattern in _SHAPE_BITS if pattern.search(text)]
+    if len(hits) >= 3:
+        blob = "|".join(hits)
+        shape_id = hashlib.sha1(blob.encode("utf-8")).hexdigest()[:10]
+        return shape_id, blob.replace("_", " ")
     label_lines: list[str] = []
     fallback: list[str] = []
     seen_labels: set[str] = set()
@@ -541,6 +570,29 @@ def _marked_keywords(window: str) -> list[str]:
     return hits
 
 
+_EMPTY_MARK_RE = re.compile(
+    r"^(?:[Oo0○◦☐]\s+|[Oo0](?=[A-Za-z])|\[\s*\]|\(\s*\))"
+)
+_SELECTED_MARK_RE = re.compile(
+    r"^(?:[@●•✓✔☑☒]\s*|[xX]\s+|\[\s*[xX✓✔]\s*\]|\(\s*[xX]\s*\))"
+)
+_INSTRUCTION_RE = re.compile(
+    r"please check|what applies|check all",
+    re.IGNORECASE,
+)
+
+
+def _option_state(line: str) -> str:
+    stripped = line.strip()
+    if _INSTRUCTION_RE.search(stripped):
+        return "instruction"
+    if _EMPTY_MARK_RE.search(stripped):
+        return "empty"
+    if _SELECTED_MARK_RE.search(stripped) or _MARK_RE.search(stripped):
+        return "selected"
+    return "plain"
+
+
 def classify_source(text: str) -> str:
     if not text.strip():
         return "unreadable"
@@ -549,23 +601,57 @@ def classify_source(text: str) -> str:
         if re.search(r"zoc\s*doc", text, re.IGNORECASE):
             return "zocdoc"
         return "unreadable"
-    window = text[match.end() : match.end() + 220]
-    lines = [line.strip() for line in window.splitlines() if line.strip()][:4]
-    block = "\n".join(lines)
-    marked = _marked_keywords(block)
-    if marked:
-        return marked[0]
-    kept: list[str] = []
+    window = text[match.end() : match.end() + 700]
+    remainder = window.splitlines()[0] if window.splitlines() else ""
+    remainder_hits = _keywords(remainder)
+    if (
+        len(remainder_hits) == 1
+        and not _INSTRUCTION_RE.search(remainder)
+        and _option_state(remainder) == "plain"
+    ):
+        return remainder_hits[0]
+    lines = [line.strip() for line in window.splitlines() if line.strip()][:12]
+    options: list[tuple[str, str]] = []
+    answer_lines: list[str] = []
     for line in lines:
-        if re.match(r"^(primary|referring|emergency)\b", line, re.IGNORECASE):
+        state = _option_state(line)
+        if state == "instruction":
+            continue
+        if state == "plain" and re.match(
+            r"^(primary|referring|emergency)\b", line, re.IGNORECASE
+        ):
             break
+        answer_lines.append(line)
         found = _keywords(line)
-        if len(found) == 1:
-            return found[0]
-        if len(found) > 1:
-            return "unmarked_options"
-        kept.append(line)
-    letters = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", " ".join(kept))
+        if not found:
+            continue
+        if state == "plain" and len(line) > 48:
+            if options:
+                break
+            continue
+        if state == "plain" and re.search(
+            r"\b(?:emergency|signature|contact|address)\b", line, re.IGNORECASE
+        ):
+            if options:
+                break
+            continue
+        options.append((found[0], state))
+        if len(options) >= 8:
+            break
+    selected = [name for name, state in options if state == "selected"]
+    empty = [name for name, state in options if state == "empty"]
+    plain = [name for name, state in options if state == "plain"]
+    if len(selected) == 1:
+        return selected[0]
+    if len(selected) > 1:
+        return min(selected, key=lambda name: _SOURCE_RANK.get(name, 99))
+    if empty and len(plain) == 1:
+        return plain[0]
+    if len(options) == 1 and options[0][1] != "empty":
+        return options[0][0]
+    if len(options) >= 2:
+        return "unmarked_options"
+    letters = re.sub(r"[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]", "", " ".join(answer_lines))
     if len(letters) < 2:
         return "blank"
     return "other"
@@ -830,6 +916,21 @@ def _self_check() -> int:
     assert classify_source("no question here, but booked on Zocdoc") == "zocdoc"
     assert classify_source("How did you hear about us?\n\n") == "blank"
     assert classify_source("How did you hear about us?\nPrimary insurance: Aetna\n") == "blank"
+    checklist = (
+        "Patient Intake\nHow did you hear about us?\n"
+        "(*) Please check what applies\n"
+        "Doctor's referral/recommendations\n"
+        "Google\nZocdoc\nSocial Media\n"
+    )
+    marked_google = (
+        "How did you hear about us?\n"
+        "O Doctor referral\n@ Google\nO Zocdoc\nO Social Media\n"
+    )
+    noisy = checklist.replace("recommendations", "recomi endations")
+    assert classify_source(checklist) == "unmarked_options"
+    assert classify_source(marked_google) == "google"
+    assert form_fingerprint(checklist)[0] == form_fingerprint(noisy)[0]
+    assert detect_language("jj jojdop wos " * 40) == "unknown"
     shape_a, _ = form_fingerprint(english)
     shape_b, _ = form_fingerprint(spanish)
     assert shape_a != shape_b
