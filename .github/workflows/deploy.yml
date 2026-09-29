@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, cashflow]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply changed files on the server
+        env:
+          DEPLOY_BEFORE: ${{ github.event.before }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: bash deploy/scripts/deploy_release.sh
