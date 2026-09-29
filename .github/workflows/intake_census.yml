@@ -13,10 +13,8 @@ jobs:
       - name: Classify intake forms
         run: |
           set -euo pipefail
-          mkdir -p /data/exports/intake_census/text /data/ocr/tessdata
-          if ! chown -R 10001:10001 /data/exports/intake_census /data/ocr/tessdata 2>/dev/null; then
-            sudo chown -R 10001:10001 /data/exports/intake_census /data/ocr/tessdata
-          fi
+          sudo mkdir -p /data/exports/intake_census/text /data/ocr/tessdata
+          sudo chown -R 10001:10001 /data/exports/intake_census /data/ocr/tessdata
           # The scraper image bakes deploy/ at build time. This push does not
           # rebuild that image, so mount the checked-out script over it.
           docker compose \
