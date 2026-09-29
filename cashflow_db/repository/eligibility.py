@@ -12,6 +12,7 @@ import psycopg
 from cashflow_db.repository import client
 from cashflow_db.repository.collection import (
     collection_status_bucket,
+    fold_label,
     still_pending_visit_sql,
 )
 from cashflow_db.repository.visits import (
@@ -611,7 +612,15 @@ def _is_pr3_queue(queue: str | None) -> bool:
 
 def _collection_bucket(bucket: str | None) -> str:
     raw = str(bucket or "denied").strip().lower()
-    if raw in {"overdue", "collection", "arbitration", "action", "follow_up", "at_risk"}:
+    if raw in {
+        "overdue",
+        "collection",
+        "arbitration",
+        "action",
+        "follow_up",
+        "at_risk",
+        "paid_patient_responsibility",
+    }:
         return raw
     return "denied"
 
@@ -2805,17 +2814,47 @@ PR3_SQL_PATTERN = "(^|;)PR-?3(;|$)"
 # Matches PR-100 / PR100 exactly; never a longer code that only starts with 100.
 PR100_SQL_PATTERN = "(^|;)PR-?100(;|$)"
 
-PR3_UNPAID_SQL = f"""(
-    lower(btrim(COALESCE(wi.source_visit_status, ''))) NOT IN ('paid', 'partial')
-    AND EXISTS (
+def _pr3_token_sql(expr: str) -> str:
+    """Same PR-3 token match on semicolon lists and on raw check/detail text."""
+    normalized = (
+        f"regexp_replace(COALESCE({expr}, ''), '[[:space:],]+', ';', 'g')"
+    )
+    return f"{normalized} ~* '{PR3_SQL_PATTERN}'"
+
+
+# Detail-line codes (pr_oa_codes, carcs) or the check CARC row.
+PR3_CODE_SQL = f"""(
+    EXISTS (
         SELECT 1
         FROM billing.waystar_webpt_map m
         JOIN billing.eob_line el
           ON el.revflow_patient_id = m.waystar_claim_key
          AND el.date_of_service = wi.dos
         WHERE m.webpt_patient_id = wi.emr_patient_id
-          AND el.pr_oa_codes ~* '{PR3_SQL_PATTERN}'
+          AND (
+                {_pr3_token_sql("el.pr_oa_codes")}
+             OR {_pr3_token_sql("el.carcs")}
+          )
     )
+    OR EXISTS (
+        SELECT 1
+        FROM billing.waystar_webpt_map m
+        JOIN billing.eob_carc_raw cr
+          ON cr.revflow_patient_id = m.waystar_claim_key
+         AND cr.date_of_service = wi.dos
+        WHERE m.webpt_patient_id = wi.emr_patient_id
+          AND {_pr3_token_sql("cr.carc_code")}
+    )
+)"""
+
+PR3_UNPAID_SQL = f"""(
+    lower(btrim(COALESCE(wi.source_visit_status, ''))) NOT IN ('paid', 'partial')
+    AND {PR3_CODE_SQL}
+)"""
+
+PR3_PAID_COLLECTION_SQL = f"""(
+    {PR3_CODE_SQL}
+    AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
 )"""
 
 
@@ -2823,12 +2862,33 @@ def collection_bucket_predicate(bucket: str | None) -> str:
     """Live membership rules stored by refresh_collection_queue()."""
     key = _collection_bucket(bucket)
     if key == "overdue":
-        status_sql = OVERDUE_PENDING_SQL
-    elif key == "collection":
-        status_sql = COLLECTION_VISIT_SQL
-    else:
-        status_sql = DENIED_VISIT_SQL
-    return f"{status_sql} AND NOT {PR3_UNPAID_SQL}"
+        return f"{OVERDUE_PENDING_SQL} AND NOT {PR3_UNPAID_SQL}"
+    if key == "collection":
+        return f"{COLLECTION_VISIT_SQL} AND NOT {PR3_UNPAID_SQL}"
+    if key == "paid_patient_responsibility":
+        return (
+            f"{PR3_CODE_SQL} AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid' "
+            f"AND NOT {PAID_OR_DEDUCT_SQL}"
+        )
+    return (
+        f"(({DENIED_VISIT_SQL}) OR ({PR3_UNPAID_SQL})) "
+        f"AND NOT ({PR3_PAID_COLLECTION_SQL})"
+    )
+
+
+def work_item_has_pr3(conn: psycopg.Connection, work_item_id: str) -> bool:
+    row = client.fetchone(
+        conn,
+        f"""
+        SELECT 1 AS ok
+        FROM ops.eligibility_work_item wi
+        WHERE wi.work_item_id = %s::uuid
+          AND {PR3_CODE_SQL}
+        LIMIT 1
+        """,
+        (work_item_id,),
+    )
+    return row is not None
 
 
 def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
@@ -2908,29 +2968,46 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
         """,
     )
     client.execute(conn, "CREATE INDEX ON tmp_waystar_past_sla (emr, dos)")
-    scope = f"""
+    base_scope = f"""
         {ELIGIBILITY_MIN_DOS_SQL}
         AND {ELIGIBILITY_MAX_DOS_SQL}
         AND {KEEP_WORK_ITEM_SQL}
-        AND NOT {PR3_UNPAID_SQL}
     """
+    client.execute(
+        conn,
+        f"""
+        UPDATE ops.eligibility_work_item wi
+        SET source_visit_status = 'patient_responsibility'
+        WHERE {base_scope}
+          AND NULLIF(btrim(wi.manual_overrides->>'source_visit_status'), '') IS NULL
+          AND lower(btrim(COALESCE(wi.source_visit_status, ''))) NOT IN (
+              'paid', 'partial', 'deduct', 'patient_responsibility'
+          )
+          AND {PR3_CODE_SQL}
+          AND NOT {PAID_OR_DEDUCT_SQL}
+        """,
+    )
     rules = {
         "denied": f"""((
             (
-                lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, ''))) = 'denied'
-                OR (
-                    EXISTS (
-                        SELECT 1 FROM tmp_waystar_zero z
-                        WHERE z.emr = wi.emr_patient_id AND z.dos = wi.dos
+                (
+                    lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, ''))) = 'denied'
+                    OR (
+                        EXISTS (
+                            SELECT 1 FROM tmp_waystar_zero z
+                            WHERE z.emr = wi.emr_patient_id AND z.dos = wi.dos
+                        )
+                        AND EXISTS (
+                            SELECT 1 FROM tmp_waystar_details d
+                            WHERE d.emr = wi.emr_patient_id AND d.dos = wi.dos
+                        )
                     )
-                    AND EXISTS (
-                        SELECT 1 FROM tmp_waystar_details d
-                        WHERE d.emr = wi.emr_patient_id AND d.dos = wi.dos
-                    )
-                )
-            ) AND NOT {PAID_OR_DEDUCT_SQL}
-            ) OR {COLLECTION_VISIT_SQL}
-        ) AND NOT ({ROUTED_COLLECTION_SQL})""",
+                ) AND NOT {PAID_OR_DEDUCT_SQL}
+                ) OR {COLLECTION_VISIT_SQL}
+                OR ({PR3_UNPAID_SQL})
+            ) AND NOT ({ROUTED_COLLECTION_SQL})
+              AND NOT ({PR3_PAID_COLLECTION_SQL})
+        )""",
         "overdue": f"""(
             EXISTS (
                 SELECT 1 FROM tmp_waystar_past_sla s
@@ -2960,9 +3037,17 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
         "arbitration": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'arbitration'",
         "action": f"{EFFECTIVE_COLLECTION_FOLD_SQL} IN ('actiontaken', 'pending')",
         "at_risk": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'submittedwithoutauth'",
+        "paid_patient_responsibility": f"""(
+            {PR3_CODE_SQL}
+            AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
+            AND NOT {PAID_OR_DEDUCT_SQL}
+        )""",
     }
     counts: dict[str, int] = {}
     for bucket, rule in rules.items():
+        scope = base_scope
+        if bucket == "overdue":
+            scope = f"{base_scope} AND NOT {PR3_UNPAID_SQL}"
         cur = conn.execute(
             f"""
             INSERT INTO analytics.collection_queue_member (bucket, work_item_id)
@@ -3003,8 +3088,11 @@ def _collection_denied_where(
     facilities: list[str] | None = None,
     insurers: list[str] | None = None,
 ) -> tuple[str, list[Any]]:
-    """Same membership as Collection → Denied (not PR-3 unpaid)."""
-    clauses = [DENIED_VISIT_SQL, f"NOT {PR3_UNPAID_SQL}"]
+    """Same membership as Collection → Denied, including unpaid PR-3."""
+    clauses = [
+        f"(({DENIED_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))",
+        f"NOT ({PR3_PAID_COLLECTION_SQL})",
+    ]
     params: list[Any] = []
     if d0:
         clauses.append("wi.dos >= %s")
@@ -5121,6 +5209,13 @@ def patch_work_item(
         if "collection_status" in updates
         else None
     )
+    if (
+        routed is None
+        and "collection_status" in updates
+        and fold_label(str(new_ov.get("collection_status") or "")) == "paid"
+        and work_item_has_pr3(conn, work_item_id)
+    ):
+        routed = "paid_patient_responsibility"
     if routed == "action":
         today = date.today().isoformat()
         prior_work = next((h for h in history if h["column_name"] == "work_date"), None)
@@ -5250,11 +5345,15 @@ def patch_work_item(
             for home_bucket, home_rule in (
                 (
                     "denied",
-                    f"(({DENIED_VISIT_SQL}) OR ({COLLECTION_VISIT_SQL})) AND NOT ({ROUTED_COLLECTION_SQL})",
+                    f"""(
+                        (({DENIED_VISIT_SQL}) OR ({COLLECTION_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))
+                        AND NOT ({ROUTED_COLLECTION_SQL})
+                        AND NOT ({PR3_PAID_COLLECTION_SQL})
+                    )""",
                 ),
                 (
                     "overdue",
-                    f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL})",
+                    f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL})",
                 ),
             ):
                 client.execute(

@@ -1,0 +1,619 @@
+"""Collection lookups, overdue bucket SQL, and work-date autofill."""
+
+from __future__ import annotations
+
+from datetime import date
+from pathlib import Path
+
+from cashflow_db.db import MIGRATIONS
+from cashflow_db.repository import collection
+from cashflow_db.repository.eligibility import (
+    COLLECTION_VISIT_SQL,
+    DENIED_VISIT_SQL,
+    OVERDUE_PENDING_SQL,
+    STILL_PENDING_VISIT_SQL,
+    _build_filters,
+    plan_work_item_patch,
+    sheet_export_headers,
+)
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_migration_058_is_registered():
+    assert "058_list_perf_indexes.sql" in MIGRATIONS
+    assert MIGRATIONS.index("058_list_perf_indexes.sql") > MIGRATIONS.index(
+        "057_analytics_viewer_role.sql"
+    )
+    sql = (ROOT / "cashflow_db" / "sql" / "058_list_perf_indexes.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "ix_recon_visit_run_emr_dos" in sql
+    assert "ix_forecast_pred_run_stage_emr_dos" in sql
+    assert "gin_trgm_ops" in sql
+
+
+def test_migration_059_keep_visit_is_registered():
+    assert "059_elig_keep_visit.sql" in MIGRATIONS
+    assert MIGRATIONS.index("059_elig_keep_visit.sql") > MIGRATIONS.index(
+        "058_list_perf_indexes.sql"
+    )
+    sql = (ROOT / "cashflow_db" / "sql" / "059_elig_keep_visit.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "analytics.elig_keep_visit" in sql
+
+
+def test_migration_056_is_registered():
+    assert "056_collection_lookups.sql" in MIGRATIONS
+    assert MIGRATIONS.index("056_collection_lookups.sql") > MIGRATIONS.index(
+        "055_portal_activity.sql"
+    )
+
+
+def test_sql_seed_labels():
+    sql = (ROOT / "cashflow_db" / "sql" / "056_collection_lookups.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "CREATE TABLE IF NOT EXISTS ops.collection_lookup" in sql
+    assert "ops.fold_insurance_name(label)" in sql
+    for label in collection.DENIAL_REASON_SEED:
+        assert f"'{label}'" in sql
+    for label in collection.ROOT_CAUSE_SEED:
+        assert f"'{label}'" in sql
+    for label in collection.COLLECTION_STATUS_SEED:
+        assert f"'{label}'" in sql
+    assert "Auth delay" in sql
+    assert "Auth dealy" not in sql
+
+
+def test_fold_label_strips_non_alnum():
+    assert collection.fold_label("Auth delay") == "authdelay"
+    assert collection.fold_label("  AUTH-DELAY ") == "authdelay"
+    assert collection.fold_label("Canceled - No Show") == "cancelednoshow"
+
+
+def test_migration_060_collection_member_is_registered():
+    assert "060_collection_queue_member.sql" in MIGRATIONS
+    assert MIGRATIONS.index("060_collection_queue_member.sql") > MIGRATIONS.index(
+        "059_elig_keep_visit.sql"
+    )
+    sql = (ROOT / "cashflow_db" / "sql" / "060_collection_queue_member.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "analytics.collection_queue_member" in sql
+    assert "PRIMARY KEY (bucket, work_item_id)" in sql
+
+
+def test_collection_queue_default_is_denied():
+    from cashflow_db.repository.eligibility import COLLECTION_QUEUE_MEMBER_SQL
+
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+    )
+    assert COLLECTION_QUEUE_MEMBER_SQL in sql
+    assert params == ["denied"]
+    assert DENIED_VISIT_SQL not in sql
+    assert "forecast_prediction" not in sql
+
+
+def test_collection_refresh_keeps_bucket_rules():
+    from cashflow_db.repository.eligibility import collection_bucket_predicate
+    from cashflow_db.repository.visits import KEEP_WORK_ITEM_SQL
+
+    denied = collection_bucket_predicate("denied")
+    overdue = collection_bucket_predicate("overdue")
+    collection_status = collection_bucket_predicate("collection")
+    assert DENIED_VISIT_SQL in denied
+    assert OVERDUE_PENDING_SQL in overdue
+    assert "expected_pay_date + 3 < CURRENT_DATE" in overdue
+    assert f"NOT {DENIED_VISIT_SQL}" in overdue
+    assert f"NOT {COLLECTION_VISIT_SQL}" in overdue
+    assert "total_remit_amount" not in overdue.replace(DENIED_VISIT_SQL, "")
+    assert "NULLIF(btrim(el.carcs), '')" in overdue
+    assert "IN ('paid', 'deduct')" in overdue
+    assert "analytics.snowflake_visit_kpi" in overdue
+    assert "rv.visit_status" in overdue
+    assert " = 'collection'" in collection_status
+    assert "NOT IN ('paid', 'deduct')" in COLLECTION_VISIT_SQL
+    assert " = 'collection'" in COLLECTION_VISIT_SQL
+    assert "NOT " in denied and "PR-?3" in denied
+    refresh_src = (
+        ROOT / "cashflow_db" / "repository" / "eligibility.py"
+    ).read_text(encoding="utf-8")
+    assert "DELETE FROM analytics.collection_queue_member" in refresh_src
+    assert "KEEP_WORK_ITEM_SQL" in refresh_src
+    refresh_fn = refresh_src.split("def refresh_collection_queue", 1)[1].split("\ndef ", 1)[0]
+    assert "OR {COLLECTION_VISIT_SQL}" in refresh_fn
+    assert '"collection":' not in refresh_fn
+    overdue_rule = refresh_fn.split('"overdue":', 1)[1].split('"arbitration":', 1)[0]
+    assert "tmp_waystar_past_sla" in overdue_rule
+    assert "NOT {SKIPPED_VISIT_SQL}" in overdue_rule
+    assert "NOT {COLLECTION_VISIT_SQL}" in overdue_rule
+    assert overdue_rule.find("tmp_waystar_past_sla") < overdue_rule.find("tmp_waystar_zero")
+    patch_fn = refresh_src.split("def patch_work_item", 1)[1].split("\ndef ", 1)[0]
+    assert "DELETE FROM analytics.collection_queue_member" in patch_fn
+    assert '"paid", "deduct"' in patch_fn
+    assert "paid_patient_responsibility" in refresh_fn
+    assert "source_visit_status = 'patient_responsibility'" in refresh_fn
+    assert "manual_overrides->>'source_visit_status'" in refresh_fn
+
+
+def test_collection_overdue_is_pending_after_sla():
+    from cashflow_db.repository.eligibility import (
+        COLLECTION_QUEUE_MEMBER_SQL,
+        collection_bucket_predicate,
+    )
+
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        bucket="overdue",
+    )
+    predicate = collection_bucket_predicate("overdue")
+    assert COLLECTION_QUEUE_MEMBER_SQL in sql
+    assert params == ["overdue"]
+    assert OVERDUE_PENDING_SQL in predicate
+    assert "expected_pay_date + 3 < CURRENT_DATE" in predicate
+    assert "analytics.forecast_prediction" in predicate
+    assert f"NOT {DENIED_VISIT_SQL}" in predicate
+    assert f"NOT {COLLECTION_VISIT_SQL}" in predicate
+    assert "total_remit_amount" not in predicate.replace(DENIED_VISIT_SQL, "")
+    assert "NULLIF(btrim(el.carcs), '')" in predicate
+    assert "IN ('paid', 'deduct')" in predicate
+    assert "analytics.snowflake_visit_kpi" in predicate
+    assert "rv.visit_status" in predicate
+    assert "fp.webpt_patient_id = wi.emr_patient_id" in predicate
+    assert "fp.date_of_service = wi.dos" in predicate
+    assert "fp.webpt_patient_id IS NULL" in predicate
+
+
+def test_collection_status_routes_to_tabs():
+    assert collection.collection_status_bucket("Arbitration") == "arbitration"
+    assert collection.collection_status_bucket("Action Taken") == "action"
+    assert collection.collection_status_bucket("pending") == "action"
+    assert collection.collection_status_bucket("Submitted without Auth") == "at_risk"
+    assert collection.collection_status_bucket("Dead") is None
+    assert collection.collection_status_bucket("Paid") is None
+    assert "064_collection_status_buckets.sql" in MIGRATIONS
+    assert "069_paid_patient_responsibility.sql" in MIGRATIONS
+
+
+def test_follow_up_is_aged_action():
+    follow_sql, follow_params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        bucket="follow_up",
+    )
+    action_sql, action_params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        bucket="action",
+    )
+    assert follow_params == ["action"]
+    assert action_params == ["action"]
+    assert "CURRENT_DATE - 30" in follow_sql
+    assert "NOT (" in action_sql
+    assert "submittedwithoutauth" in (
+        ROOT / "cashflow_db" / "repository" / "eligibility.py"
+    ).read_text(encoding="utf-8")
+
+
+def test_collection_overdue_unknown_bucket_falls_back_to_denied():
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        bucket="all",
+    )
+    assert params == ["denied"]
+    assert OVERDUE_PENDING_SQL not in sql
+
+
+def test_collection_bucket_lists_collection_status():
+    from cashflow_db.repository.eligibility import (
+        COLLECTION_QUEUE_MEMBER_SQL,
+        PR3_UNPAID_SQL,
+        collection_bucket_predicate,
+    )
+
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        bucket="collection",
+    )
+    predicate = collection_bucket_predicate("collection")
+    assert COLLECTION_QUEUE_MEMBER_SQL in sql
+    assert params == ["collection"]
+    assert " = 'collection'" in predicate
+    assert OVERDUE_PENDING_SQL not in predicate
+    assert f"NOT {PR3_UNPAID_SQL}" in predicate
+
+
+def test_sheet_queue_hides_collection_status():
+    from cashflow_db.repository.eligibility import COLLECTION_VISIT_SQL
+
+    sql, _params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="sheet",
+    )
+    assert f"NOT {COLLECTION_VISIT_SQL}" in sql
+    assert f"NOT {DENIED_VISIT_SQL}" in sql
+
+
+def test_sheet_queue_ignores_overdue_bucket():
+    sql, _params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="sheet",
+        bucket="overdue",
+    )
+    assert OVERDUE_PENDING_SQL not in sql
+    assert f"NOT {DENIED_VISIT_SQL}" in sql
+
+
+def test_collection_denied_includes_pr3_unpaid():
+    from cashflow_db.repository.eligibility import (
+        PR3_PAID_COLLECTION_SQL,
+        PR3_UNPAID_SQL,
+        collection_bucket_predicate,
+    )
+
+    predicate = collection_bucket_predicate("denied")
+    paid = collection_bucket_predicate("paid_patient_responsibility")
+    assert DENIED_VISIT_SQL in predicate
+    assert PR3_UNPAID_SQL in predicate
+    assert f"NOT {PR3_UNPAID_SQL}" not in predicate
+    assert f"NOT ({PR3_PAID_COLLECTION_SQL})" in predicate
+    assert "PR-?3" in predicate
+    assert "eob_carc_raw" in predicate
+    assert "el.carcs" in predicate
+    assert " = 'paid'" in paid
+    assert "eob_carc_raw" in paid
+
+
+def test_collection_denied_exposure_sql_membership_and_charged(monkeypatch):
+    from cashflow_db.repository import eligibility
+    from cashflow_db.repository.eligibility import (
+        COLLECTION_DENIED_CHARGED_SQL,
+        PR3_UNPAID_SQL,
+        collection_denied_exposure,
+    )
+
+    captured: list[str] = []
+
+    def fake_fetchone(_conn, sql, params=None):
+        captured.append(sql)
+        return {"exposure_amount": 120.0, "visit_count": 3}
+
+    def fake_fetchall(_conn, sql, params=None):
+        captured.append(sql)
+        return [{"ins_name": "Aetna", "exposure_amount": 120.0, "visit_count": 3}]
+
+    monkeypatch.setattr(eligibility.client, "fetchone", fake_fetchone)
+    monkeypatch.setattr(eligibility.client, "fetchall", fake_fetchall)
+    payload = collection_denied_exposure(
+        object(),
+        d0=date(2026, 8, 1),
+        d1=date(2026, 8, 31),
+        facilities=["Bedstuy"],
+        insurers=["1199"],
+    )
+    blob = "\n".join(captured)
+    assert DENIED_VISIT_SQL in blob
+    assert PR3_UNPAID_SQL in blob
+    assert f"NOT {PR3_UNPAID_SQL}" not in blob
+    assert " = 'paid'" in blob
+    assert "sf.charged_amount" in blob
+    assert "analytics.snowflake_visit_kpi" in blob
+    assert "wi.context->>'charged_amount'" in blob
+    assert COLLECTION_DENIED_CHARGED_SQL in blob
+    assert "wi.dos >= %s" in blob
+    assert "wi.facility_name = ANY(%s)" in blob
+    assert "wi.insurance_name = ANY(%s)" in blob
+    assert " = 'dead'" not in blob
+    assert "canceled" not in blob.lower()
+    assert abs(float(payload["exposure_amount"]) - 120.0) < 0.01
+    assert payload["visit_count"] == 3
+
+
+def test_collection_overdue_excludes_pr3_unpaid():
+    from cashflow_db.repository.eligibility import (
+        PR3_UNPAID_SQL,
+        collection_bucket_predicate,
+    )
+
+    predicate = collection_bucket_predicate("overdue")
+    assert OVERDUE_PENDING_SQL in predicate
+    assert f"NOT {PR3_UNPAID_SQL}" in predicate
+
+
+def test_work_date_autofills_once_on_collection_edit():
+    item = {
+        "denial_reason": None,
+        "work_date": None,
+        "manual_overrides": {},
+    }
+    _direct, new_ov, history, changed = plan_work_item_patch(
+        item, {"denial_reason": "Auth Absent"}
+    )
+    assert changed
+    assert new_ov["denial_reason"] == "Auth Absent"
+    assert new_ov["work_date"] == date.today().isoformat()
+    by_col = {h["column_name"]: h for h in history}
+    assert by_col["work_date"]["new_value"] == date.today().isoformat()
+
+    again = {
+        "denial_reason": "Auth Absent",
+        "work_date": new_ov["work_date"],
+        "manual_overrides": new_ov,
+    }
+    _direct2, ov2, history2, changed2 = plan_work_item_patch(
+        again, {"root_cause": "Auth delay"}
+    )
+    assert changed2
+    assert ov2["work_date"] == new_ov["work_date"]
+    assert "work_date" not in {h["column_name"] for h in history2}
+
+
+def test_work_date_not_autofilled_when_explicit():
+    item = {"denial_reason": None, "work_date": None, "manual_overrides": {}}
+    _direct, new_ov, history, changed = plan_work_item_patch(
+        item, {"denial_reason": "Auth Absent", "work_date": "2026-01-15"}
+    )
+    assert changed
+    assert new_ov["work_date"] == "2026-01-15"
+    assert {h["column_name"] for h in history} == {"denial_reason", "work_date"}
+
+
+def test_collection_export_matches_sheet():
+    headers = sheet_export_headers("collection")
+    assert headers[0] == "EMR ID"
+    assert "Client Payment" in headers
+    assert "Facility" in headers
+    assert headers.index("Facility") == headers.index("Insurance Name") + 1
+    assert "Denial Reason" in headers
+    assert "Work Status" not in headers
+    assert "Updated Payment" not in headers
+    assert "Account #" in headers
+    assert headers.index("Account #") == headers.index("EMR ID") + 1
+
+
+def test_paid_requires_saved_insurance_payment():
+    import pytest
+
+    from cashflow_db.repository.eligibility import (
+        _PAID_SORT_SQL,
+        assert_paid_has_manual_payment,
+    )
+
+    bare = {"manual_overrides": {}, "insurance_payment": 10}
+    with pytest.raises(ValueError, match="Insurance Payment"):
+        assert_paid_has_manual_payment(bare, {"source_visit_status": "paid"})
+    assert_paid_has_manual_payment(
+        bare, {"source_visit_status": "paid", "insurance_payment": "25"}
+    )
+    assert_paid_has_manual_payment(
+        {"manual_overrides": {"paid_amount": 12}},
+        {"source_visit_status": "paid"},
+    )
+    with pytest.raises(ValueError, match="Insurance Payment"):
+        assert_paid_has_manual_payment(
+            {"manual_overrides": {"insurance_payment": 25}},
+            {"source_visit_status": "paid", "insurance_payment": ""},
+        )
+    assert_paid_has_manual_payment(bare, {"source_visit_status": "deduct"})
+    assert _PAID_SORT_SQL.index("insurance_payment") < _PAID_SORT_SQL.index("paid_amount")
+
+
+def test_portal_collection_page_is_ss_style():
+    app = (ROOT / "rcm_portal" / "src" / "App.tsx").read_text(encoding="utf-8")
+    page = (ROOT / "rcm_portal" / "src" / "pages" / "Collection.tsx").read_text(
+        encoding="utf-8"
+    )
+    queue = (ROOT / "rcm_portal" / "src" / "pages" / "CollectionQueue.tsx").read_text(
+        encoding="utf-8"
+    )
+    lookups = (ROOT / "rcm_portal" / "src" / "pages" / "CollectionLookups.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert "import { CollectionPage }" in app
+    assert "<CollectionPage />" in app
+    assert 'queue="collection"' not in app
+    assert "CollectionQueueTab" in page
+    assert "CollectionLookupsTab" in page
+    assert "SearchableSelect" in queue
+    assert "Facility" in queue
+    assert "facility_name" in queue
+    assert "account_number" in queue
+    assert "Account #" in queue
+    assert "visit_status" in queue
+    assert "All root causes" in queue
+    assert "All collection status" in queue
+    assert "bucket" in queue
+    assert "Overdue" in queue
+    assert "Follow up" in queue
+    assert "At risk" in queue
+    assert "elig-sticky-patient_name" in queue
+    assert "Enter Insurance Payment before marking the visit Paid" in queue
+    assert "{ key: 'collection'" not in queue
+    assert "No collection visits" not in queue
+    assert "Drawer" not in queue
+    assert "/api/collection/lookups" in lookups
+    assert "expected_pay_date + 3 < CURRENT_DATE" in OVERDUE_PENDING_SQL
+    assert f"NOT {DENIED_VISIT_SQL}" in OVERDUE_PENDING_SQL
+    assert f"NOT {COLLECTION_VISIT_SQL}" in OVERDUE_PENDING_SQL
+    assert "total_remit_amount" not in OVERDUE_PENDING_SQL.replace(DENIED_VISIT_SQL, "")
+    assert STILL_PENDING_VISIT_SQL not in OVERDUE_PENDING_SQL
+
+
+def test_denied_sql_reads_sheet_override():
+    assert "manual_overrides->>'source_visit_status'" in DENIED_VISIT_SQL
+    assert "manual_overrides->>'source_visit_status'" in STILL_PENDING_VISIT_SQL
+
+
+def test_visit_status_filter_reads_sheet_override():
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        visit_status=["Denied"],
+        queue="collection",
+    )
+    assert "manual_overrides->>'source_visit_status'" in sql
+    assert ["denied"] in params
+    assert params[-1] == "denied"
+
+
+def test_collection_status_and_root_cause_filters():
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        collection_status=["Pending"],
+        root_cause=["Auth delay"],
+    )
+    assert "manual_overrides->>'collection_status'" in sql
+    assert "manual_overrides->>'root_cause'" in sql
+    assert "COLLECTION_STATUS" in sql
+    assert "ROOTCAUSE" in sql
+    assert ["pending"] in params
+    assert ["auth delay"] in params
+
+
+def test_digit_search_matches_account_number():
+    sql, params = _build_filters(
+        q="10649740",
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+    )
+    assert "revflow_patient_id" in sql
+    assert "10649740" in params
+    assert "%10649740%" in params
+
+
+def test_collection_blank_filters_and_case_insensitive_insurance():
+    from cashflow_db.repository.eligibility import FILTER_BLANK
+    from cashflow_db.repository.insurance import is_blank_sql
+
+    named, named_params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=["1199 SEIU National Benefit Fund"],
+        status=None,
+        assigned_to=None,
+        queue="collection",
+    )
+    assert "lower(btrim(COALESCE(wi.insurance_name, ''))) = ANY(%s)" in named
+    assert "wi.insurance_name = ANY(%s)" not in named
+    assert ["1199 seiu national benefit fund"] in named_params
+    assert is_blank_sql("wi.insurance_name") not in named
+
+    sql, params = _build_filters(
+        q=None,
+        facility=["Bedstuy", FILTER_BLANK],
+        month=None,
+        insurance=["Aetna", FILTER_BLANK],
+        status=None,
+        assigned_to=None,
+        visit_status=["Denied", FILTER_BLANK],
+        queue="collection",
+        collection_status=["Pending", FILTER_BLANK],
+        root_cause=[FILTER_BLANK],
+    )
+    assert "wi.facility_name = ANY(%s)" in sql
+    assert "SELECT f.name FROM ref.facility f" in sql
+    assert ")), '') IS NULL" in sql
+    assert ["Bedstuy"] in params
+    assert is_blank_sql("wi.insurance_name") in sql
+    assert ["aetna"] in params
+    assert " OR " in sql
+    assert "manual_overrides->>'source_visit_status'" in sql
+    assert "), '') IS NULL" in sql
+    assert ["denied"] in params
+    assert "manual_overrides->>'collection_status'" in sql
+    assert "<> ''" in sql
+    assert ["pending"] in params
+    assert "manual_overrides->>'root_cause'" in sql
+    assert "ROOTCAUSE" in sql
+    assert FILTER_BLANK not in params
+    assert params[-1] == "denied"
+
+    blank_only, blank_params = _build_filters(
+        q=None,
+        facility=[FILTER_BLANK],
+        month=None,
+        insurance=[FILTER_BLANK],
+        status=None,
+        assigned_to=None,
+        visit_status=[FILTER_BLANK],
+        queue="collection",
+        collection_status=[FILTER_BLANK],
+        root_cause=[FILTER_BLANK],
+    )
+    assert "wi.facility_name = ANY(%s)" not in blank_only
+    assert "lower(btrim(COALESCE(wi.insurance_name, ''))) = ANY(%s)" not in blank_only
+    assert "= ANY(%s)" not in blank_only
+    assert is_blank_sql("wi.insurance_name") in blank_only
+    assert "source_visit_status" in blank_only
+    assert blank_params == ["denied"]
+
+
+def test_account_number_sql_avoids_psycopg_percent_placeholder():
+    from cashflow_db.repository.eligibility import ACCOUNT_NUMBER_SQL
+
+    assert "PV4%" not in ACCOUNT_NUMBER_SQL
+    assert "%'" not in ACCOUNT_NUMBER_SQL
+    assert "left(upper(" in ACCOUNT_NUMBER_SQL

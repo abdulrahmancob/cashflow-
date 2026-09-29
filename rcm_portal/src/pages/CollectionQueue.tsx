@@ -7,7 +7,14 @@ import { EmrPatientLink } from '../components/EmrPatientLink'
 import { EmptyState, Pagination } from '../components/table'
 import { Button, Input, MultiSelect, SearchableSelect, Toast } from '../components/ui'
 
-type Bucket = 'denied' | 'overdue' | 'action' | 'follow_up' | 'arbitration' | 'at_risk'
+type Bucket =
+  | 'denied'
+  | 'overdue'
+  | 'action'
+  | 'follow_up'
+  | 'arbitration'
+  | 'at_risk'
+  | 'paid_patient_responsibility'
 
 type CollectionRow = {
   work_item_id: string
@@ -147,6 +154,7 @@ const BUCKETS: { key: Bucket; label: string }[] = [
   { key: 'follow_up', label: 'Follow up' },
   { key: 'arbitration', label: 'Arbitration' },
   { key: 'at_risk', label: 'At risk' },
+  { key: 'paid_patient_responsibility', label: 'Paid - Patient Responsibility' },
 ]
 
 const CELL_INPUT =
@@ -247,8 +255,11 @@ function paymentEdited(row: CollectionRow) {
   return false
 }
 
-function statusTab(status: string): Bucket | null {
+function statusTab(status: string, visitStatus?: string | null): Bucket | null {
   const folded = status.toLowerCase().replace(/[^a-z0-9]+/g, '')
+  if (folded === 'paid' && (visitStatus || '').toLowerCase() === 'patient_responsibility') {
+    return 'paid_patient_responsibility'
+  }
   if (folded === 'arbitration') return 'arbitration'
   if (folded === 'actiontaken' || folded === 'pending') return 'action'
   if (folded === 'submittedwithoutauth') return 'at_risk'
@@ -287,6 +298,12 @@ function emptyCopy(bucket: Bucket, loading: boolean) {
     return {
       title: 'No at risk visits',
       description: 'Visits marked Submitted without Auth appear here.',
+    }
+  }
+  if (bucket === 'paid_patient_responsibility') {
+    return {
+      title: 'No paid patient responsibility visits',
+      description: 'PR-3 visits appear here after Collection Status is set to Paid.',
     }
   }
   return {
@@ -481,7 +498,9 @@ export function CollectionQueueTab() {
       })
       if (data.item) {
         const nextStatus = (data.item.source_visit_status || updates.source_visit_status || '').toLowerCase()
-        const moved = updates.collection_status ? statusTab(updates.collection_status) : null
+        const moved = updates.collection_status
+          ? statusTab(updates.collection_status, row.source_visit_status)
+          : null
         if (nextStatus === 'paid' || nextStatus === 'deduct' || (moved && moved !== bucket)) {
           setItems((cur) => cur.filter((item) => item.work_item_id !== row.work_item_id))
           setTotal((n) => Math.max(0, n - 1))
