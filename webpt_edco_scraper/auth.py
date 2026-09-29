@@ -1102,6 +1102,47 @@ async def list_clinics(page: Page, company_id: str) -> list[ClinicInfo]:
     return clinics
 
 
+_CLINIC_DROPDOWN_WAIT_SEC = 45
+_CLINIC_SWITCH_APPLIES = 2
+
+
+async def _read_clinic_dropdown(page: Page, target_value: str) -> dict:
+    return await page.evaluate(
+        """(targetValue) => {
+            const sel = document.querySelector('#ClinicChange');
+            if (!sel) return {present: false, options: 0, hasTarget: false, value: ''};
+            const values = Array.from(sel.options).map(o => String(o.value || ''));
+            const filled = values.filter(v => v);
+            return {
+                present: true,
+                options: filled.length,
+                hasTarget: values.includes(targetValue),
+                value: String(sel.value || ''),
+            };
+        }""",
+        target_value,
+    )
+
+
+async def _apply_clinic_change(page: Page, target_value: str, user_id: str) -> str:
+    """Set the dropdown only when the target option is already listed."""
+    return await page.evaluate(
+        """([targetValue, userId]) => {
+            const sel = document.querySelector('#ClinicChange');
+            if (!sel) return 'missing';
+            const opt = Array.from(sel.options).find(o => o.value === targetValue);
+            if (!opt) return 'no-option';
+            sel.value = targetValue;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            if (typeof changeClinic !== 'undefined' && changeClinic.change && userId) {
+                changeClinic.change(userId, targetValue);
+            }
+            return 'applied';
+        }""",
+        [target_value, user_id],
+    )
+
+
 async def switch_clinic(
     page: Page,
     *,
@@ -1130,80 +1171,50 @@ async def switch_clinic(
     target_value = f"{company_id},{facility_id}"
     log.info("Switching clinic to %s", target_value)
 
-    changed = await page.evaluate(
-        """([targetValue, userId]) => {
-            const sel = document.querySelector('#ClinicChange');
-            if (!sel) return false;
-            const opt = Array.from(sel.options).find(o => o.value === targetValue);
-            if (!opt) return false;
-            sel.value = targetValue;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            if (typeof changeClinic !== 'undefined' && changeClinic.change && userId) {
-                changeClinic.change(userId, targetValue);
-            }
-            return true;
-        }""",
-        [target_value, user_id or ""],
-    )
-
-    if not changed:
-        log.warning("Clinic switch via JS failed — trying select_option")
-        try:
-            await page.wait_for_selector("#ClinicChange", state="attached", timeout=15000)
-            await page.select_option("#ClinicChange", target_value, timeout=5000)
-            await page.evaluate(
-                "([uid, val]) => { if (typeof changeClinic !== 'undefined') changeClinic.change(uid, val); }",
-                [user_id or "", target_value],
-            )
-        except Exception as exc:
-            raise ClinicSwitchError(
-                f"Could not switch clinic to {target_value}: {exc}"
-            ) from exc
-
-    await asyncio.sleep(2)
-    try:
-        await page.wait_for_load_state("networkidle", timeout=30000)
-    except Exception:
-        pass
-
-    # changeClinic.change often navigates; wait for dropdown to reappear.
+    deadline = time.monotonic() + _CLINIC_DROPDOWN_WAIT_SEC
     actual = ""
-    for _ in range(6):
+    applies = 0
+    announced_wait = False
+    while time.monotonic() < deadline:
         try:
-            await page.wait_for_selector(
-                "#ClinicChange", state="attached", timeout=10000
-            )
+            state = await _read_clinic_dropdown(page, target_value)
         except Exception:
             await _settle_app_page(page)
-        actual = await page.evaluate(
-            """() => {
-                const sel = document.querySelector('#ClinicChange');
-                return sel ? String(sel.value || '') : '';
-            }"""
-        )
+            await asyncio.sleep(1.5)
+            continue
+        actual = str(state.get("value") or "")
         if actual == target_value:
-            break
-        # Soft re-apply if page reloaded with empty/wrong clinic.
-        await page.evaluate(
-            """([targetValue, userId]) => {
-                const sel = document.querySelector('#ClinicChange');
-                if (!sel) return;
-                const opt = Array.from(sel.options).find(o => o.value === targetValue);
-                if (!opt) return;
-                sel.value = targetValue;
-                sel.dispatchEvent(new Event('change', { bubbles: true }));
-                if (typeof changeClinic !== 'undefined' && changeClinic.change && userId) {
-                    changeClinic.change(userId, targetValue);
-                }
-            }""",
-            [target_value, user_id or ""],
-        )
-        await asyncio.sleep(1.5)
+            return
+        if not state.get("hasTarget"):
+            if not announced_wait:
+                log.info(
+                    "Waiting for clinic option %s (dropdown options=%s)",
+                    target_value,
+                    state.get("options"),
+                )
+                announced_wait = True
+            await asyncio.sleep(1.5)
+            continue
+        if applies >= _CLINIC_SWITCH_APPLIES:
+            await asyncio.sleep(1.5)
+            continue
+        applied = await _apply_clinic_change(page, target_value, user_id or "")
+        if applied != "applied":
+            await asyncio.sleep(1.5)
+            continue
+        applies += 1
+        await asyncio.sleep(2)
         try:
-            await page.wait_for_load_state("networkidle", timeout=15000)
+            await page.wait_for_load_state("networkidle", timeout=20000)
         except Exception:
             pass
+        await _settle_app_page(page)
 
+    try:
+        state = await _read_clinic_dropdown(page, target_value)
+        actual = str(state.get("value") or "")
+    except Exception:
+        pass
     if actual != target_value:
         raise ClinicSwitchError(
             f"Clinic switch did not stick: wanted {target_value}, got {actual!r}"

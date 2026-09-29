@@ -317,24 +317,53 @@ async def _download_cases(
         set_pdf_semaphore(asyncio.Semaphore(max(2, min(8, config.max_concurrent_pdfs))))
         current_fac = ""
         failed_fac = ""
+
+        async def open_clinic(facility_id: str):
+            """Switch clinic, and if the page is stuck retry once on a fresh page."""
+            nonlocal page
+            try:
+                await switch_clinic(
+                    page,
+                    company_id=config.company_id,
+                    facility_id=facility_id,
+                )
+                return None
+            except (ClinicSwitchError, Exception) as first_exc:
+                log.warning(
+                    "clinic switch %s failed, retrying on a new page: %s",
+                    facility_id,
+                    first_exc,
+                )
+                try:
+                    await page.close()
+                except Exception:
+                    pass
+                page = await context.new_page()
+                try:
+                    await ensure_authenticated(page, context, config)
+                    await switch_clinic(
+                        page,
+                        company_id=config.company_id,
+                        facility_id=facility_id,
+                    )
+                    return None
+                except (ClinicSwitchError, Exception) as second_exc:
+                    return second_exc
+
         for case in cases:
             fac = case["facility_id"] or "_"
             if failed_fac and fac == failed_fac:
                 skipped_clinic += 1
                 continue
             if fac and fac != "_" and fac != current_fac:
-                try:
-                    await switch_clinic(
-                        page,
-                        company_id=config.company_id,
-                        facility_id=fac,
-                    )
+                switch_exc = await open_clinic(fac)
+                if switch_exc is None:
                     current_fac = fac
                     failed_fac = ""
-                except (ClinicSwitchError, Exception) as exc:
+                else:
                     failed_fac = fac
                     skipped_clinic += 1
-                    record_error(f"clinic switch {fac} failed: {exc}")
+                    record_error(f"clinic switch {fac} failed: {switch_exc}")
                     continue
             fid = case["facility_id"] or fac
             try:
