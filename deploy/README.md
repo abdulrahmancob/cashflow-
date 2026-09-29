@@ -1,9 +1,30 @@
 # RCM Platform — Production Deployment (Minimal & Secure)
 
-**This directory prepares the repository for deployment.**  
-Deployment against a live server is a **separate phase**.
+**Pushing to `main` deploys the changed files onto the live server.**  
+The runbook further down is the one-time host setup. It is not how day-to-day code ships.
 
-Do **not** treat the scripts here as “already ran on the server.”
+## Deploy from GitHub
+
+A push to `main` starts [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) on the self-hosted runner `cashflow-forecast` (`i-0f96ccadee3d5df9e`). [`deploy/scripts/deploy_release.sh`](scripts/deploy_release.sh) copies only files added or modified in that push onto `/opt/cashflow`.
+
+| Change | What runs |
+|--------|-----------|
+| Python under `cashflow_db`, `cashflow_ops`, `cashflow_forecast`, or `cashflow_reconcile` | Recreate the `api` container, then check `http://127.0.0.1/ready` |
+| `deploy/Dockerfile` or an API `requirements.txt` | Rebuild the API image, then recreate `api` |
+| `rcm_portal` source, `package.json`, or the Vite config | `npm ci && npm run build` on the server tree, then copy `dist` to `/data/portal` |
+| `cashflow_db/sql/` | `python -m cashflow_db migrate`, then recreate `api` |
+| `deploy/nginx/` | Reload nginx |
+| Scripts, docs, or tests only | Copy the files. Leave the running stack alone |
+
+The portal build uses the server's `rcm_portal` tree after the new files are copied, so pages that exist only on the server stay in the build.
+
+What a push does not do:
+
+- It does not delete a file that exists only on the server.
+- It does not replace `deploy/.env`, Snowflake keys, or session files.
+- It does not restart Postgres, the worker, the scraper, or case drain.
+
+Other branches are not deployed. Watch the result under the repo's Actions tab. The job log ends with `DEPLOY_RELEASE_DONE` and `api_recreated=0` or `1`.
 
 ## Architecture
 
@@ -13,6 +34,8 @@ Internet → nginx :80/:443 → api :8787 → postgres (internal only)
 Host cron 02:00 Africa/Cairo
   → docker compose --profile tools run --rm scraper
   → docker compose --profile tools run --rm worker
+Host cron 18:00 Africa/Cairo
+  → docker compose --profile tools run --rm scraper  (note-catchup, last 7 days)
 ```
 
 | Service | Image | Role |
@@ -39,6 +62,8 @@ deploy/
   bootstrap_host.sh          # host prep — run only in Deployment phase
   scripts/backup.sh
   scripts/nightly_pipeline.sh
+  scripts/note_catchup.sh
+  scripts/deploy_release.sh   # copies a main push onto /opt/cashflow
   README.md
 ```
 
@@ -83,7 +108,11 @@ Env vars inside containers point at `/data/...` (see `docker-compose.yml`).
 
 ## Deployment runbook (execute later — not now)
 
-Target reference host: Ubuntu 24.04, e.g. `147.93.138.73` (12 vCPU / 47GB / 348GB).
+Target reference host: Ubuntu 24.04 (12 vCPU / 47GB / 348GB). Open a shell with:
+
+```bash
+aws ssm start-session --profile cashflow --target i-0f96ccadee3d5df9e
+```
 
 ### 1) Bootstrap host
 
@@ -134,8 +163,16 @@ docker compose --env-file .env --profile tools run --rm worker \
 Ensure host TZ is `Africa/Cairo`, then:
 
 ```cron
-0 2 * * * /opt/cashflow/deploy/scripts/nightly_pipeline.sh >> /data/logs/nightly.log 2>&1
-30 3 * * * /opt/cashflow/deploy/scripts/backup.sh >> /data/logs/backup.log 2>&1
+0 2 * * * bash /opt/cashflow/deploy/scripts/nightly_pipeline.sh >> /data/logs/nightly.log 2>&1
+30 3 * * * bash /opt/cashflow/deploy/scripts/backup.sh >> /data/logs/backup.log 2>&1
+0 18 * * * /opt/cashflow/deploy/scripts/note_catchup.sh >> /data/logs/note_catchup.log 2>&1
+```
+
+Install the nightly job once (abdu crontab only — do not also install it as root):
+
+```bash
+chmod +x /opt/cashflow/deploy/scripts/nightly_pipeline.sh
+sed -i 's/\r$//' /opt/cashflow/deploy/scripts/nightly_pipeline.sh
 ```
 
 ### 8) TLS (optional)
@@ -160,4 +197,4 @@ docker compose build api
 
 ## Out of scope
 
-Kubernetes, Swarm, CI/CD, Prometheus, Grafana, ELK, Loki, Redis, RabbitMQ, multi-node, autoscaling.
+Kubernetes, Swarm, Prometheus, Grafana, ELK, Loki, Redis, RabbitMQ, multi-node, autoscaling.
