@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import logging
 import os
@@ -30,6 +31,19 @@ from cashflow_db.config import CASE_PIPELINE_DIR  # noqa: E402
 from cashflow_db.db import connect  # noqa: E402
 
 log = logging.getLogger("note_catchup")
+
+_LOGGED_ERRORS = 20
+
+
+def chart_list_extra(parameter_names, not_before: str | None) -> dict[str, str]:
+    """Pass not_before only when this image's chart listing accepts it.
+
+    The scraper image bakes webpt_edco_scraper and is not rebuilt on deploy.
+    Wanted dates are still filtered after the list.
+    """
+    if not_before and "not_before" in parameter_names:
+        return {"not_before": not_before}
+    return {}
 
 
 MISSING_SQL = """
@@ -271,7 +285,20 @@ async def _download_cases(
     config = WebPTConfig.from_env()
     downloaded: list[str] = []
     skipped = 0
+    skipped_clinic = 0
     errors: list[str] = []
+    logged_errors = 0
+    fetch_params = inspect.signature(fetch_patient_chart_notes).parameters
+    if "not_before" not in fetch_params:
+        log.info("chart listing has no not_before filter; dates are filtered after listing")
+
+    def record_error(message: str) -> None:
+        nonlocal logged_errors
+        errors.append(message)
+        if logged_errors < _LOGGED_ERRORS:
+            logged_errors += 1
+            log.warning("%s", message)
+
     if dry_run:
         return {
             "downloaded": [],
@@ -289,8 +316,12 @@ async def _download_cases(
         await ensure_authenticated(page, context, config)
         set_pdf_semaphore(asyncio.Semaphore(max(2, min(8, config.max_concurrent_pdfs))))
         current_fac = ""
+        failed_fac = ""
         for case in cases:
             fac = case["facility_id"] or "_"
+            if failed_fac and fac == failed_fac:
+                skipped_clinic += 1
+                continue
             if fac and fac != "_" and fac != current_fac:
                 try:
                     await switch_clinic(
@@ -299,14 +330,18 @@ async def _download_cases(
                         facility_id=fac,
                     )
                     current_fac = fac
+                    failed_fac = ""
                 except (ClinicSwitchError, Exception) as exc:
-                    log.warning("clinic switch %s failed: %s", fac, exc)
+                    failed_fac = fac
+                    skipped_clinic += 1
+                    record_error(f"clinic switch {fac} failed: {exc}")
+                    continue
             fid = case["facility_id"] or fac
             try:
                 pid = int(case["patient_id"])
                 cid = int(case["case_id"])
             except (TypeError, ValueError):
-                errors.append(f"bad ids case={case['case_id']} pid={case['patient_id']}")
+                record_error(f"bad ids case={case['case_id']} pid={case['patient_id']}")
                 continue
             wanted_dos = set(case["dos"])
             not_before = min(wanted_dos) if wanted_dos else ""
@@ -318,10 +353,10 @@ async def _download_cases(
                     page=page,
                     config=config,
                     prefer_http=True,
-                    not_before=not_before or None,
+                    **chart_list_extra(fetch_params, not_before or None),
                 )
             except Exception as exc:
-                errors.append(f"list {fid}/{cid}: {exc}")
+                record_error(f"list {fid}/{cid}: {exc}")
                 continue
             targets = [
                 n
@@ -347,7 +382,7 @@ async def _download_cases(
             results = await bounded_gather(factories) if factories else []
             for res in results:
                 if res.get("error"):
-                    errors.append(str(res["error"]))
+                    record_error(str(res["error"]))
                 elif res.get("skipped"):
                     skipped += 1
                     if res.get("path"):
@@ -364,10 +399,11 @@ async def _download_cases(
             _ = note_subdir_for_type
         await save_storage_state(context)
         log.info(
-            "download done pdfs=%s skipped=%s errors=%s cases=%s",
+            "download done pdfs=%s skipped=%s errors=%s skipped_clinic_cases=%s cases=%s",
             len(downloaded),
             skipped,
             len(errors),
+            skipped_clinic,
             len(cases),
         )
     finally:
@@ -383,6 +419,7 @@ async def _download_cases(
         "skipped": skipped,
         "errors": errors[:50],
         "error_count": len(errors),
+        "skipped_clinic_cases": skipped_clinic,
         "cases": len(cases),
     }
 
@@ -632,6 +669,8 @@ def run(
                 "pdfs": len(dl.get("downloaded") or []),
                 "skipped_existing": dl.get("skipped"),
                 "errors": dl.get("error_count") or len(dl.get("errors") or []),
+                "error_samples": (dl.get("errors") or [])[:_LOGGED_ERRORS],
+                "skipped_clinic_cases": dl.get("skipped_clinic_cases") or 0,
             }
             if dry_run:
                 summary["status"] = "dry_run"
