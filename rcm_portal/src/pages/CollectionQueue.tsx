@@ -556,37 +556,39 @@ export function CollectionQueueTab() {
   const months = useMemo(() => meta?.filters.month || [], [meta])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
       {toast && (
         <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
       )}
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">{total.toLocaleString()} visits</p>
-        <Button variant="secondary" type="button" onClick={exportExcel}>
-          <Download className="h-4 w-4" />
-          Export Excel
-        </Button>
-      </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="flex shrink-0 flex-col gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
-          <div className="flex w-fit gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            {BUCKETS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  setPage(1)
-                  setBucket(key)
-                }}
-                className={`rounded-md px-3 py-1 text-sm font-medium transition ${
-                  bucket === key
-                    ? 'bg-white text-gray-900 shadow-xs dark:bg-gray-900 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex w-fit gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+              {BUCKETS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setPage(1)
+                    setBucket(key)
+                  }}
+                  className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+                    bucket === key
+                      ? 'bg-white text-gray-900 shadow-xs dark:bg-gray-900 dark:text-white'
+                      : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-500">{total.toLocaleString()} visits</p>
+              <Button variant="secondary" size="sm" type="button" onClick={exportExcel}>
+                <Download className="h-4 w-4" />
+                Export Excel
+              </Button>
+            </div>
           </div>
           <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-2">
           <Input
