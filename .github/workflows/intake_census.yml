@@ -1,0 +1,30 @@
+name: Intake census
+
+on:
+  workflow_dispatch:
+
+jobs:
+  census:
+    runs-on: [self-hosted, cashflow]
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Classify intake forms
+        run: |
+          set -euo pipefail
+          mkdir -p /data/exports/intake_census/text /data/ocr/tessdata
+          if ! chown -R 10001:10001 /data/exports/intake_census /data/ocr/tessdata 2>/dev/null; then
+            sudo chown -R 10001:10001 /data/exports/intake_census /data/ocr/tessdata
+          fi
+          # The scraper image bakes deploy/ at build time. This push does not
+          # rebuild that image, so mount the checked-out script over it.
+          docker compose \
+            --project-directory /opt/cashflow/deploy \
+            -f /opt/cashflow/deploy/docker-compose.yml \
+            --env-file /opt/cashflow/deploy/.env \
+            --profile tools \
+            run --rm --no-deps \
+            -v "${GITHUB_WORKSPACE}/deploy/scripts/intake_census.py:/app/deploy/scripts/intake_census.py:ro" \
+            scraper \
+            python -u /app/deploy/scripts/intake_census.py
