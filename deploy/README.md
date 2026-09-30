@@ -34,8 +34,8 @@ Internet → nginx :80/:443 → api :8787 → postgres (internal only)
 Host cron 02:00 Africa/Cairo
   → docker compose --profile tools run --rm scraper
   → docker compose --profile tools run --rm worker
-Host cron 18:00 Africa/Cairo
-  → docker compose --profile tools run --rm scraper  (note-catchup, last 7 days)
+Host cron 15:00 Africa/Cairo
+  → three scraper containers, one WebPT account each, whole clinics split across them (note-catchup, last 7 days)
 ```
 
 | Service | Image | Role |
@@ -165,7 +165,7 @@ Ensure host TZ is `Africa/Cairo`, then:
 ```cron
 0 2 * * * bash /opt/cashflow/deploy/scripts/nightly_pipeline.sh >> /data/logs/nightly.log 2>&1
 30 3 * * * bash /opt/cashflow/deploy/scripts/backup.sh >> /data/logs/backup.log 2>&1
-0 18 * * * /opt/cashflow/deploy/scripts/note_catchup.sh >> /data/logs/note_catchup.log 2>&1
+0 15 * * * /opt/cashflow/deploy/scripts/note_catchup.sh >> /data/logs/note_catchup.log 2>&1
 ```
 
 Install the nightly job once (abdu crontab only — do not also install it as root):
