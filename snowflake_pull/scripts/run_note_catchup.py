@@ -172,6 +172,20 @@ def _order_cases(cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
     )
 
 
+def select_cases(
+    cases: list[dict[str, Any]],
+    shard_index: int,
+    shard_count: int,
+    only_facilities: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Use an explicit clinic list when given. Otherwise bin-pack whole clinics."""
+    wanted = {str(facility).strip() for facility in (only_facilities or []) if str(facility).strip()}
+    if not wanted:
+        return _slice_cases(cases, shard_index, shard_count)
+    chosen = [case for case in cases if (case.get("facility_id") or "") in wanted]
+    return _order_cases(chosen)
+
+
 def _slice_cases(
     cases: list[dict[str, Any]], shard_index: int, shard_count: int
 ) -> list[dict[str, Any]]:
@@ -592,6 +606,7 @@ def run(
     since: str | None = None,
     shard_index: int = 0,
     shard_count: int = 1,
+    only_facilities: list[str] | None = None,
     out_dir: Path | None = None,
     workers: int | None = None,
     dry_run: bool = False,
@@ -599,7 +614,12 @@ def run(
 ) -> dict[str, Any]:
     base = Path(out_dir or CASE_PIPELINE_DIR)
     extract_dir = base / "extracted" / "catchup"
-    if shard_count > 1:
+    pinned = [str(facility).strip() for facility in (only_facilities or []) if str(facility).strip()]
+    if pinned:
+        tag = min(pinned)
+        live_dir = extract_dir / f"live-fac-{tag}"
+        summary_dir = extract_dir / f"shard-fac-{tag}"
+    elif shard_count > 1:
         live_dir = extract_dir / f"live-{shard_index}"
         summary_dir = extract_dir / f"shard-{shard_index}"
     else:
@@ -610,7 +630,7 @@ def run(
     on_date = ",".join(on_dates)
     missing = query_missing_visits(days=days, since=since)
     all_cases = _group_cases(missing)
-    cases = _slice_cases(all_cases, shard_index, shard_count)
+    cases = select_cases(all_cases, shard_index, shard_count, pinned)
     shard_visits = sum(len(case["dos"]) for case in cases)
     shard_facilities = len({case.get("facility_id") or "" for case in cases})
     summary: dict[str, Any] = {
@@ -624,6 +644,7 @@ def run(
         "since": since,
         "shard_index": shard_index,
         "shard_count": shard_count,
+        "only_facilities": pinned,
         "on_date": on_date or None,
         "extract_dir": str(summary_dir),
         "loaded_notes": 0,
@@ -631,7 +652,7 @@ def run(
         "publish_errors": 0,
     }
     log.info(
-        "note-catchup missing_visits=%s cases=%s facilities=%s ocr_workers=%s days=%s since=%s shard=%s/%s on_date=%s",
+        "note-catchup missing_visits=%s cases=%s facilities=%s ocr_workers=%s days=%s since=%s shard=%s/%s only_facilities=%s on_date=%s",
         shard_visits,
         len(cases),
         shard_facilities,
@@ -640,6 +661,7 @@ def run(
         since or "-",
         shard_index,
         shard_count,
+        ",".join(pinned) or "-",
         on_date or "-",
     )
     notes: list[dict[str, str]] = []
@@ -735,6 +757,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--since", default=None, help="Inclusive start date YYYY-MM-DD; end is CURRENT_DATE")
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--shard-count", type=int, default=1)
+    parser.add_argument(
+        "--only-facility",
+        action="append",
+        default=[],
+        help="Limit the run to this clinic id. Repeat for each clinic. Skips weight-based sharding.",
+    )
     parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
@@ -755,6 +783,7 @@ def main(argv: list[str] | None = None) -> int:
         since=args.since,
         shard_index=args.shard_index,
         shard_count=args.shard_count,
+        only_facilities=args.only_facility,
         out_dir=args.out_dir,
         workers=args.workers,
         dry_run=args.dry_run,

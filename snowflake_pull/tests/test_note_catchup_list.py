@@ -31,3 +31,14 @@ def test_chart_list_extra_skips_blank_cutoff() -> None:
     module = _load()
     assert module.chart_list_extra({"not_before"}, None) == {}
     assert module.chart_list_extra({"not_before"}, "") == {}
+
+
+def test_select_cases_keeps_only_named_clinics() -> None:
+    module = _load()
+    cases = [
+        {"facility_id": "200", "patient_id": "2", "case_id": "b", "dos": {"2026-02-01"}},
+        {"facility_id": "100", "patient_id": "1", "case_id": "a", "dos": {"2026-01-01"}},
+        {"facility_id": "300", "patient_id": "3", "case_id": "c", "dos": {"2026-03-01"}},
+    ]
+    chosen = module.select_cases(cases, 0, 3, ["300", "100"])
+    assert [case["facility_id"] for case in chosen] == ["100", "300"]
