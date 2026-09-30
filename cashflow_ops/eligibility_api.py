@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import io
+import os
+import tempfile
 import threading
+import uuid
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
 from cashflow_ops.security import (
@@ -68,6 +73,60 @@ def _export_filename(queue: str) -> str:
     if queue in {"pr3", "patient_responsibility"}:
         return "patient_responsibility.xlsx"
     return "eligibility_sheet.xlsx"
+
+
+# The API container mounts /tmp as a 256MB tmpfs. An all-months workbook
+# overflows that and the worker dies, which nginx reports as 502.
+_EXPORT_DISK = Path("/data/logs")
+_export_temp_lock = threading.Lock()
+_XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def export_workdir() -> Path:
+    """Writable directory for sheet workbooks, outside the 256MB tmpfs."""
+    if _EXPORT_DISK.is_dir() and os.access(_EXPORT_DISK, os.W_OK):
+        return _EXPORT_DISK
+    return Path(tempfile.gettempdir())
+
+
+def _discard_export_file(path: Path | str) -> None:
+    try:
+        Path(path).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+@contextmanager
+def _openpyxl_temp_on_export_disk() -> Iterator[Path]:
+    """Point openpyxl's temp XML at the export disk for this build."""
+    from openpyxl.worksheet._writer import ALL_TEMP_FILES
+
+    work = export_workdir()
+    work.mkdir(parents=True, exist_ok=True)
+    with _export_temp_lock:
+        previous = tempfile.tempdir
+        tempfile.tempdir = str(work)
+        marked = len(ALL_TEMP_FILES)
+        try:
+            yield work
+        except Exception:
+            for leftover in ALL_TEMP_FILES[marked:]:
+                _discard_export_file(leftover)
+            del ALL_TEMP_FILES[marked:]
+            raise
+        finally:
+            tempfile.tempdir = previous
+
+
+def save_export_workbook(wb: Any, directory: Path) -> Path:
+    """Write the workbook to disk. Remove a partial file if save fails."""
+    path = directory / f"eligibility-export-{uuid.uuid4().hex}.xlsx"
+    try:
+        wb.save(path)
+    except Exception:
+        _discard_export_file(path)
+        raise
+    return path
 
 
 _generate_lock = threading.Lock()
@@ -380,7 +439,7 @@ def export_items(
     collection_status: list[str] | None = Query(None),
     root_cause: list[str] | None = Query(None),
     user: AuthUser = Depends(get_current_user),
-) -> StreamingResponse:
+) -> FileResponse:
     from cashflow_db.repository import connection, eligibility
 
     _require_queue_view(queue, user)
@@ -389,47 +448,53 @@ def export_items(
     except ImportError as exc:
         raise HTTPException(status_code=500, detail="openpyxl required") from exc
 
-    wb = Workbook(write_only=True)
-    if queue == "collection":
-        sheet_name = "Collection"
-    elif queue in {"pr3", "patient_responsibility"}:
-        sheet_name = "Patient Responsibility"
-    else:
-        sheet_name = "Eligibility Sheet"
-    ws = wb.create_sheet(sheet_name)
-    ws.append(eligibility.sheet_export_headers(queue))
     assigned = parse_uuid_list(assigned_to)
     # sort_by/sort_dir stay on the route so existing export URLs still
     # validate. The file is walked by work_item_id so an all-months export
     # does not recount or OFFSET through the whole sheet.
     _ = (sort_by, sort_dir)
-    with connection() as conn:
-        for row in eligibility.iter_export_work_items(
-            conn,
-            q=q,
-            facility=facility,
-            month=month,
-            insurance=insurance,
-            status=status,
-            visit_status=visit_status,
-            check_date=check_date,
-            assigned_to=assigned,
-            unassigned=unassigned,
-            queue=queue,
-            bucket=bucket,
-            collection_status=collection_status,
-            root_cause=root_cause,
-        ):
-            ws.append(eligibility.sheet_export_row(row, queue))
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
-    return StreamingResponse(
-        buf,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f"attachment; filename={_export_filename(queue)}",
-        },
+    path: Path | None = None
+    try:
+        with _openpyxl_temp_on_export_disk() as directory:
+            wb = Workbook(write_only=True)
+            if queue == "collection":
+                sheet_name = "Collection"
+            elif queue in {"pr3", "patient_responsibility"}:
+                sheet_name = "Patient Responsibility"
+            else:
+                sheet_name = "Eligibility Sheet"
+            ws = wb.create_sheet(sheet_name)
+            ws.append(eligibility.sheet_export_headers(queue))
+            with connection() as conn:
+                for row in eligibility.iter_export_work_items(
+                    conn,
+                    q=q,
+                    facility=facility,
+                    month=month,
+                    insurance=insurance,
+                    status=status,
+                    visit_status=visit_status,
+                    check_date=check_date,
+                    assigned_to=assigned,
+                    unassigned=unassigned,
+                    queue=queue,
+                    bucket=bucket,
+                    collection_status=collection_status,
+                    root_cause=root_cause,
+                ):
+                    ws.append(eligibility.sheet_export_row(row, queue))
+            path = save_export_workbook(wb, directory)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if path is not None:
+            _discard_export_file(path)
+        raise HTTPException(status_code=500, detail="Eligibility export failed") from exc
+    return FileResponse(
+        path,
+        media_type=_XLSX_MEDIA,
+        filename=_export_filename(queue),
+        background=BackgroundTask(_discard_export_file, path),
     )
 
 
