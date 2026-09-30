@@ -1110,55 +1110,181 @@ END
 """
 
 
-def overlay_tracker_dates(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> None:
+_TRACKER_DATE_INDEX_SQL = f"""
+WITH src AS (
+    SELECT txn_date, unnest(ARRAY[eft_1, eft_2, check_reference]) AS ref
+    FROM billing.transaction_tracker_row
+    WHERE deleted_at IS NULL
+),
+norm AS (
+    SELECT txn_date, {_COMPACT_REF_SQL} AS compact
+    FROM src
+    WHERE ref IS NOT NULL AND btrim(ref) <> ''
+)
+SELECT compact, min(txn_date) AS txn_date
+FROM norm
+WHERE compact <> ''
+GROUP BY compact
+"""
+
+
+def _tracker_date_index(recs: list[dict[str, Any]]) -> dict[str, str]:
+    by_key: dict[str, str] = {}
+    for rec in recs:
+        compact = compact_check_key(rec.get("compact"))
+        dos_key = _dos_key(rec.get("txn_date"))
+        if compact and dos_key:
+            by_key[compact] = dos_key
+    return by_key
+
+
+def load_export_tracker_dates(conn: psycopg.Connection) -> dict[str, str]:
+    """One tracker scan for a whole export, instead of one scan per page."""
+    return _tracker_date_index(client.fetchall(conn, _TRACKER_DATE_INDEX_SQL))
+
+
+def overlay_tracker_dates(
+    conn: psycopg.Connection,
+    rows: list[dict[str, Any]],
+    *,
+    index: dict[str, str] | None = None,
+) -> None:
     """Copy min(txn_date) from the tracker for each row's check number."""
     if not rows:
         return
-    keys: list[str] = []
-    seen: set[str] = set()
-    for row in rows:
-        key = compact_check_key(row.get("check_number"))
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        keys.append(key)
-    if not keys:
-        by_key: dict[str, str] = {}
-    else:
-        tracker_rows = client.fetchall(
-            conn,
-            f"""
-            WITH src AS (
-                SELECT txn_date, unnest(ARRAY[eft_1, eft_2, check_reference]) AS ref
-                FROM billing.transaction_tracker_row
-                WHERE deleted_at IS NULL
-            ),
-            norm AS (
-                SELECT txn_date, {_COMPACT_REF_SQL} AS compact
-                FROM src
-                WHERE ref IS NOT NULL AND btrim(ref) <> ''
+    if index is None:
+        keys: list[str] = []
+        seen: set[str] = set()
+        for row in rows:
+            key = compact_check_key(row.get("check_number"))
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            keys.append(key)
+        if not keys:
+            index = {}
+        else:
+            index = _tracker_date_index(
+                client.fetchall(
+                    conn,
+                    f"""
+                    WITH src AS (
+                        SELECT txn_date, unnest(ARRAY[eft_1, eft_2, check_reference]) AS ref
+                        FROM billing.transaction_tracker_row
+                        WHERE deleted_at IS NULL
+                    ),
+                    norm AS (
+                        SELECT txn_date, {_COMPACT_REF_SQL} AS compact
+                        FROM src
+                        WHERE ref IS NOT NULL AND btrim(ref) <> ''
+                    )
+                    SELECT compact, min(txn_date) AS txn_date
+                    FROM norm
+                    WHERE compact = ANY(%s::text[])
+                    GROUP BY compact
+                    """,
+                    (keys,),
+                )
             )
-            SELECT compact, min(txn_date) AS txn_date
-            FROM norm
-            WHERE compact = ANY(%s::text[])
-            GROUP BY compact
-            """,
-            (keys,),
-        )
-        by_key = {}
-        for rec in tracker_rows:
-            compact = compact_check_key(rec.get("compact"))
-            dos_key = _dos_key(rec.get("txn_date"))
-            if compact and dos_key:
-                by_key[compact] = dos_key
     for row in rows:
         key = compact_check_key(row.get("check_number"))
-        row["tracker_date"] = by_key.get(key) if key else None
+        row["tracker_date"] = index.get(key) if key else None
 
 
-def overlay_eft_totals(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> None:
+_EFT_TOTAL_INDEX_SQL = f"""
+WITH tracker_src AS (
+    SELECT eft_1 AS ref, amount
+    FROM billing.transaction_tracker_row
+    WHERE deleted_at IS NULL AND amount IS NOT NULL
+    UNION ALL
+    SELECT eft_2, amount
+    FROM billing.transaction_tracker_row
+    WHERE deleted_at IS NULL AND amount IS NOT NULL
+    UNION ALL
+    SELECT check_reference, amount
+    FROM billing.transaction_tracker_row
+    WHERE deleted_at IS NULL AND amount IS NOT NULL
+),
+tracker AS (
+    SELECT {_COMPACT_REF_SQL} AS compact, max(amount)::numeric AS amount
+    FROM tracker_src
+    WHERE ref IS NOT NULL AND btrim(ref) <> ''
+    GROUP BY 1
+),
+eob_src AS (
+    SELECT check_eft_num AS ref, paid_amount_sum AS amount
+    FROM billing.eob_check
+    WHERE paid_amount_sum IS NOT NULL
+),
+eob AS (
+    SELECT {_COMPACT_REF_SQL} AS compact, max(amount)::numeric AS amount
+    FROM eob_src
+    WHERE ref IS NOT NULL AND btrim(ref) <> ''
+    GROUP BY 1
+),
+waystar_src AS (
+    SELECT total_remit_amount, unnest(remit_numbers) AS ref
+    FROM billing.waystar_claim
+    WHERE COALESCE(total_remit_amount, 0) > 0
+      AND COALESCE(array_length(remit_numbers, 1), 0) > 0
+),
+waystar AS (
+    SELECT {_COMPACT_REF_SQL} AS compact,
+           sum(total_remit_amount)::numeric AS amount
+    FROM waystar_src
+    WHERE ref IS NOT NULL AND btrim(ref) <> ''
+    GROUP BY 1
+),
+keys AS (
+    SELECT compact FROM tracker
+    UNION
+    SELECT compact FROM eob
+    UNION
+    SELECT compact FROM waystar
+)
+SELECT k.compact,
+       COALESCE(t.amount, e.amount, y.amount) AS eft_total
+FROM keys k
+LEFT JOIN tracker t ON t.compact = k.compact
+LEFT JOIN eob e ON e.compact = k.compact
+LEFT JOIN waystar y ON y.compact = k.compact
+"""
+
+
+def _eft_total_index(recs: list[dict[str, Any]]) -> dict[str, float]:
+    by_key: dict[str, float] = {}
+    for rec in recs:
+        compact = compact_check_key(rec.get("compact"))
+        amount = _as_number(rec.get("eft_total"))
+        if compact and amount is not None:
+            by_key[compact] = amount
+    return by_key
+
+
+def load_export_eft_totals(conn: psycopg.Connection) -> dict[str, float]:
+    """One tracker, EOB, and Waystar scan for a whole export."""
+    return _eft_total_index(client.fetchall(conn, _EFT_TOTAL_INDEX_SQL))
+
+
+def _apply_eft_totals(rows: list[dict[str, Any]], by_key: dict[str, float]) -> None:
+    for row in rows:
+        for num_key, amt_key in _CHECK_SLOT_KEYS:
+            key = compact_check_key(row.get(num_key))
+            if key and key in by_key:
+                row[amt_key] = by_key[key]
+
+
+def overlay_eft_totals(
+    conn: psycopg.Connection,
+    rows: list[dict[str, Any]],
+    *,
+    index: dict[str, float] | None = None,
+) -> None:
     """Replace check-amount columns with the full EFT (tracker, then EOB, then Waystar)."""
     if not rows:
+        return
+    if index is not None:
+        _apply_eft_totals(rows, index)
         return
     keys: list[str] = []
     seen: set[str] = set()
@@ -1229,17 +1355,7 @@ def overlay_eft_totals(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> 
         """,
         (keys,),
     )
-    by_key: dict[str, float] = {}
-    for rec in recs:
-        compact = compact_check_key(rec.get("compact"))
-        amount = _as_number(rec.get("eft_total"))
-        if compact and amount is not None:
-            by_key[compact] = amount
-    for row in rows:
-        for num_key, amt_key in _CHECK_SLOT_KEYS:
-            key = compact_check_key(row.get(num_key))
-            if key and key in by_key:
-                row[amt_key] = by_key[key]
+    _apply_eft_totals(rows, _eft_total_index(recs))
 
 
 def overlay_pr1_reductions(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> None:
@@ -2628,6 +2744,9 @@ _EXPORT_BATCH = 2000
 def _finish_work_item_rows(
     conn: psycopg.Connection,
     rows: list[dict[str, Any]],
+    *,
+    tracker_dates: dict[str, str] | None = None,
+    eft_totals: dict[str, float] | None = None,
 ) -> list[dict[str, Any]]:
     """Apply the same overlays the sheet list uses, then drop raw context."""
     overlay_live_sf(conn, rows)
@@ -2638,8 +2757,8 @@ def _finish_work_item_rows(
     overlay_denial_reasons(conn, rows)
     for row in rows:
         attach_sheet_fields(row)
-    overlay_tracker_dates(conn, rows)
-    overlay_eft_totals(conn, rows)
+    overlay_tracker_dates(conn, rows, index=tracker_dates)
+    overlay_eft_totals(conn, rows, index=eft_totals)
     overlay_ledger_totals(conn, rows)
     items: list[dict[str, Any]] = []
     for row in rows:
@@ -2802,6 +2921,8 @@ def iter_export_work_items(
         root_cause=root_cause,
     )
     batch_size = min(max(1, batch_size), _EXPORT_BATCH)
+    tracker_dates = load_export_tracker_dates(conn)
+    eft_totals = load_export_eft_totals(conn)
     after_id: Any = None
     while True:
         rows = client.fetchall(
@@ -2823,7 +2944,12 @@ def iter_export_work_items(
         )
         if not rows:
             break
-        yield from _finish_work_item_rows(conn, rows)
+        yield from _finish_work_item_rows(
+            conn,
+            rows,
+            tracker_dates=tracker_dates,
+            eft_totals=eft_totals,
+        )
         if len(rows) < batch_size:
             break
         after_id = rows[-1]["work_item_id"]
