@@ -5281,6 +5281,76 @@ def assert_paid_has_manual_payment(item: dict[str, Any], updates: dict[str, Any]
     raise ValueError("Enter Insurance Payment before marking the visit Paid")
 
 
+def _collection_membership_bucket(
+    conn: psycopg.Connection,
+    work_item_id: str,
+    collection_status: str,
+) -> str | None:
+    """Tab for the visit's current Collection Status, including paid PR-3."""
+    bucket = collection_status_bucket(collection_status)
+    if (
+        bucket is None
+        and fold_label(collection_status) == "paid"
+        and work_item_has_pr3(conn, work_item_id)
+    ):
+        return "paid_patient_responsibility"
+    return bucket
+
+
+def _rehome_collection_member(
+    conn: psycopg.Connection,
+    work_item_id: str,
+    bucket: str | None,
+) -> None:
+    """Replace Collection tab membership after a status edit.
+
+    A routed Collection Status wins. Otherwise the visit lands on Denied
+    (including collection and unpaid PR-3) or Overdue when those rules match.
+    """
+    client.execute(
+        conn,
+        "DELETE FROM analytics.collection_queue_member WHERE work_item_id = %s::uuid",
+        (work_item_id,),
+    )
+    if bucket:
+        client.execute(
+            conn,
+            """
+            INSERT INTO analytics.collection_queue_member (bucket, work_item_id)
+            VALUES (%s, %s::uuid)
+            ON CONFLICT DO NOTHING
+            """,
+            (bucket, work_item_id),
+        )
+        return
+    for home_bucket, home_rule in (
+        (
+            "denied",
+            f"""(
+                (({DENIED_VISIT_SQL}) OR ({COLLECTION_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))
+                AND NOT ({ROUTED_COLLECTION_SQL})
+                AND NOT ({PR3_PAID_COLLECTION_SQL})
+            )""",
+        ),
+        (
+            "overdue",
+            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL})",
+        ),
+    ):
+        client.execute(
+            conn,
+            f"""
+            INSERT INTO analytics.collection_queue_member (bucket, work_item_id)
+            SELECT %s, wi.work_item_id
+            FROM ops.eligibility_work_item wi
+            WHERE wi.work_item_id = %s::uuid
+              AND {home_rule}
+            ON CONFLICT DO NOTHING
+            """,
+            (home_bucket, work_item_id),
+        )
+
+
 def patch_work_item(
     conn: psycopg.Connection,
     work_item_id: str,
@@ -5420,49 +5490,16 @@ def patch_work_item(
             "DELETE FROM analytics.collection_queue_member WHERE work_item_id = %s::uuid",
             (work_item_id,),
         )
-    elif "collection_status" in updates:
-        client.execute(
-            conn,
-            "DELETE FROM analytics.collection_queue_member WHERE work_item_id = %s::uuid",
-            (work_item_id,),
-        )
-        if routed:
-            client.execute(
-                conn,
-                """
-                INSERT INTO analytics.collection_queue_member (bucket, work_item_id)
-                VALUES (%s, %s::uuid)
-                ON CONFLICT DO NOTHING
-                """,
-                (routed, work_item_id),
-            )
+    elif "source_visit_status" in updates or "collection_status" in updates:
+        if "collection_status" in updates:
+            bucket = routed
         else:
-            for home_bucket, home_rule in (
-                (
-                    "denied",
-                    f"""(
-                        (({DENIED_VISIT_SQL}) OR ({COLLECTION_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))
-                        AND NOT ({ROUTED_COLLECTION_SQL})
-                        AND NOT ({PR3_PAID_COLLECTION_SQL})
-                    )""",
-                ),
-                (
-                    "overdue",
-                    f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL})",
-                ),
-            ):
-                client.execute(
-                    conn,
-                    f"""
-                    INSERT INTO analytics.collection_queue_member (bucket, work_item_id)
-                    SELECT %s, wi.work_item_id
-                    FROM ops.eligibility_work_item wi
-                    WHERE wi.work_item_id = %s::uuid
-                      AND {home_rule}
-                    ON CONFLICT DO NOTHING
-                    """,
-                    (home_bucket, work_item_id),
-                )
+            bucket = _collection_membership_bucket(
+                conn,
+                work_item_id,
+                str(new_ov.get("collection_status") or ""),
+            )
+        _rehome_collection_member(conn, work_item_id, bucket)
     return get_work_item(conn, work_item_id)
 
 

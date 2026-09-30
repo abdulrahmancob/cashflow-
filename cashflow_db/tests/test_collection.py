@@ -146,6 +146,34 @@ def test_collection_refresh_keeps_bucket_rules():
     assert "manual_overrides->>'source_visit_status'" in refresh_fn
 
 
+def test_visit_status_leave_deduct_rehomes_collection_member():
+    src = (ROOT / "cashflow_db" / "repository" / "eligibility.py").read_text(
+        encoding="utf-8"
+    )
+    patch_fn = src.split("def patch_work_item", 1)[1].split("\ndef ", 1)[0]
+    assert '"paid", "deduct"' in patch_fn
+    paid_branch, rest = patch_fn.split('in ("paid", "deduct"):', 1)[1].split(
+        "elif", 1
+    )
+    assert "DELETE FROM analytics.collection_queue_member" in paid_branch
+    assert "_rehome_collection_member" not in paid_branch
+    assert "INSERT INTO analytics.collection_queue_member" not in paid_branch
+    assert '"source_visit_status" in updates' in rest
+    assert "_collection_membership_bucket" in rest
+    assert "_rehome_collection_member" in rest
+
+    helper = src.split("def _rehome_collection_member", 1)[1].split("\ndef ", 1)[0]
+    assert "DELETE FROM analytics.collection_queue_member" in helper
+    assert "INSERT INTO analytics.collection_queue_member" in helper
+    assert "DENIED_VISIT_SQL" in helper
+    assert "COLLECTION_VISIT_SQL" in helper
+    assert "PR3_UNPAID_SQL" in helper
+    assert "OVERDUE_PENDING_SQL" in helper
+    assert "ROUTED_COLLECTION_SQL" in helper
+    assert '"denied"' in helper
+    assert '"overdue"' in helper
+
+
 def test_collection_overdue_is_pending_after_sla():
     from cashflow_db.repository.eligibility import (
         COLLECTION_QUEUE_MEMBER_SQL,
