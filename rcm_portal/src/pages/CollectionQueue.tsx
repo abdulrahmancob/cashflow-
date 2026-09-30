@@ -328,7 +328,7 @@ function optionsFor(labels: string[], current?: string | null) {
 
 export function CollectionQueueTab() {
   const { hasRole } = useAuth()
-  const canAssign = hasRole('ops_admin')
+  const canAssign = hasRole('ops_admin', 'sub_admin')
   const [bucket, setBucket] = useState<Bucket>('denied')
   const [q, setQ] = useState('')
   const [month, setMonth] = useState<string[]>([])

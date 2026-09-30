@@ -1469,7 +1469,7 @@ def _require_collector_assignee(conn, assignee_id: str | None) -> None:
 @router.post("/items/assign-bulk")
 def assign_bulk(
     body: BulkAssignBody,
-    user: AuthUser = Depends(require_roles(ROLE_OPS_ADMIN)),
+    user: AuthUser = Depends(require_roles(ROLE_OPS_ADMIN, ROLE_SUB_ADMIN)),
 ) -> dict[str, Any]:
     from cashflow_db.repository import connection, eligibility
 
@@ -1518,7 +1518,7 @@ def assign(
     assignee_id = _normalize_assignee(body.assigned_to)
     with connection() as conn:
         in_collection = work_item_id in eligibility.collection_member_ids(conn, [work_item_id])
-        if in_collection and not user.is_ops_admin:
+        if in_collection and not (user.is_ops_admin or user.is_elevated_admin):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         if in_collection:
             _require_collector_assignee(conn, assignee_id)
