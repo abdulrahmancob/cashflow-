@@ -318,4 +318,6 @@ def collection_status_bucket(label: str | None) -> str | None:
         return "action"
     if folded == "submittedwithoutauth":
         return "at_risk"
+    if folded == "dead":
+        return "dead"
     return None

@@ -19,6 +19,7 @@ from cashflow_db.repository.collection import (
 from cashflow_db.repository.eligibility import (
     COLLECTION_VISIT_SQL,
     DENIED_VISIT_SQL,
+    EFFECTIVE_COLLECTION_FOLD_SQL,
     PAID_OR_DEDUCT_SQL,
 )
 from cashflow_db.util import parse_money
@@ -2372,6 +2373,63 @@ def ss_breakdown(
         {"user_id": p["user_id"], "display_name": p["display_name"]} for p in people
     ]
     return payload
+
+
+NO_ROOT_CAUSE = "No root cause"
+
+
+def dead_root_cause_sql() -> str:
+    """Current Dead claims, one row each, with the root cause shown on the visit."""
+    return f"""
+        SELECT root_cause, count(*)::int AS n
+        FROM (
+            SELECT COALESCE(
+                NULLIF(btrim(wi.manual_overrides->>'root_cause'), ''),
+                NULLIF(btrim(wi.context->>'root_cause'), ''),
+                (
+                    SELECT COALESCE(
+                        NULLIF(btrim(sf.payload->>'ROOTCAUSE'), ''),
+                        NULLIF(btrim(sf.payload->>'ROOT_CAUSE'), ''),
+                        NULLIF(btrim(sf.payload->>'root_cause'), '')
+                    )
+                    FROM analytics.snowflake_visit_kpi sf
+                    WHERE sf.emr_id = wi.emr_patient_id
+                      AND sf.date_of_service = wi.dos
+                    LIMIT 1
+                )
+            ) AS root_cause
+            FROM ops.eligibility_work_item wi
+            WHERE ({EFFECTIVE_COLLECTION_FOLD_SQL}) = 'dead'
+        ) dead_claims
+        GROUP BY root_cause
+    """
+
+
+def rollup_dead_root_causes(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Count and share of current Dead claims for each root cause."""
+    counts: dict[str, int] = {}
+    for row in rows:
+        raw = row.get("root_cause")
+        label = canonical_root_cause(None if raw is None else str(raw))
+        if not label:
+            label = NO_ROOT_CAUSE
+        counts[label] = _int(counts.get(label)) + _int(row.get("n"))
+    total = sum(counts.values())
+    ordered = sorted(counts.items(), key=lambda item: (-item[1], item[0].lower()))
+    out: list[dict[str, Any]] = []
+    for label, count in ordered:
+        percent = round(100.0 * count / total, 1) if total else 0.0
+        out.append({"label": label, "count": count, "percent": percent})
+    return {"total": total, "rows": out}
+
+
+def collection_dead_root_causes(
+    conn: psycopg.Connection,
+    roles: list[str] | None,
+) -> dict[str, Any]:
+    resolve_team(roles, TEAM_COLLECTION)
+    rows = client.fetchall(conn, dead_root_cause_sql())
+    return rollup_dead_root_causes(rows)
 
 
 def collection_root_cause_breakdown(

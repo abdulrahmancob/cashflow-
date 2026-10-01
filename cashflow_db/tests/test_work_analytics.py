@@ -877,3 +877,23 @@ def test_latest_assignment_and_finish_after_status():
     assert "assigner_id = %s::uuid" in inspect.getsource(wa._viewer_assignment_rows)
     assert "assignee_id = %s" in inspect.getsource(wa.my_assignment_progress)
     assert "viewer_id" in inspect.getsource(wa.team_summary)
+
+
+def test_dead_root_cause_rollup_counts_and_share():
+    payload = wa.rollup_dead_root_causes(
+        [
+            {"root_cause": "Auth delay", "n": 2},
+            {"root_cause": "auth delay", "n": 1},
+            {"root_cause": None, "n": 1},
+            {"root_cause": "brand new cause", "n": 2},
+        ]
+    )
+    assert payload["total"] == 6
+    assert payload["rows"][0] == {"label": "Auth delay", "count": 3, "percent": 50.0}
+    assert payload["rows"][1] == {"label": "Other", "count": 2, "percent": 33.3}
+    assert payload["rows"][2] == {"label": "No root cause", "count": 1, "percent": 16.7}
+    sql = wa.dead_root_cause_sql()
+    assert "= 'dead'" in sql
+    assert "manual_overrides->>'root_cause'" in sql
+    assert "context->>'root_cause'" in sql
+    assert "snowflake_visit_kpi" in sql

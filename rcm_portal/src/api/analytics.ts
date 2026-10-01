@@ -197,6 +197,17 @@ export type CollectionRootCausePerson = {
   top_count: number
 }
 
+export type DeadRootCauseRow = {
+  label: string
+  count: number
+  percent: number
+}
+
+export type DeadRootCauseBreakdown = {
+  total: number
+  rows: DeadRootCauseRow[]
+}
+
 export type CollectionRootCauseBreakdown = {
   year: number
   labels: string[]
@@ -242,6 +253,9 @@ export const analyticsApi = {
   },
   myAssignments() {
     return api<{ assigned: number; finished: number }>('/api/analytics/my-assignments')
+  },
+  collectionDeadRootCauses() {
+    return api<DeadRootCauseBreakdown>('/api/analytics/collection/dead-root-causes')
   },
   collectionRootCauses(year?: number) {
     const p = new URLSearchParams()

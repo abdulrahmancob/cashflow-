@@ -16,6 +16,7 @@ import {
   type AnalyticsPreset,
   type AnalyticsTeamKey,
   type CollectionRootCauseBreakdown,
+  type DeadRootCauseBreakdown,
   type SsBreakdown,
   type SsBreakdownRow,
   type TeamPerson,
@@ -552,6 +553,9 @@ export function TeamAnalyticsPage() {
   const [gridError, setGridError] = useState('')
   const [gridLoading, setGridLoading] = useState(true)
   const [causes, setCauses] = useState<CollectionRootCauseBreakdown | null>(null)
+  const [deadCauses, setDeadCauses] = useState<DeadRootCauseBreakdown | null>(null)
+  const [deadLoading, setDeadLoading] = useState(false)
+  const [deadError, setDeadError] = useState('')
   const [causeError, setCauseError] = useState('')
   const [causeLoading, setCauseLoading] = useState(false)
 
@@ -661,6 +665,32 @@ export function TeamAnalyticsPage() {
       cancelled = true
     }
   }, [isCollectionTeam, year])
+
+  useEffect(() => {
+    if (!isCollectionTeam) {
+      setDeadCauses(null)
+      setDeadLoading(false)
+      setDeadError('')
+      return
+    }
+    let cancelled = false
+    setDeadLoading(true)
+    setDeadError('')
+    void analyticsApi
+      .collectionDeadRootCauses()
+      .then((row) => {
+        if (!cancelled) setDeadCauses(row)
+      })
+      .catch((e) => {
+        if (!cancelled) setDeadError(String((e as Error).message))
+      })
+      .finally(() => {
+        if (!cancelled) setDeadLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isCollectionTeam])
 
   const people = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -976,6 +1006,56 @@ export function TeamAnalyticsPage() {
               <EmptyState title="No collectors in scope" />
             )}
           </div>
+          )}
+        </TableCard>
+      )}
+
+      {isCollectionTeam && (
+        <TableCard
+          title="Dead by root cause"
+          count={deadCauses?.total}
+          countLabel="dead"
+          description={
+            deadLoading
+              ? 'Loading…'
+              : 'Each current Dead claim counts once, under the root cause on the visit. The percentage is its share of all Dead claims.'
+          }
+        >
+          {deadError && (
+            <div className="px-5 pt-3">
+              <Alert>{deadError}</Alert>
+            </div>
+          )}
+          {deadCauses?.rows.length ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <THead>
+                  <tr>
+                    <Th>Root cause</Th>
+                    <Th>Number</Th>
+                    <Th>Percentage</Th>
+                  </tr>
+                </THead>
+                <tbody>
+                  {deadCauses.rows.map((row) => (
+                    <Tr key={row.label}>
+                      <Td>{row.label}</Td>
+                      <Td className="tabular-nums">{n(row.count)}</Td>
+                      <Td className="tabular-nums">{Number(row.percent).toFixed(1)}%</Td>
+                    </Tr>
+                  ))}
+                  <Tr>
+                    <Td className="font-medium text-gray-900 dark:text-white">Total</Td>
+                    <Td className="tabular-nums font-medium text-gray-900 dark:text-white">
+                      {n(deadCauses.total)}
+                    </Td>
+                    <Td className="tabular-nums font-medium text-gray-900 dark:text-white">100.0%</Td>
+                  </Tr>
+                </tbody>
+              </Table>
+            </div>
+          ) : (
+            <EmptyState title={deadLoading ? 'Loading dead claims' : 'No dead claims'} />
           )}
         </TableCard>
       )}

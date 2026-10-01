@@ -387,7 +387,7 @@ EFFECTIVE_COLLECTION_FOLD_SQL = f"""regexp_replace(
 )"""
 
 ROUTED_COLLECTION_SQL = f"""{EFFECTIVE_COLLECTION_FOLD_SQL} IN (
-    'arbitration', 'actiontaken', 'pending', 'submittedwithoutauth'
+    'arbitration', 'actiontaken', 'pending', 'submittedwithoutauth', 'dead'
 )"""
 
 ACTION_WORK_DATE_SQL = """COALESCE(
@@ -663,6 +663,7 @@ def _collection_bucket(bucket: str | None) -> str:
         "follow_up",
         "at_risk",
         "paid_patient_responsibility",
+        "dead",
     }:
         return raw
     return "denied"
@@ -3374,6 +3375,7 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
         "arbitration": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'arbitration'",
         "action": f"{EFFECTIVE_COLLECTION_FOLD_SQL} IN ('actiontaken', 'pending')",
         "at_risk": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'submittedwithoutauth'",
+        "dead": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'dead'",
         "paid_patient_responsibility": f"""(
             {PR3_CODE_SQL}
             AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'

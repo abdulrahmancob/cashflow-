@@ -14,6 +14,7 @@ type Bucket =
   | 'follow_up'
   | 'arbitration'
   | 'at_risk'
+  | 'dead'
   | 'paid_patient_responsibility'
 
 type CollectionRow = {
@@ -155,6 +156,7 @@ const BUCKETS: { key: Bucket; label: string }[] = [
   { key: 'follow_up', label: 'Follow up' },
   { key: 'arbitration', label: 'Arbitration' },
   { key: 'at_risk', label: 'At risk' },
+  { key: 'dead', label: 'Dead' },
   { key: 'paid_patient_responsibility', label: 'Paid - Patient Responsibility' },
 ]
 
@@ -292,6 +294,7 @@ function statusTab(status: string, visitStatus?: string | null): Bucket | null {
   if (folded === 'arbitration') return 'arbitration'
   if (folded === 'actiontaken' || folded === 'pending') return 'action'
   if (folded === 'submittedwithoutauth') return 'at_risk'
+  if (folded === 'dead') return 'dead'
   return null
 }
 
@@ -328,6 +331,12 @@ function emptyCopy(bucket: Bucket, loading: boolean) {
     return {
       title: 'No at risk visits',
       description: 'Visits marked Submitted without Auth appear here.',
+    }
+  }
+  if (bucket === 'dead') {
+    return {
+      title: 'No dead visits',
+      description: 'Visits marked Dead appear here.',
     }
   }
   if (bucket === 'paid_patient_responsibility') {

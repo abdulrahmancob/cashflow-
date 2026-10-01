@@ -181,6 +181,19 @@ def ss_breakdown(
         raise _analytics_error(exc) from exc
 
 
+@router.get("/collection/dead-root-causes")
+def collection_dead_root_causes(
+    user: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+) -> dict[str, Any]:
+    from cashflow_db.repository import connection, work_analytics
+
+    try:
+        with connection() as conn:
+            return _ser(work_analytics.collection_dead_root_causes(conn, user.roles))
+    except (PermissionError, ValueError) as exc:
+        raise _analytics_error(exc) from exc
+
+
 @router.get("/collection/root-causes")
 def collection_root_causes(
     year: int | None = Query(None),

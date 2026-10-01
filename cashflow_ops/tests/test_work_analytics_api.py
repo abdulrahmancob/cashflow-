@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -236,6 +237,28 @@ def test_my_assignments_for_collector(monkeypatch):
     res = client.get("/api/analytics/my-assignments")
     assert res.status_code == 200
     assert res.json() == {"assigned": 20, "finished": 8}
+
+
+def test_collection_dead_root_causes_ok(monkeypatch):
+    monkeypatch.setattr(
+        "cashflow_db.repository.work_analytics.collection_dead_root_causes",
+        lambda conn, roles: {
+            "total": 4,
+            "rows": [{"label": "Auth delay", "count": 3, "percent": 75.0}],
+        },
+    )
+    client = TestClient(_app(_user("ops_admin"), monkeypatch))
+    res = client.get("/api/analytics/collection/dead-root-causes")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 4
+    assert body["rows"][0]["label"] == "Auth delay"
+    assert float(body["rows"][0]["percent"]) == 75.0
+    page = (
+        Path(__file__).resolve().parents[2] / "rcm_portal" / "src" / "pages" / "TeamAnalytics.tsx"
+    ).read_text(encoding="utf-8")
+    assert "Dead by root cause" in page
+    assert "Percentage" in page
 
 
 def test_ss_lead_cannot_open_collection_root_causes(monkeypatch):

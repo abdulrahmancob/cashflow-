@@ -217,10 +217,47 @@ def test_collection_status_routes_to_tabs():
     assert collection.collection_status_bucket("Action Taken") == "action"
     assert collection.collection_status_bucket("pending") == "action"
     assert collection.collection_status_bucket("Submitted without Auth") == "at_risk"
-    assert collection.collection_status_bucket("Dead") is None
+    assert collection.collection_status_bucket("Dead") == "dead"
     assert collection.collection_status_bucket("Paid") is None
     assert "064_collection_status_buckets.sql" in MIGRATIONS
     assert "069_paid_patient_responsibility.sql" in MIGRATIONS
+    assert "071_collection_dead_bucket.sql" in MIGRATIONS
+    assert MIGRATIONS.index("071_collection_dead_bucket.sql") > MIGRATIONS.index(
+        "070_desk_permission.sql"
+    )
+
+
+def test_dead_tab_uses_its_own_bucket():
+    from cashflow_db.repository.eligibility import ROUTED_COLLECTION_SQL
+
+    sql, params = _build_filters(
+        q=None,
+        facility=None,
+        month=None,
+        insurance=None,
+        status=None,
+        assigned_to=None,
+        queue="collection",
+        bucket="dead",
+    )
+    assert params == ["dead"]
+    assert "collection_queue_member" in sql
+    assert "'dead'" in ROUTED_COLLECTION_SQL
+    refresh_src = (ROOT / "cashflow_db" / "repository" / "eligibility.py").read_text(
+        encoding="utf-8"
+    )
+    refresh_fn = refresh_src.split("def refresh_collection_queue", 1)[1].split("\ndef ", 1)[0]
+    assert '"dead":' in refresh_fn
+    assert "= 'dead'" in refresh_fn
+    migration = (ROOT / "cashflow_db" / "sql" / "071_collection_dead_bucket.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "'dead'" in migration
+    page = (ROOT / "rcm_portal" / "src" / "pages" / "CollectionQueue.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert "{ key: 'dead', label: 'Dead' }" in page
+    assert "Visits marked Dead appear here." in page
 
 
 def test_follow_up_is_aged_action():
