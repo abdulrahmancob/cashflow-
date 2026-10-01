@@ -170,6 +170,22 @@ def touch_last_login(conn: psycopg.Connection, user_id: str) -> None:
     )
 
 
+def record_login(
+    conn: psycopg.Connection,
+    user_id: str,
+    user_agent: str | None = None,
+) -> None:
+    agent = (user_agent or "").strip()[:500] or None
+    client.execute(
+        conn,
+        """
+        INSERT INTO auth.login_event (user_id, user_agent)
+        VALUES (%s::uuid, %s)
+        """,
+        (user_id, agent),
+    )
+
+
 def ensure_user(
     conn: psycopg.Connection,
     *,
