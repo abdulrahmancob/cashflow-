@@ -2556,20 +2556,60 @@ tracker_keys AS (
     FROM tracker_src
     WHERE {_real_check_sql("ref")}
 ),
-waystar_missing AS (
+deposit_keys AS (
+    SELECT DISTINCT {_compact_check_sql("eft_1")} AS compact
+    FROM billing.bank_deposit
+    WHERE source_system = 'checks_deposits'
+      AND {_real_check_sql("eft_1")}
+),
+found_keys AS (
+    SELECT compact FROM tracker_keys WHERE compact <> ''
+    UNION
+    SELECT compact FROM deposit_keys WHERE compact <> ''
+),
+waystar_grouped AS (
     SELECT
+        compact,
         COALESCE(NULLIF(btrim(payer_name), ''), 'Unknown') AS payer,
         (array_agg(ref ORDER BY length(ref) DESC, ref))[1] AS check_number,
         count(*)::int AS claim_count,
-        sum(total_remit_amount) AS amount,
+        sum(total_remit_amount) AS sum_amount,
         max(trans_date) AS latest_date
     FROM waystar_claim_check
     WHERE NOT EXISTS (
-        SELECT 1 FROM tracker_keys k
+        SELECT 1 FROM found_keys k
         WHERE k.compact <> '' AND k.compact = waystar_claim_check.compact
     )
     GROUP BY compact, COALESCE(NULLIF(btrim(payer_name), ''), 'Unknown')
     HAVING sum(total_remit_amount) <> 0
+),
+revflow_amt AS (
+    SELECT
+        {_compact_check_sql("check_eft_num")} AS compact,
+        sum(COALESCE(paid_amount_sum, 0)) AS amount
+    FROM billing.eob_check
+    WHERE {_real_check_sql("check_eft_num")}
+      AND COALESCE(paid_amount_sum, 0) <> 0
+    GROUP BY 1
+),
+waystar_missing AS (
+    SELECT
+        g.payer,
+        g.check_number,
+        g.claim_count,
+        CASE
+            WHEN r.amount IS NOT NULL AND g.payer_rows = 1 THEN r.amount
+            ELSE g.sum_amount
+        END AS amount,
+        g.latest_date
+    FROM (
+        SELECT
+            waystar_grouped.*,
+            count(*) OVER (PARTITION BY compact) AS payer_rows
+        FROM waystar_grouped
+    ) g
+    LEFT JOIN revflow_amt r
+        ON r.compact <> '' AND r.compact = g.compact
 ),
 tracker_rows AS (
     SELECT
