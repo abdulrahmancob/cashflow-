@@ -678,8 +678,79 @@ def claim_recovered(*, set_paid: bool, visit_paid: bool) -> bool:
     return bool(set_paid or visit_paid)
 
 
+def latest_assignment_event(events: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Latest assigned_to write. A blank new value means the claim is no longer assigned."""
+    if not events:
+        return None
+    last = max(events, key=lambda event: event["changed_at"])
+    assignee = str(last.get("new_value") or "").strip()
+    if not assignee:
+        return None
+    return {
+        "assigner_id": str(last.get("changed_by") or ""),
+        "assignee_id": assignee,
+        "changed_at": last["changed_at"],
+    }
+
+
+def status_finishes_assignment(
+    *,
+    assignee_id: str,
+    assigned_at: datetime,
+    status_by: str | None,
+    status_at: datetime | None,
+    status_value: str | None,
+) -> bool:
+    """Finished only when the assignee writes a collection status after the assign."""
+    if not status_by or status_at is None:
+        return False
+    if str(status_by) != str(assignee_id):
+        return False
+    if not str(status_value or "").strip():
+        return False
+    return status_at > assigned_at
+
+
+def _top_cause(counts: dict[str, int], labels: list[str]) -> tuple[str, int]:
+    top_label = ""
+    top_count = 0
+    for label in labels:
+        n = _int(counts.get(label))
+        if n > top_count:
+            top_label = label
+            top_count = n
+    return top_label, top_count
+
+
+def last_root_cause_write(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """One fact per claim: the latest root-cause write, placed in the DOS month."""
+    by_item: dict[str, dict[str, Any]] = {}
+    for event in events:
+        item = str(event.get("work_item_id") or "")
+        if not item:
+            continue
+        changed_at = event.get("changed_at")
+        prev = by_item.get(item)
+        if prev is not None and changed_at < prev["changed_at"]:
+            continue
+        dos = event.get("dos")
+        if isinstance(dos, datetime):
+            dos = dos.date()
+        if not isinstance(dos, date):
+            continue
+        by_item[item] = {
+            "work_item_id": item,
+            "changed_at": changed_at,
+            "user_id": str(event.get("changed_by") or ""),
+            "root_cause": event.get("root_cause"),
+            "month_start": date(dos.year, dos.month, 1),
+            "n": 1,
+        }
+    return list(by_item.values())
+
+
 def rollup_root_causes(year: int, rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """One row per month. Each claim contributes its last root cause in that month."""
+    """One row per month. Each claim contributes its last root cause in its DOS month."""
     counts: dict[date, dict[str, int]] = {}
     seen: set[str] = set()
     for row in rows:
@@ -701,13 +772,7 @@ def rollup_root_causes(year: int, rows: list[dict[str, Any]]) -> dict[str, Any]:
     for month in range(1, 13):
         start = date(year, month, 1)
         bucket = counts.get(start, {})
-        top_label = ""
-        top_count = 0
-        for label in labels:
-            n = _int(bucket.get(label))
-            if n > top_count:
-                top_label = label
-                top_count = n
+        top_label, top_count = _top_cause(bucket, labels)
         out_rows.append(
             {
                 "period": f"{_MONTH_LABELS[month - 1]} {year}",
@@ -718,6 +783,40 @@ def rollup_root_causes(year: int, rows: list[dict[str, Any]]) -> dict[str, Any]:
             }
         )
     return {"year": year, "labels": labels, "rows": out_rows}
+
+
+def rollup_root_cause_people(
+    rows: list[dict[str, Any]],
+    members: list[dict[str, Any]],
+    labels: list[str],
+) -> list[dict[str, Any]]:
+    """Per collector: claims whose last root cause they wrote. Missing writers stay at zero."""
+    by_user: dict[str, dict[str, int]] = {}
+    for row in rows:
+        uid = row.get("user_id")
+        if uid is None or str(uid) == "":
+            continue
+        label = canonical_root_cause(str(row.get("root_cause") or ""))
+        if not label:
+            continue
+        bucket = by_user.setdefault(str(uid), {})
+        bucket[label] = _int(bucket.get(label)) + _int(row.get("n"))
+    people: list[dict[str, Any]] = []
+    for member in members:
+        uid = str(member["user_id"])
+        bucket = by_user.get(uid, {})
+        counts = {label: _int(bucket.get(label)) for label in labels}
+        top_label, top_count = _top_cause(counts, labels)
+        people.append(
+            {
+                "user_id": uid,
+                "display_name": member.get("display_name") or "",
+                "counts": counts,
+                "top": top_label,
+                "top_count": top_count,
+            }
+        )
+    return people
 
 
 def empty_user_metrics() -> dict[str, Any]:
@@ -749,6 +848,8 @@ def empty_user_metrics() -> dict[str, Any]:
         "coll_recovered_month": 0,
         "coll_money_today": 0.0,
         "coll_money_month": 0.0,
+        "coll_assigned": 0,
+        "coll_finished": 0,
         "coll_status_today": empty_status_counts(),
         "coll_status_month": empty_status_counts(),
         "ss_claims": 0,
@@ -884,6 +985,8 @@ def summarize_kpis(people: list[dict[str, Any]]) -> dict[str, Any]:
         "coll_recovered_month",
         "coll_money_today",
         "coll_money_month",
+        "coll_assigned",
+        "coll_finished",
         "ss_claims",
         "ss_claims_today",
         "ss_claims_week",
@@ -1822,6 +1925,98 @@ def _team_sort_key(team_key: str, row: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
+_ASSIGNEE_UUID_SQL = """
+assignee_id ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+"""
+
+LATEST_ASSIGNMENT_SQL = f"""
+WITH latest AS (
+    SELECT DISTINCT ON (h.work_item_id)
+        h.work_item_id,
+        h.changed_by AS assigner_id,
+        NULLIF(btrim(h.new_value), '') AS assignee_id,
+        h.changed_at
+    FROM ops.eligibility_history h
+    WHERE h.column_name = 'assigned_to'
+    ORDER BY h.work_item_id, h.changed_at DESC
+),
+open_assign AS (
+    SELECT work_item_id, assigner_id, assignee_id, changed_at
+    FROM latest
+    WHERE {_ASSIGNEE_UUID_SQL}
+)
+SELECT
+    open_assign.assignee_id,
+    open_assign.assigner_id,
+    open_assign.work_item_id,
+    EXISTS (
+        SELECT 1
+        FROM ops.eligibility_history s
+        WHERE s.work_item_id = open_assign.work_item_id
+          AND s.changed_by = open_assign.assignee_id::uuid
+          AND s.column_name = 'collection_status'
+          AND NULLIF(btrim(s.new_value), '') IS NOT NULL
+          AND s.changed_at > open_assign.changed_at
+    ) AS finished
+FROM open_assign
+"""
+
+
+def _viewer_assignment_rows(
+    conn: psycopg.Connection,
+    viewer_id: str,
+) -> list[dict[str, Any]]:
+    """Claims whose latest assign was made by this viewer, grouped by assignee."""
+    rows = client.fetchall(
+        conn,
+        f"""
+        SELECT assignee_id AS user_id,
+               count(*)::int AS coll_assigned,
+               count(*) FILTER (WHERE finished)::int AS coll_finished
+        FROM (
+{LATEST_ASSIGNMENT_SQL}
+        ) assigned
+        WHERE assigner_id = %s::uuid
+        GROUP BY assignee_id
+        """,
+        (viewer_id,),
+    )
+    return [
+        {
+            "user_id": str(row["user_id"]),
+            "coll_assigned": _int(row.get("coll_assigned")),
+            "coll_finished": _int(row.get("coll_finished")),
+        }
+        for row in rows
+    ]
+
+
+def my_assignment_progress(
+    conn: psycopg.Connection,
+    user_id: str,
+) -> dict[str, int]:
+    """Claims currently assigned to this person, and how many they finished."""
+    uid = str(user_id or "").strip()
+    if not uid:
+        return {"assigned": 0, "finished": 0}
+    row = client.fetchone(
+        conn,
+        f"""
+        SELECT count(*)::int AS assigned,
+               count(*) FILTER (WHERE finished)::int AS finished
+        FROM (
+{LATEST_ASSIGNMENT_SQL}
+        ) assigned
+        WHERE assignee_id = %s
+        """,
+        (uid,),
+    )
+    return {
+        "assigned": _int((row or {}).get("assigned")),
+        "finished": _int((row or {}).get("finished")),
+    }
+
+
 def team_summary(
     conn: psycopg.Connection,
     roles: list[str] | None,
@@ -1830,6 +2025,7 @@ def team_summary(
     end: datetime,
     today: date | None = None,
     team: str | None = None,
+    viewer_id: str | None = None,
 ) -> dict[str, Any]:
     today = today or date.today()
     team_key = resolve_team(roles, team)
@@ -1857,6 +2053,15 @@ def team_summary(
         kpis = summarize_kpis(merged)
         if team_key == TEAM_COLLECTION:
             kpis.update(_collection_team_recovered(conn, ids, today))
+            assigned_by_viewer = (
+                _index_by_user(_viewer_assignment_rows(conn, viewer_id))
+                if viewer_id
+                else {}
+            )
+            for row in merged:
+                extra = assigned_by_viewer.get(str(row["user_id"])) or {}
+                row["coll_assigned"] = _int(extra.get("coll_assigned"))
+                row["coll_finished"] = _int(extra.get("coll_finished"))
     return {
         "team": team_key,
         "teams": visible_teams(roles),
@@ -2163,7 +2368,7 @@ def collection_root_cause_breakdown(
     year: int | None = None,
     today: date | None = None,
 ) -> dict[str, Any]:
-    """Last root cause written on each claim, counted once per month for the collection team."""
+    """Last root cause on each claim, counted in the DOS month for whoever wrote it last."""
     today = today or date.today()
     resolve_team(roles, TEAM_COLLECTION)
     y = int(year or today.year)
@@ -2172,21 +2377,26 @@ def collection_root_cause_breakdown(
     rows = client.fetchall(
         conn,
         """
-        SELECT month_start, root_cause, count(*)::int AS n
+        SELECT month_start, user_id, root_cause, count(*)::int AS n
         FROM (
-            SELECT DISTINCT ON (h.work_item_id, date_trunc('month', h.changed_at))
-                date_trunc('month', h.changed_at)::date AS month_start,
+            SELECT DISTINCT ON (h.work_item_id)
+                date_trunc('month', wi.dos)::date AS month_start,
+                h.changed_by AS user_id,
                 NULLIF(btrim(h.new_value), '') AS root_cause
             FROM ops.eligibility_history h
+            JOIN ops.eligibility_work_item wi ON wi.work_item_id = h.work_item_id
             WHERE h.column_name = 'root_cause'
-              AND h.changed_at::date >= %s
-              AND h.changed_at::date < %s
+              AND wi.dos >= %s
+              AND wi.dos < %s
               AND NULLIF(btrim(h.new_value), '') IS NOT NULL
-            ORDER BY h.work_item_id, date_trunc('month', h.changed_at), h.changed_at DESC
+            ORDER BY h.work_item_id, h.changed_at DESC
         ) last_cause
-        GROUP BY month_start, root_cause
+        GROUP BY month_start, user_id, root_cause
         """,
         (start_d, end_d),
     )
-    return rollup_root_causes(y, rows)
+    payload = rollup_root_causes(y, rows)
+    members = list_scoped_users(conn, roles, TEAM_COLLECTION)
+    payload["people"] = rollup_root_cause_people(rows, members, payload["labels"])
+    return payload
 

@@ -110,6 +110,17 @@ def my_today(
     return {"area": area.strip().lower(), "completed_today": count}
 
 
+@router.get("/my-assignments")
+def my_assignments(
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    from cashflow_db.repository import connection, work_analytics
+
+    with connection() as conn:
+        progress = work_analytics.my_assignment_progress(conn, user.user_id)
+    return {"assigned": progress["assigned"], "finished": progress["finished"]}
+
+
 @router.get("/team")
 def team(
     preset: str | None = Query("month"),
@@ -125,7 +136,12 @@ def team(
         with connection() as conn:
             return _ser(
                 work_analytics.team_summary(
-                    conn, user.roles, start=start, end=end, team=team
+                    conn,
+                    user.roles,
+                    start=start,
+                    end=end,
+                    team=team,
+                    viewer_id=user.user_id,
                 )
             )
     except (PermissionError, ValueError) as exc:

@@ -61,7 +61,7 @@ const TEAM_COPY: Record<
     title: 'Collection',
     subtitle: 'Denied-visit collection queue. Counts are today and this month. Sheet eligibility is on the Eligibility tab.',
     people:
-      'Edited is distinct claims this person changed. Status is the last Collection Status they saved in that window. Recovered is claims they worked that they marked Paid, or that eligibility later paid. Click a row for recent edits.',
+      'Edited is distinct claims this person changed. Assigned is claims you assigned them; Finished is how many of those they set a Collection Status on afterwards. Click a row for recent edits.',
     csv: 'collection-team-analytics.csv',
   },
   submission: {
@@ -138,6 +138,8 @@ function exportCsv(people: TeamPerson[], team: AnalyticsTeamKey, statuses: strin
             'Hours month',
             'Edited today',
             'Edited month',
+            'Assigned',
+            'Finished',
             ...statusHeaders,
             'Recovered today',
             'Recovered month',
@@ -194,6 +196,8 @@ function exportCsv(people: TeamPerson[], team: AnalyticsTeamKey, statuses: strin
             ? [
                 p.coll_touched_today,
                 p.coll_touched_month,
+                p.coll_assigned,
+                p.coll_finished,
                 ...statuses.map((label) => statusCount(p, 'today', label)),
                 ...statuses.map((label) => statusCount(p, 'month', label)),
                 p.coll_recovered_today,
@@ -402,6 +406,8 @@ function PeopleHead({ team, statuses }: { team: AnalyticsTeamKey; statuses: stri
         <>
           <Th>Edited today</Th>
           <Th>Edited month</Th>
+          <Th>Assigned</Th>
+          <Th>Finished</Th>
           {statuses.map((label) => (
             <Th key={`${label}-today`}>{label} today</Th>
           ))}
@@ -469,6 +475,8 @@ function PeopleCells({
         <>
           <Td className="tabular-nums">{person.coll_touched_today}</Td>
           <Td className="tabular-nums">{person.coll_touched_month}</Td>
+          <Td className="tabular-nums">{person.coll_assigned}</Td>
+          <Td className="tabular-nums">{person.coll_finished}</Td>
           {statuses.map((label) => (
             <Td key={`${label}-today`} className="tabular-nums">
               {statusCount(person, 'today', label)}
@@ -848,7 +856,7 @@ export function TeamAnalyticsPage() {
           description={
             causeLoading
               ? 'Loading…'
-              : 'Last root cause saved on each claim, counted once in the month it was set. Top is the most common cause that month.'
+              : 'Months follow Date of Service. Each claim counts once, under the last root cause saved on it. The people table is who wrote that last value.'
           }
         >
           <div className="flex flex-wrap items-end gap-3 border-b border-gray-100 px-5 py-3 dark:border-gray-800">
@@ -916,6 +924,58 @@ export function TeamAnalyticsPage() {
             </div>
           ) : (
             <EmptyState title={causeLoading ? 'Loading root causes' : 'No root causes in this year'} />
+          )}
+          {causes && (
+          <div className="border-t border-gray-100 dark:border-gray-800">
+            <div className="px-5 py-3 text-sm text-gray-500 dark:text-gray-400">
+              Each person, for claims whose Date of Service is in {year}.
+            </div>
+            {(causes?.people || []).length ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <THead>
+                    <tr>
+                      <Th>Person</Th>
+                      <Th>Top</Th>
+                      {(causes?.labels || []).map((label) => (
+                        <Th key={label}>{label}</Th>
+                      ))}
+                    </tr>
+                  </THead>
+                  <tbody>
+                    {(causes?.people || []).map((person) => (
+                      <Tr key={person.user_id}>
+                        <Td>{person.display_name}</Td>
+                        <Td>
+                          {person.top ? (
+                            <Badge tone="purple">
+                              {person.top} ({person.top_count})
+                            </Badge>
+                          ) : (
+                            '—'
+                          )}
+                        </Td>
+                        {(causes?.labels || []).map((label) => {
+                          const value = n(person.counts?.[label])
+                          const isTop = Boolean(person.top) && label === person.top && value > 0
+                          return (
+                            <Td
+                              key={label}
+                              className={`tabular-nums ${isTop ? 'font-semibold text-gray-900 dark:text-white' : ''}`}
+                            >
+                              {value}
+                            </Td>
+                          )
+                        })}
+                      </Tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+            ) : (
+              <EmptyState title="No collectors in scope" />
+            )}
+          </div>
           )}
         </TableCard>
       )}

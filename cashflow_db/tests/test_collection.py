@@ -5,14 +5,18 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from cashflow_db.db import MIGRATIONS
 from cashflow_db.repository import collection
 from cashflow_db.repository.eligibility import (
+    COLLECTION_EXPORT_COLUMNS,
     COLLECTION_VISIT_SQL,
     DENIED_VISIT_SQL,
     OVERDUE_PENDING_SQL,
     STILL_PENDING_VISIT_SQL,
     _build_filters,
+    normalize_edit_value,
     plan_work_item_patch,
     sheet_export_headers,
 )
@@ -242,11 +246,42 @@ def test_follow_up_is_aged_action():
     )
     assert follow_params == ["action"]
     assert action_params == ["action"]
-    assert "CURRENT_DATE - 30" in follow_sql
+    assert "manual_overrides->>'follow_up_after'" in follow_sql
+    assert "CURRENT_DATE -" in follow_sql
+    assert ",\n    30\n)" in follow_sql
     assert "NOT (" in action_sql
+    assert ("follow_up_after", "Follow up after") in COLLECTION_EXPORT_COLUMNS
     assert "submittedwithoutauth" in (
         ROOT / "cashflow_db" / "repository" / "eligibility.py"
     ).read_text(encoding="utf-8")
+
+
+def test_follow_up_after_days_override():
+    _direct, overrides, history, changed = plan_work_item_patch(
+        {"manual_overrides": {}},
+        {"follow_up_after": "14"},
+    )
+    assert changed
+    assert overrides["follow_up_after"] == "14"
+    assert history[0]["column_name"] == "follow_up_after"
+    assert history[0]["new_value"] == "14"
+    assert normalize_edit_value("follow_up_after", "0") == "0"
+    assert normalize_edit_value("follow_up_after", "") is None
+    assert normalize_edit_value("follow_up_after", None) is None
+    cleared, cleared_ov, cleared_history, cleared_changed = plan_work_item_patch(
+        {"manual_overrides": {"follow_up_after": "14"}, "follow_up_after": "14"},
+        {"follow_up_after": ""},
+    )
+    assert cleared_changed
+    assert "follow_up_after" not in cleared_ov
+    assert cleared_history[0]["new_value"] is None
+    assert cleared == {}
+    with pytest.raises(ValueError):
+        normalize_edit_value("follow_up_after", "soon")
+    with pytest.raises(ValueError):
+        normalize_edit_value("follow_up_after", "366")
+    with pytest.raises(ValueError):
+        normalize_edit_value("follow_up_after", "-1")
 
 
 def test_collection_overdue_unknown_bucket_falls_back_to_denied():
@@ -441,6 +476,7 @@ def test_collection_export_matches_sheet():
     assert "Facility" in headers
     assert headers.index("Facility") == headers.index("Insurance Name") + 1
     assert "Denial Reason" in headers
+    assert "Follow up after" in headers
     assert "Work Status" not in headers
     assert "Updated Payment" not in headers
     assert "Account #" in headers

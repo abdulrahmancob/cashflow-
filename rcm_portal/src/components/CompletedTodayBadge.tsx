@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { analyticsApi } from '../api/analytics'
 import { api } from '../api/client'
 
 export const TODAY_REFRESH = 'work-today-refresh'
@@ -55,6 +56,43 @@ export function CompletedTodayBadge({
         }`}
       >
         {n.toLocaleString()}
+      </div>
+    </div>
+  )
+}
+
+export function AssignmentProgressBadge() {
+  const [progress, setProgress] = useState<{ assigned: number; finished: number } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const row = await analyticsApi.myAssignments()
+        if (!cancelled) setProgress(row)
+      } catch {
+        if (!cancelled) setProgress(null)
+      }
+    }
+    void load()
+    const onRefresh = () => {
+      void load()
+    }
+    window.addEventListener(TODAY_REFRESH, onRefresh)
+    return () => {
+      cancelled = true
+      window.removeEventListener(TODAY_REFRESH, onRefresh)
+    }
+  }, [])
+
+  if (!progress) return null
+  return (
+    <div className="flex items-baseline gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-1 dark:border-emerald-900/60 dark:bg-emerald-950/30">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+        Finished
+      </div>
+      <div className="font-display text-lg font-semibold tabular-nums text-emerald-900 dark:text-emerald-100">
+        {progress.finished.toLocaleString()} / {progress.assigned.toLocaleString()}
       </div>
     </div>
   )

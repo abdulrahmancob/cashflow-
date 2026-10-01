@@ -100,6 +100,9 @@ SHEET_TEXT_FIELDS = frozenset(
         "collection_status",
     }
 )
+FOLLOW_UP_AFTER_FIELD = "follow_up_after"
+FOLLOW_UP_AFTER_DEFAULT_DAYS = 30
+FOLLOW_UP_AFTER_MAX_DAYS = 365
 OVERRIDE_FIELDS = frozenset(
     {
         "patient_name",
@@ -116,6 +119,7 @@ OVERRIDE_FIELDS = frozenset(
     | MONEY_FIELDS
     | DATE_OVERRIDE_FIELDS
     | SHEET_TEXT_FIELDS
+    | {FOLLOW_UP_AFTER_FIELD}
 )
 EDITABLE_FIELDS = DIRECT_FIELDS | OVERRIDE_FIELDS
 LOCK_TTL_MINUTES = 5
@@ -169,6 +173,7 @@ COLLECTION_EXPORT_COLUMNS: tuple[tuple[str, str], ...] = (
     ("insurance_payment", "Insurance Payment"),
     ("source_visit_status", "Status"),
     ("work_date", "Work Date"),
+    ("follow_up_after", "Follow up after"),
     ("assigned_to_code", "Assignee"),
     ("denial_reason", "Denial Reason"),
     ("root_cause", "RootCause"),
@@ -398,7 +403,21 @@ ACTION_WORK_DATE_SQL = """COALESCE(
     END
 )"""
 
-ACTION_IS_FOLLOW_UP_SQL = f"""COALESCE(({ACTION_WORK_DATE_SQL}) <= CURRENT_DATE - 30, FALSE)"""
+FOLLOW_UP_AFTER_DAYS_SQL = f"""COALESCE(
+    CASE
+        WHEN NULLIF(btrim(wi.manual_overrides->>'{FOLLOW_UP_AFTER_FIELD}'), '') ~ '^[0-9]+$'
+             AND (wi.manual_overrides->>'{FOLLOW_UP_AFTER_FIELD}')::int
+                 BETWEEN 0 AND {FOLLOW_UP_AFTER_MAX_DAYS}
+            THEN (wi.manual_overrides->>'{FOLLOW_UP_AFTER_FIELD}')::int
+        ELSE NULL
+    END,
+    {FOLLOW_UP_AFTER_DEFAULT_DAYS}
+)"""
+
+ACTION_IS_FOLLOW_UP_SQL = f"""COALESCE(
+    ({ACTION_WORK_DATE_SQL}) <= CURRENT_DATE - ({FOLLOW_UP_AFTER_DAYS_SQL}),
+    FALSE
+)"""
 
 _SKIPPED_STATUS_SQL = """regexp_replace(lower(btrim(COALESCE({col}, ''))), '[\\s/-]+', '_', 'g')
         IN ('cancelled', 'canceled', 'no_show', 'noshow', 'cancelled_no_show', 'canceled_no_show')"""
@@ -2096,6 +2115,16 @@ def _history_text(value: Any) -> str | None:
     return text or None
 
 
+def _normalize_follow_up_after(value: Any) -> str:
+    text = str(value).strip()
+    if not text.isdigit():
+        raise ValueError("follow_up_after must be a whole number of days from 0 to 365")
+    days = int(text)
+    if days > FOLLOW_UP_AFTER_MAX_DAYS:
+        raise ValueError("follow_up_after must be a whole number of days from 0 to 365")
+    return str(days)
+
+
 def _compare_value(key: str, value: Any) -> Any:
     if value is None:
         return None
@@ -2110,6 +2139,8 @@ def _compare_value(key: str, value: Any) -> Any:
     if key == "source_visit_status":
         text = _as_text(value)
         return text.lower() if text else None
+    if key == FOLLOW_UP_AFTER_FIELD:
+        return _normalize_follow_up_after(value)
     return _as_text(value)
 
 
@@ -2131,6 +2162,8 @@ def normalize_edit_value(key: str, value: Any) -> Any:
     if key == "source_visit_status":
         text = _as_text(value)
         return text.lower() if text else None
+    if key == FOLLOW_UP_AFTER_FIELD:
+        return _normalize_follow_up_after(value)
     return _as_text(value)
 
 

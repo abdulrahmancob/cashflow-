@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { CompletedTodayBadge } from '../components/CompletedTodayBadge'
+import { AssignmentProgressBadge, CompletedTodayBadge } from '../components/CompletedTodayBadge'
 import { CollectionLookupsTab } from './CollectionLookups'
 import { CollectionQueueTab } from './CollectionQueue'
 
@@ -62,7 +62,10 @@ export function CollectionPage() {
             ))}
           </div>
         </div>
-        <CompletedTodayBadge area="collection" compact />
+        <div className="flex items-center gap-2">
+          <AssignmentProgressBadge />
+          <CompletedTodayBadge area="collection" compact />
+        </div>
       </div>
       {seen.has('queue') ? (
         <div className={panelClass(tab === 'queue')}>

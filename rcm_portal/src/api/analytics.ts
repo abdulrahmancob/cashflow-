@@ -55,6 +55,8 @@ export type TeamPerson = {
   coll_recovered_month: number
   coll_money_today: number
   coll_money_month: number
+  coll_assigned: number
+  coll_finished: number
   coll_status_today: Record<string, number>
   coll_status_month: Record<string, number>
   cpt_touched: number
@@ -116,6 +118,8 @@ export type TeamSummary = {
     coll_recovered_month: number
     coll_money_today: number
     coll_money_month: number
+    coll_assigned: number
+    coll_finished: number
     cpt_touched: number
     cpt_touched_today: number
     cpt_touched_week: number
@@ -185,10 +189,19 @@ export type CollectionRootCauseRow = {
   top_count: number
 }
 
+export type CollectionRootCausePerson = {
+  user_id: string
+  display_name: string
+  counts: Record<string, number>
+  top: string
+  top_count: number
+}
+
 export type CollectionRootCauseBreakdown = {
   year: number
   labels: string[]
   rows: CollectionRootCauseRow[]
+  people: CollectionRootCausePerson[]
 }
 
 export type SsBreakdown = {
@@ -226,6 +239,9 @@ export const analyticsApi = {
     return api<TeamUserDetail>(
       `/api/analytics/team/${encodeURIComponent(userId)}?${qs(preset, dateFrom, dateTo, team)}`,
     )
+  },
+  myAssignments() {
+    return api<{ assigned: number; finished: number }>('/api/analytics/my-assignments')
   },
   collectionRootCauses(year?: number) {
     const p = new URLSearchParams()

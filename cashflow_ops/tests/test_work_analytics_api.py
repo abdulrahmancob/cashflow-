@@ -221,6 +221,17 @@ def test_collection_root_causes_ok(monkeypatch):
     assert body["labels"] == ["Auth delay"]
 
 
+def test_my_assignments_for_collector(monkeypatch):
+    monkeypatch.setattr(
+        "cashflow_db.repository.work_analytics.my_assignment_progress",
+        lambda conn, user_id: {"assigned": 20, "finished": 8},
+    )
+    client = TestClient(_app(_user("collector"), monkeypatch))
+    res = client.get("/api/analytics/my-assignments")
+    assert res.status_code == 200
+    assert res.json() == {"assigned": 20, "finished": 8}
+
+
 def test_ss_lead_cannot_open_collection_root_causes(monkeypatch):
     def _reject(conn, roles, **k):
         resolve_team(roles, "collection")

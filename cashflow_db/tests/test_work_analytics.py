@@ -729,7 +729,104 @@ def test_collection_root_cause_month_rollup():
     assert payload["rows"][1]["top_count"] == 0
     src = inspect.getsource(wa.collection_root_cause_breakdown)
     assert "column_name = 'root_cause'" in src
-    assert "date_trunc('month'" in src
-    assert "DISTINCT ON" in src
+    assert "date_trunc('month', wi.dos)" in src
+    assert "date_trunc('month', h.changed_at)" not in src
+    assert "DISTINCT ON (h.work_item_id)" in src
+    assert "eligibility_work_item" in src
+    assert "h.changed_by" in src
     assert "COLLECTION_QUEUE_WHERE" not in src
     assert "rollup_root_causes" in src
+    assert "rollup_root_cause_people" in src
+
+
+def test_root_cause_counts_once_for_last_writer_in_dos_month():
+    first = datetime(2026, 2, 1, 9, 0, tzinfo=timezone.utc)
+    later = datetime(2026, 8, 1, 9, 0, tzinfo=timezone.utc)
+    facts = wa.last_root_cause_write(
+        [
+            {
+                "work_item_id": "claim-1",
+                "changed_at": first,
+                "changed_by": "alice",
+                "root_cause": "Auth delay",
+                "dos": date(2026, 1, 15),
+            },
+            {
+                "work_item_id": "claim-1",
+                "changed_at": later,
+                "changed_by": "bob",
+                "root_cause": "Case got denied",
+                "dos": date(2026, 1, 15),
+            },
+        ]
+    )
+    assert len(facts) == 1
+    assert facts[0]["user_id"] == "bob"
+    assert facts[0]["month_start"] == date(2026, 1, 1)
+    assert facts[0]["root_cause"] == "Case got denied"
+    people = wa.rollup_root_cause_people(
+        facts,
+        [
+            {"user_id": "alice", "display_name": "Alice"},
+            {"user_id": "bob", "display_name": "Bob"},
+        ],
+        ["Auth delay", "Case got denied"],
+    )
+    by_name = {row["display_name"]: row for row in people}
+    assert by_name["Alice"]["counts"]["Auth delay"] == 0
+    assert by_name["Alice"]["top"] == ""
+    assert by_name["Bob"]["counts"]["Case got denied"] == 1
+    assert by_name["Bob"]["top"] == "Case got denied"
+
+
+def test_latest_assignment_and_finish_after_status():
+    t0 = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    t1 = datetime(2026, 10, 1, 10, 0, tzinfo=timezone.utc)
+    t2 = datetime(2026, 10, 1, 11, 0, tzinfo=timezone.utc)
+    me = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    other = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+    collector = "cccccccc-cccc-cccc-cccc-cccccccccccc"
+    latest = wa.latest_assignment_event(
+        [
+            {"changed_at": t0, "changed_by": other, "new_value": collector},
+            {"changed_at": t1, "changed_by": me, "new_value": collector},
+        ]
+    )
+    assert latest["assigner_id"] == me
+    assert latest["assignee_id"] == collector
+    cleared = wa.latest_assignment_event(
+        [
+            {"changed_at": t0, "changed_by": me, "new_value": collector},
+            {"changed_at": t2, "changed_by": me, "new_value": ""},
+        ]
+    )
+    assert cleared is None
+    assert wa.status_finishes_assignment(
+        assignee_id=collector,
+        assigned_at=t1,
+        status_by=collector,
+        status_at=t0,
+        status_value="Action Taken",
+    ) is False
+    assert wa.status_finishes_assignment(
+        assignee_id=collector,
+        assigned_at=t1,
+        status_by=other,
+        status_at=t2,
+        status_value="Dead",
+    ) is False
+    assert wa.status_finishes_assignment(
+        assignee_id=collector,
+        assigned_at=t1,
+        status_by=collector,
+        status_at=t2,
+        status_value="Action Taken",
+    ) is True
+    sql = wa.LATEST_ASSIGNMENT_SQL
+    assert "DISTINCT ON (h.work_item_id)" in sql
+    assert "column_name = 'assigned_to'" in sql
+    assert "column_name = 'collection_status'" in sql
+    assert "s.changed_at > open_assign.changed_at" in sql
+    assert "assigner_id = %s::uuid" in inspect.getsource(wa._viewer_assignment_rows)
+    assert "assignee_id = %s" in inspect.getsource(wa.my_assignment_progress)
+    assert "viewer_id" in inspect.getsource(wa.team_summary)

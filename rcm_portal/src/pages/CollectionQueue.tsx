@@ -29,6 +29,7 @@ type CollectionRow = {
   paid_amount?: number | null
   source_visit_status?: string | null
   work_date?: string | null
+  follow_up_after?: string | number | null
   assigned_to?: string | null
   assigned_to_name?: string | null
   assigned_to_code?: string | null
@@ -156,6 +157,34 @@ const BUCKETS: { key: Bucket; label: string }[] = [
   { key: 'at_risk', label: 'At risk' },
   { key: 'paid_patient_responsibility', label: 'Paid - Patient Responsibility' },
 ]
+
+function followUpText(row: CollectionRow): string {
+  const raw = row.follow_up_after
+  if (raw === null || raw === undefined) return ''
+  return String(raw).trim()
+}
+
+function isoToday(): string {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+function shiftIso(iso: string, days: number): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  return date.toISOString().slice(0, 10)
+}
+
+function isFollowUpDue(workDate: string | null | undefined, daysRaw: string): boolean {
+  const iso = (workDate || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false
+  const trimmed = daysRaw.trim()
+  const days = trimmed === '' ? 30 : Number(trimmed)
+  if (!Number.isInteger(days) || days < 0 || days > 365) return false
+  return iso <= shiftIso(isoToday(), -days)
+}
 
 const CELL_INPUT =
   'rounded border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-950'
@@ -285,7 +314,8 @@ function emptyCopy(bucket: Bucket, loading: boolean) {
   if (bucket === 'follow_up') {
     return {
       title: 'No follow up visits',
-      description: 'Action visits appear here 30 days after they were moved.',
+      description:
+        'Action visits appear here 30 days after Work Date, unless Follow up after is set.',
     }
   }
   if (bucket === 'arbitration') {
@@ -471,6 +501,7 @@ export function CollectionQueueTab() {
       })
       setSelected((cur) => cur.filter((id) => !ids.includes(id)))
       if (ids.length > 1) setBulkAssignee('')
+      window.dispatchEvent(new Event(TODAY_REFRESH))
       setToast({
         message: ids.length === 1 ? 'Assignee updated' : `Assigned ${ids.length} visits`,
         tone: 'success',
@@ -501,7 +532,12 @@ export function CollectionQueueTab() {
         const moved = updates.collection_status
           ? statusTab(updates.collection_status, row.source_visit_status)
           : null
-        if (nextStatus === 'paid' || nextStatus === 'deduct' || (moved && moved !== bucket)) {
+        const days = updates.follow_up_after
+        const leftTab =
+          days !== undefined &&
+          ((bucket === 'action' && isFollowUpDue(row.work_date, days)) ||
+            (bucket === 'follow_up' && !isFollowUpDue(row.work_date, days)))
+        if (nextStatus === 'paid' || nextStatus === 'deduct' || (moved && moved !== bucket) || leftTab) {
           setItems((cur) => cur.filter((item) => item.work_item_id !== row.work_item_id))
           setTotal((n) => Math.max(0, n - 1))
         } else {
@@ -780,6 +816,7 @@ export function CollectionQueueTab() {
                   <th className="cursor-pointer" onClick={() => toggleSort('work_date')}>
                     Work Date {sortIcon('work_date')}
                   </th>
+                  <th>Follow up after</th>
                   <th>Assignee</th>
                   <th>Denial Reason</th>
                   <th>RootCause</th>
@@ -868,6 +905,25 @@ export function CollectionQueueTab() {
                         />
                       </td>
                       <td>{fmtDate(row.work_date)}</td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="number"
+                          min={0}
+                          max={365}
+                          step={1}
+                          className={`${CELL_INPUT} w-16 text-right tabular-nums`}
+                          defaultValue={followUpText(row)}
+                          key={`${row.work_item_id}-follow-${followUpText(row)}`}
+                          placeholder="30"
+                          disabled={busy}
+                          aria-label="Follow up after"
+                          onBlur={(e) => {
+                            const next = e.target.value.trim()
+                            if (next === followUpText(row)) return
+                            void patchRow(row, { follow_up_after: next })
+                          }}
+                        />
+                      </td>
                       <td onClick={(e) => e.stopPropagation()}>
                         {canAssign ? (
                           <SearchableSelect
