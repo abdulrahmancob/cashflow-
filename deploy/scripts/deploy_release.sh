@@ -183,11 +183,71 @@ if [[ "${portal}" -eq 1 ]]; then
 fi
 
 if [[ "${nginx}" -eq 1 ]]; then
-  echo "==> reload nginx"
+  echo "==> recreate nginx"
+  compose_file="${DEST}/deploy/docker-compose.yml"
+  guard_mount='      - ./nginx/export-guard.js:/etc/nginx/export-guard.js:ro'
+  if ! grep -qF 'export-guard.js:' "${compose_file}"; then
+    tmp="$(mktemp)"
+    awk -v line="${guard_mount}" '
+      /cashflow-ssl.conf:\/etc\/nginx\/conf.d\/ssl.conf:ro/ && !done {
+        print
+        print line
+        done=1
+        next
+      }
+      { print }
+    ' "${compose_file}" > "${tmp}"
+    if ! grep -qF 'export-guard.js:' "${tmp}"; then
+      echo "nginx volume anchor missing in ${compose_file}" >&2
+      rm -f "${tmp}"
+      exit 1
+    fi
+    if ! mv "${tmp}" "${compose_file}" 2>/dev/null; then
+      sudo mv "${tmp}" "${compose_file}"
+    fi
+  fi
   (
     cd "${DEST}/deploy"
-    docker compose --env-file .env exec -T nginx nginx -s reload
+    docker compose --env-file .env up -d --no-deps nginx
+    reloaded=0
+    for _ in $(seq 1 15); do
+      if docker compose --env-file .env exec -T nginx nginx -s reload; then
+        reloaded=1
+        break
+      fi
+      sleep 1
+    done
+    if [[ "${reloaded}" -ne 1 ]]; then
+      echo "nginx did not reload" >&2
+      exit 1
+    fi
   )
+  echo "==> export guard"
+  guard_ok=0
+  for _ in $(seq 1 15); do
+    if curl -fsS http://127.0.0.1/export-guard.js >/dev/null && curl -fsS http://127.0.0.1/ | grep -q '/export-guard.js'; then
+      guard_ok=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "${guard_ok}" -ne 1 ]]; then
+    echo "export guard was not injected" >&2
+    exit 1
+  fi
+  code=""
+  for _ in $(seq 1 15); do
+    code="$(curl -s -o /dev/null -w '%{http_code}' -X POST --max-time 15 'http://127.0.0.1/api/eligibility/items/export-job')"
+    if [[ "${code}" == "401" ]]; then
+      break
+    fi
+    sleep 1
+  done
+  echo "export-job status=${code}"
+  if [[ "${code}" != "401" ]]; then
+    echo "export-job did not answer 401" >&2
+    exit 1
+  fi
 fi
 
 echo "DEPLOY_RELEASE_DONE sha=${SHA} api_recreated=${api}"

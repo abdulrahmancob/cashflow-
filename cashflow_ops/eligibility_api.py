@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import tempfile
 import threading
@@ -13,7 +14,7 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,6 +32,8 @@ from cashflow_ops.security import (
     parse_uuid_list,
     require_roles,
 )
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/eligibility", tags=["eligibility"])
 
@@ -127,6 +130,177 @@ def save_export_workbook(wb: Any, directory: Path) -> Path:
         _discard_export_file(path)
         raise
     return path
+
+
+_export_jobs_lock = threading.Lock()
+_export_jobs: dict[str, dict[str, Any]] = {}
+_EXPORT_JOB_TTL_S = 6 * 3600
+
+
+def _purge_finished_export_jobs(now: datetime | None = None) -> None:
+    """Drop finished jobs older than the TTL. Caller holds `_export_jobs_lock`."""
+    now = now or datetime.now(timezone.utc)
+    expired: list[str] = []
+    for job_id, job in _export_jobs.items():
+        if job["status"] == "running":
+            continue
+        started = job.get("started_at")
+        if isinstance(started, datetime) and (now - started).total_seconds() > _EXPORT_JOB_TTL_S:
+            expired.append(job_id)
+    for job_id in expired:
+        job = _export_jobs.pop(job_id)
+        if job.get("path"):
+            _discard_export_file(job["path"])
+
+
+def _build_export_workbook(
+    *,
+    q: str | None = None,
+    facility: list[str] | None = None,
+    month: list[str] | None = None,
+    insurance: list[str] | None = None,
+    status: list[str] | None = None,
+    visit_status: list[str] | None = None,
+    check_date: list[str] | None = None,
+    assigned_to: list[str] | None = None,
+    unassigned: bool = False,
+    sort_by: str = "dos",
+    sort_dir: str = "desc",
+    queue: str = "sheet",
+    bucket: str = "denied",
+    collection_status: list[str] | None = None,
+    root_cause: list[str] | None = None,
+) -> tuple[Path, str]:
+    """Write one sheet workbook to the export disk and return its path and name."""
+    from cashflow_db.repository import connection, eligibility
+
+    try:
+        from openpyxl import Workbook
+    except ImportError as exc:
+        raise HTTPException(status_code=500, detail="openpyxl required") from exc
+
+    # sort_by/sort_dir stay accepted so existing export URLs still validate.
+    # The file is walked by work_item_id so an all-months export does not
+    # recount or OFFSET through the whole sheet.
+    _ = (sort_by, sort_dir)
+    path: Path | None = None
+    try:
+        with _openpyxl_temp_on_export_disk() as directory:
+            wb = Workbook(write_only=True)
+            if queue == "collection":
+                sheet_name = "Collection"
+            elif queue in {"pr3", "patient_responsibility"}:
+                sheet_name = "Patient Responsibility"
+            else:
+                sheet_name = "Eligibility Sheet"
+            ws = wb.create_sheet(sheet_name)
+            ws.append(eligibility.sheet_export_headers(queue))
+            with connection() as conn:
+                for row in eligibility.iter_export_work_items(
+                    conn,
+                    q=q,
+                    facility=facility,
+                    month=month,
+                    insurance=insurance,
+                    status=status,
+                    visit_status=visit_status,
+                    check_date=check_date,
+                    assigned_to=assigned_to,
+                    unassigned=unassigned,
+                    queue=queue,
+                    bucket=bucket,
+                    collection_status=collection_status,
+                    root_cause=root_cause,
+                ):
+                    ws.append(eligibility.sheet_export_row(row, queue))
+            path = save_export_workbook(wb, directory)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if path is not None:
+            _discard_export_file(path)
+        raise HTTPException(status_code=500, detail="Eligibility export failed") from exc
+    return path, _export_filename(queue)
+
+
+def _launch_export_job(user_id: str, filters: dict[str, Any]) -> str:
+    """Record a job and build it on a daemon thread. Returns before the file exists."""
+    job_id = uuid.uuid4().hex
+    record = {
+        "id": job_id,
+        "user_id": user_id,
+        "status": "running",
+        "path": None,
+        "filename": _export_filename(str(filters.get("queue") or "sheet")),
+        "started_at": datetime.now(timezone.utc),
+    }
+    with _export_jobs_lock:
+        _purge_finished_export_jobs()
+        _export_jobs[job_id] = record
+    threading.Thread(
+        target=_run_export_job,
+        args=(job_id, filters),
+        name="elig-export",
+        daemon=True,
+    ).start()
+    return job_id
+
+
+def _run_export_job(job_id: str, filters: dict[str, Any]) -> None:
+    try:
+        path, filename = _build_export_workbook(**filters)
+    except Exception:
+        log.exception("eligibility export job failed")
+        with _export_jobs_lock:
+            job = _export_jobs.get(job_id)
+            if job and job["status"] == "running":
+                job["status"] = "failed"
+        return
+    with _export_jobs_lock:
+        job = _export_jobs.get(job_id)
+        if job is None or job["status"] != "running":
+            _discard_export_file(path)
+            return
+        job["path"] = str(path)
+        job["filename"] = filename
+        job["status"] = "ready"
+
+
+def _export_job_for_user(job_id: str, user_id: str) -> dict[str, Any] | None:
+    with _export_jobs_lock:
+        job = _export_jobs.get(job_id)
+        if not job or job["user_id"] != user_id:
+            return None
+        return {
+            "status": job["status"],
+            "path": job.get("path"),
+            "filename": job.get("filename") or "eligibility_sheet.xlsx",
+        }
+
+
+def _claim_export_file(job_id: str, user_id: str) -> tuple[Path, str] | None:
+    """Hand the finished file to one download. A second claim gets nothing."""
+    with _export_jobs_lock:
+        job = _export_jobs.get(job_id)
+        if not job or job["user_id"] != user_id or job["status"] != "ready":
+            return None
+        raw = job.get("path")
+        if not raw:
+            job["status"] = "failed"
+            return None
+        path = Path(raw)
+        if not path.is_file():
+            job["status"] = "failed"
+            return None
+        job["status"] = "sent"
+        filename = str(job.get("filename") or "eligibility_sheet.xlsx")
+        return path, filename
+
+
+def _finish_export_download(job_id: str, path: Path) -> None:
+    _discard_export_file(path)
+    with _export_jobs_lock:
+        _export_jobs.pop(job_id, None)
 
 
 _generate_lock = threading.Lock()
@@ -454,61 +628,135 @@ def export_items(
     root_cause: list[str] | None = Query(None),
     user: AuthUser = Depends(get_current_user),
 ) -> FileResponse:
-    from cashflow_db.repository import connection, eligibility
-
     _require_queue_view(queue, user)
-    try:
-        from openpyxl import Workbook
-    except ImportError as exc:
-        raise HTTPException(status_code=500, detail="openpyxl required") from exc
-
-    assigned = parse_uuid_list(assigned_to)
-    # sort_by/sort_dir stay on the route so existing export URLs still
-    # validate. The file is walked by work_item_id so an all-months export
-    # does not recount or OFFSET through the whole sheet.
-    _ = (sort_by, sort_dir)
-    path: Path | None = None
-    try:
-        with _openpyxl_temp_on_export_disk() as directory:
-            wb = Workbook(write_only=True)
-            if queue == "collection":
-                sheet_name = "Collection"
-            elif queue in {"pr3", "patient_responsibility"}:
-                sheet_name = "Patient Responsibility"
-            else:
-                sheet_name = "Eligibility Sheet"
-            ws = wb.create_sheet(sheet_name)
-            ws.append(eligibility.sheet_export_headers(queue))
-            with connection() as conn:
-                for row in eligibility.iter_export_work_items(
-                    conn,
-                    q=q,
-                    facility=facility,
-                    month=month,
-                    insurance=insurance,
-                    status=status,
-                    visit_status=visit_status,
-                    check_date=check_date,
-                    assigned_to=assigned,
-                    unassigned=unassigned,
-                    queue=queue,
-                    bucket=bucket,
-                    collection_status=collection_status,
-                    root_cause=root_cause,
-                ):
-                    ws.append(eligibility.sheet_export_row(row, queue))
-            path = save_export_workbook(wb, directory)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        if path is not None:
-            _discard_export_file(path)
-        raise HTTPException(status_code=500, detail="Eligibility export failed") from exc
+    path, filename = _build_export_workbook(
+        q=q,
+        facility=facility,
+        month=month,
+        insurance=insurance,
+        status=status,
+        visit_status=visit_status,
+        check_date=check_date,
+        assigned_to=parse_uuid_list(assigned_to),
+        unassigned=unassigned,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+        queue=queue,
+        bucket=bucket,
+        collection_status=collection_status,
+        root_cause=root_cause,
+    )
     return FileResponse(
         path,
         media_type=_XLSX_MEDIA,
-        filename=_export_filename(queue),
+        filename=filename,
         background=BackgroundTask(_discard_export_file, path),
+    )
+
+
+def _export_job_filters(
+    *,
+    q: str | None,
+    facility: list[str] | None,
+    month: list[str] | None,
+    insurance: list[str] | None,
+    status: list[str] | None,
+    visit_status: list[str] | None,
+    check_date: list[str] | None,
+    assigned_to: list[str] | None,
+    unassigned: bool,
+    sort_by: str,
+    sort_dir: str,
+    queue: str,
+    bucket: str,
+    collection_status: list[str] | None,
+    root_cause: list[str] | None,
+) -> dict[str, Any]:
+    return {
+        "q": q,
+        "facility": facility,
+        "month": month,
+        "insurance": insurance,
+        "status": status,
+        "visit_status": visit_status,
+        "check_date": check_date,
+        "assigned_to": parse_uuid_list(assigned_to),
+        "unassigned": unassigned,
+        "sort_by": sort_by,
+        "sort_dir": sort_dir,
+        "queue": queue,
+        "bucket": bucket,
+        "collection_status": collection_status,
+        "root_cause": root_cause,
+    }
+
+
+@router.post("/items/export-job")
+def start_export_job(
+    q: str | None = None,
+    facility: list[str] | None = Query(None),
+    month: list[str] | None = Query(None),
+    insurance: list[str] | None = Query(None),
+    status: list[str] | None = Query(None),
+    visit_status: list[str] | None = Query(None),
+    check_date: list[str] | None = Query(None),
+    assigned_to: list[str] | None = Query(None),
+    unassigned: bool = False,
+    sort_by: str = "dos",
+    sort_dir: str = "desc",
+    queue: str = "sheet",
+    bucket: str = "denied",
+    collection_status: list[str] | None = Query(None),
+    root_cause: list[str] | None = Query(None),
+    user: AuthUser = Depends(get_current_user),
+) -> dict[str, str]:
+    """Start a sheet build and return its id before the workbook exists."""
+    _require_queue_view(queue, user)
+    job_id = _launch_export_job(
+        str(user.user_id),
+        _export_job_filters(
+            q=q,
+            facility=facility,
+            month=month,
+            insurance=insurance,
+            status=status,
+            visit_status=visit_status,
+            check_date=check_date,
+            assigned_to=assigned_to,
+            unassigned=unassigned,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            queue=queue,
+            bucket=bucket,
+            collection_status=collection_status,
+            root_cause=root_cause,
+        ),
+    )
+    return {"id": job_id}
+
+
+@router.get("/items/export-job/{job_id}", response_model=None)
+def download_export_job(
+    job_id: str,
+    user: AuthUser = Depends(get_current_user),
+) -> FileResponse | JSONResponse:
+    """202 while the file is still building, then the xlsx on the next poll."""
+    snap = _export_job_for_user(job_id, str(user.user_id))
+    if snap is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if snap["status"] == "running":
+        return JSONResponse(status_code=202, content={"status": "running"})
+    if snap["status"] == "failed":
+        raise HTTPException(status_code=500, detail="Eligibility export failed")
+    claimed = _claim_export_file(job_id, str(user.user_id))
+    if claimed is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    path, filename = claimed
+    return FileResponse(
+        path,
+        media_type=_XLSX_MEDIA,
+        filename=filename,
+        background=BackgroundTask(_finish_export_download, job_id, path),
     )
 
 
