@@ -389,12 +389,20 @@ def assemble_board(
     online_ids: set[str] | None = None,
     activity: list[dict[str, Any]] | None = None,
     last_pings: dict[str, datetime] | None = None,
+    logins: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Selected-day cards stay on that day. Live is whoever is away right now."""
     moment = _as_aware(now)
     is_today = selected == today
     present = online_ids or set()
     seen_at = last_pings or {}
+    logged_in: dict[str, str] = {}
+    for row in logins or []:
+        stamp = row.get("logged_in_at")
+        uid = row.get("user_id")
+        if uid is None or not isinstance(stamp, datetime):
+            continue
+        logged_in[str(uid)] = _as_aware(stamp).isoformat()
     desk_by_user = {
         str(row["user_id"]): {
             "seconds_desk": int(row.get("seconds_desk") or 0),
@@ -433,6 +441,7 @@ def assemble_board(
                 ),
                 "seconds_desk": desk_by_user.get(uid, {}).get("seconds_desk", 0),
                 "seconds_idle": desk_by_user.get(uid, {}).get("seconds_idle", 0),
+                "logged_in_at": logged_in.get(uid),
                 **summary,
             }
         )
@@ -594,6 +603,17 @@ def away_board(
         """,
         (selected, *activity_params),
     )
+    login_extra, login_params = _id_clause(scoped_ids)
+    logins = client.fetchall(
+        conn,
+        f"""
+        SELECT user_id, min(logged_in_at) AS logged_in_at
+        FROM auth.login_event
+        WHERE (logged_in_at AT TIME ZONE 'Africa/Cairo')::date = %s{login_extra}
+        GROUP BY user_id
+        """,
+        (selected, *login_params),
+    )
     last_pings: dict[str, datetime] = {}
     for row in pings:
         ping = row.get("last_ping_at")
@@ -612,4 +632,5 @@ def away_board(
         online_ids=online_user_ids(pings, moment),
         activity=activity,
         last_pings=last_pings,
+        logins=logins,
     )

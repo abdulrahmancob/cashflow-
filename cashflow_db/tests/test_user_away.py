@@ -369,3 +369,29 @@ def test_offline_clock_starts_after_today_ping_until_they_return():
     by_id = {person["user_id"]: person for person in board["people"]}
     assert by_id["gone"]["offline_since"] == left.isoformat()
     assert by_id["away"]["offline_since"] is None
+
+
+def test_board_login_is_the_first_login_of_the_selected_day():
+    now = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    today = date(2026, 9, 26)
+    first = datetime(2026, 9, 26, 6, 14, tzinfo=timezone.utc)
+    users = [
+        {"user_id": "in", "display_name": "In", "username": "in", "roles": []},
+        {"user_id": "out", "display_name": "Out", "username": "out", "roles": []},
+    ]
+    board = assemble_board(
+        users,
+        day_sessions=[],
+        open_sessions=[],
+        day_counts=[],
+        selected=today,
+        today=today,
+        now=now,
+        logins=[{"user_id": "in", "logged_in_at": first}],
+    )
+    by_id = {person["user_id"]: person for person in board["people"]}
+    assert by_id["in"]["logged_in_at"] == first.isoformat()
+    assert by_id["out"]["logged_in_at"] is None
+    src = inspect.getsource(user_away.away_board)
+    assert "auth.login_event" in src
+    assert "min(logged_in_at)" in src
