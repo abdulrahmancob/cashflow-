@@ -256,6 +256,27 @@ def test_follow_up_is_aged_action():
     ).read_text(encoding="utf-8")
 
 
+def test_assign_filter_uses_list_filters():
+    from cashflow_db.repository.eligibility import assign_filter_statement
+
+    actor = "11111111-1111-1111-1111-111111111111"
+    assignee = "33333333-3333-3333-3333-333333333333"
+    sql, params = assign_filter_statement(
+        actor_id=actor,
+        assignee_id=assignee,
+        month=["2026-09"],
+        insurance=["Aetna"],
+        bucket="denied",
+    )
+    assert "IS DISTINCT FROM" in sql
+    assert "ops.eligibility_history" in sql
+    assert "analytics.collection_queue_member" in sql
+    assert date(2026, 9, 1) in params
+    assert ["aetna"] in params
+    assert "denied" in params
+    assert params[-6:] == [assignee, assignee, actor, assignee, assignee, actor]
+
+
 def test_follow_up_after_days_override():
     _direct, overrides, history, changed = plan_work_item_patch(
         {"manual_overrides": {}},

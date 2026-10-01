@@ -296,6 +296,20 @@ class BulkAssignBody(BaseModel):
     assigned_to: str | None = None
 
 
+class FilterAssignBody(BaseModel):
+    assigned_to: str | None = None
+    q: str | None = None
+    facility: list[str] = Field(default_factory=list)
+    month: list[str] = Field(default_factory=list)
+    insurance: list[str] = Field(default_factory=list)
+    visit_status: list[str] = Field(default_factory=list)
+    filter_assigned_to: list[str] = Field(default_factory=list)
+    unassigned: bool = False
+    bucket: str = "denied"
+    collection_status: list[str] = Field(default_factory=list)
+    root_cause: list[str] = Field(default_factory=list)
+
+
 class TransitionBody(BaseModel):
     eligibility_status: str
     reason_key: str
@@ -1566,6 +1580,47 @@ def assign_bulk(
             )
             updated.append(item)
     return _ser({"updated": len(updated), "items": updated})
+
+
+@router.post("/items/assign-filter")
+def assign_filter(
+    body: FilterAssignBody,
+    user: AuthUser = Depends(require_roles(ROLE_OPS_ADMIN, ROLE_SUB_ADMIN)),
+) -> dict[str, Any]:
+    from cashflow_db.repository import connection, eligibility
+
+    assignee_id = _normalize_assignee(body.assigned_to)
+    with connection() as conn:
+        _require_collector_assignee(conn, assignee_id)
+        updated = eligibility.assign_matching_work_items(
+            conn,
+            actor_id=user.user_id,
+            assignee_id=assignee_id,
+            q=body.q,
+            facility=body.facility,
+            month=body.month,
+            insurance=body.insurance,
+            visit_status=body.visit_status,
+            assigned_to=parse_uuid_list(body.filter_assigned_to),
+            unassigned=body.unassigned,
+            bucket=body.bucket,
+            collection_status=body.collection_status,
+            root_cause=body.root_cause,
+        )
+        if updated:
+            _activity(
+                conn,
+                user,
+                action="assigned",
+                area="collection",
+                entity_type="collection_filter",
+                entity_id=body.bucket or "collection",
+                entity_label=f"Assigned {updated} collection visits",
+                fallback=f"Assigned {updated} collection visits",
+                force=True,
+                extra={"updated": updated, "assigned_to": assignee_id, "bucket": body.bucket},
+            )
+    return _ser({"updated": updated})
 
 
 @router.post("/items/{work_item_id}/assign")

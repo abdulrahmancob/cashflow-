@@ -5758,6 +5758,99 @@ def assign_work_item(
     return get_work_item(conn, work_item_id)
 
 
+def assign_filter_statement(
+    *,
+    actor_id: str,
+    assignee_id: str | None,
+    q: str | None = None,
+    facility: list[str] | None = None,
+    month: list[str] | None = None,
+    insurance: list[str] | None = None,
+    visit_status: list[str] | None = None,
+    assigned_to: list[str] | None = None,
+    unassigned: bool = False,
+    bucket: str | None = None,
+    collection_status: list[str] | None = None,
+    root_cause: list[str] | None = None,
+) -> tuple[str, list[Any]]:
+    """One statement that assigns every collection row matching the list filters."""
+    where, params = _build_filters(
+        q=q,
+        facility=facility,
+        month=month,
+        insurance=insurance,
+        status=None,
+        visit_status=visit_status,
+        assigned_to=assigned_to,
+        unassigned=unassigned,
+        queue="collection",
+        bucket=bucket,
+        collection_status=collection_status,
+        root_cause=root_cause,
+    )
+    new_text = str(assignee_id) if assignee_id else None
+    sql = f"""
+        WITH targets AS (
+            SELECT wi.work_item_id, wi.assigned_to::text AS old_assignee
+            FROM ops.eligibility_work_item wi
+            WHERE {where}
+              AND wi.assigned_to IS DISTINCT FROM %s::uuid
+        ),
+        logged AS (
+            INSERT INTO ops.eligibility_history (
+                work_item_id, column_name, old_value, new_value, changed_by
+            )
+            SELECT work_item_id, 'assigned_to', old_assignee, %s, %s::uuid
+            FROM targets
+            RETURNING work_item_id
+        )
+        UPDATE ops.eligibility_work_item AS wi
+        SET assigned_to = %s::uuid,
+            assigned_at = CASE WHEN %s::uuid IS NULL THEN NULL ELSE now() END,
+            updated_by = %s::uuid,
+            updated_at = now()
+        FROM logged
+        WHERE wi.work_item_id = logged.work_item_id
+        RETURNING wi.work_item_id
+    """
+    params.extend([assignee_id, new_text, actor_id, assignee_id, assignee_id, actor_id])
+    return sql, params
+
+
+def assign_matching_work_items(
+    conn: psycopg.Connection,
+    *,
+    actor_id: str,
+    assignee_id: str | None,
+    q: str | None = None,
+    facility: list[str] | None = None,
+    month: list[str] | None = None,
+    insurance: list[str] | None = None,
+    visit_status: list[str] | None = None,
+    assigned_to: list[str] | None = None,
+    unassigned: bool = False,
+    bucket: str | None = None,
+    collection_status: list[str] | None = None,
+    root_cause: list[str] | None = None,
+) -> int:
+    sql, params = assign_filter_statement(
+        actor_id=actor_id,
+        assignee_id=assignee_id,
+        q=q,
+        facility=facility,
+        month=month,
+        insurance=insurance,
+        visit_status=visit_status,
+        assigned_to=assigned_to,
+        unassigned=unassigned,
+        bucket=bucket,
+        collection_status=collection_status,
+        root_cause=root_cause,
+    )
+    rows = client.fetchall(conn, sql, params)
+    return len(rows)
+
+
 def _lock_active(item: dict[str, Any]) -> bool:
     exp = item.get("lock_expires_at")
     if not item.get("locked_by") or not exp:

@@ -388,6 +388,7 @@ export function CollectionQueueTab() {
   )
   const [collectors, setCollectors] = useState<CollectorUser[]>([])
   const [selected, setSelected] = useState<string[]>([])
+  const [assignAllInFilter, setAssignAllInFilter] = useState(false)
   const [bulkAssignee, setBulkAssignee] = useState('')
   const [assigning, setAssigning] = useState(false)
 
@@ -506,6 +507,43 @@ export function CollectionQueueTab() {
         message: ids.length === 1 ? 'Assignee updated' : `Assigned ${ids.length} visits`,
         tone: 'success',
       })
+      await load()
+    } catch (e) {
+      setToast({
+        message: e instanceof ApiError ? e.message : String((e as Error).message || e),
+        tone: 'error',
+      })
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  async function assignFilter() {
+    const name =
+      collectorOptions.find((option) => option.value === bulkAssignee)?.label || 'Unassigned'
+    if (!window.confirm(`Assign all ${total} visits in this filter to ${name}?`)) return
+    setAssigning(true)
+    try {
+      const assigneeIds = assigneeFilter.filter((id) => id !== UNASSIGNED)
+      const data = await api<{ updated: number }>('/api/eligibility/items/assign-filter', {
+        method: 'POST',
+        body: JSON.stringify({
+          assigned_to: bulkAssignee || null,
+          q: q || null,
+          facility,
+          month,
+          insurance,
+          visit_status: visitStatus,
+          root_cause: rootCause,
+          collection_status: collectionStatus,
+          filter_assigned_to: assigneeIds,
+          unassigned: assigneeFilter.includes(UNASSIGNED),
+          bucket,
+        }),
+      })
+      setSelected([])
+      window.dispatchEvent(new Event(TODAY_REFRESH))
+      setToast({ message: `Assigned ${data.updated} visits`, tone: 'success' })
       await load()
     } catch (e) {
       setToast({
@@ -737,10 +775,22 @@ export function CollectionQueueTab() {
         </div>
         {canAssign ? (
           <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-blue-600"
+                checked={assignAllInFilter}
+                disabled={assigning}
+                onChange={(e) => setAssignAllInFilter(e.target.checked)}
+              />
+              Assign all in this filter
+            </label>
             <p className="text-sm text-gray-700 dark:text-gray-200">
-              {selected.length
-                ? `${selected.length} selected`
-                : 'Select visits in the table, then assign'}
+              {assignAllInFilter
+                ? `All ${total} in this filter`
+                : selected.length
+                  ? `${selected.length} selected`
+                  : 'Select visits in the table, then assign'}
             </p>
             <SearchableSelect
               value={bulkAssignee}
@@ -753,8 +803,10 @@ export function CollectionQueueTab() {
             <Button
               size="sm"
               type="button"
-              disabled={assigning || selected.length === 0}
-              onClick={() => void assignRows(selected, bulkAssignee)}
+              disabled={assigning || (assignAllInFilter ? total === 0 : selected.length === 0)}
+              onClick={() =>
+                void (assignAllInFilter ? assignFilter() : assignRows(selected, bulkAssignee))
+              }
             >
               Assign
             </Button>
