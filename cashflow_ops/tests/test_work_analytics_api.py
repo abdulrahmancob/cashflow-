@@ -145,6 +145,12 @@ def test_heartbeat_forwards_presence(monkeypatch):
     assert res.status_code == 200
     assert seen["presence"] is True
     assert seen["idle"] is False
+    res = client.post(
+        "/api/analytics/heartbeat",
+        json={"presence": True, "desk_permission": "denied"},
+    )
+    assert res.status_code == 200
+    assert seen["desk_permission"] == "denied"
 
 
 def test_heartbeat_forwards_closed(monkeypatch):

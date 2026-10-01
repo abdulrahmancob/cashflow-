@@ -162,4 +162,9 @@ def test_ui_away_board_roles_and_header_control():
     assert "Logged in" in page
     assert "No login" in page
     assert "No one matches" in page
+    assert "Idle detection off" in page
+    assert "Idle detection blocked" in page
+    assert "Not Chrome or Edge" in page
+    assert "deskPermissionReport" in heartbeat
+    assert "desk_permission" in heartbeat
     assert "board.live" in page or "live.map" in page

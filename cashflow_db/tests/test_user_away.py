@@ -376,8 +376,8 @@ def test_board_login_is_the_first_login_of_the_selected_day():
     today = date(2026, 9, 26)
     first = datetime(2026, 9, 26, 6, 14, tzinfo=timezone.utc)
     users = [
-        {"user_id": "in", "display_name": "In", "username": "in", "roles": []},
-        {"user_id": "out", "display_name": "Out", "username": "out", "roles": []},
+        {"user_id": "in", "display_name": "In", "username": "in", "roles": [], "desk_permission": "denied"},
+        {"user_id": "out", "display_name": "Out", "username": "out", "roles": [], "desk_permission": "watching"},
     ]
     board = assemble_board(
         users,
@@ -392,6 +392,8 @@ def test_board_login_is_the_first_login_of_the_selected_day():
     by_id = {person["user_id"]: person for person in board["people"]}
     assert by_id["in"]["logged_in_at"] == first.isoformat()
     assert by_id["out"]["logged_in_at"] is None
+    assert by_id["in"]["desk_permission"] == "denied"
+    assert by_id["out"]["desk_permission"] == "watching"
     src = inspect.getsource(user_away.away_board)
     assert "auth.login_event" in src
     assert "min(logged_in_at)" in src

@@ -25,6 +25,7 @@ from cashflow_db.util import parse_money
 
 SLICE_GAP_SECONDS = 120
 IDLE_CAP_SECONDS = 3 * 60 * 60
+DESK_PERMISSIONS = frozenset({"watching", "prompt", "denied", "unsupported"})
 SCOPE_ALL = "all"
 SCOPE_OPS = "ops"
 SCOPE_SS = "second_submission"
@@ -537,9 +538,21 @@ def record_heartbeat(
     idle: bool = False,
     presence: bool = False,
     closed: bool = False,
+    desk_permission: str | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     moment = _as_aware(now or datetime.now(timezone.utc))
+    permission = (desk_permission or "").strip().lower()
+    if permission in DESK_PERMISSIONS:
+        client.execute(
+            conn,
+            """
+            UPDATE auth.app_user
+            SET desk_permission = %s
+            WHERE user_id = %s::uuid
+            """,
+            (permission, user_id),
+        )
     path = None if presence or closed else ((page_path or "").strip()[:200] or None)
     last = client.fetchone(
         conn,

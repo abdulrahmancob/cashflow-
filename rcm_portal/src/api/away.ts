@@ -42,6 +42,7 @@ export type AwayPerson = AwayMe & {
   seconds_desk: number
   seconds_idle: number
   logged_in_at: string | null
+  desk_permission: string | null
 }
 
 export type AwayLive = {

@@ -82,6 +82,13 @@ function formatLoginTime(iso: string) {
   })
 }
 
+function permissionNote(value: string | null | undefined) {
+  if (value === 'prompt') return 'Idle detection off'
+  if (value === 'denied') return 'Idle detection blocked'
+  if (value === 'unsupported') return 'Not Chrome or Edge'
+  return null
+}
+
 function personBucket(person: AwayPerson, isToday: boolean): 'away' | 'desk' | 'offline' {
   if (isToday && person.status !== 'working') return 'away'
   return person.online ? 'desk' : 'offline'
@@ -232,6 +239,7 @@ function PersonCard({
   const over = person.break_seconds > person.break_budget_seconds
   const clock = person.open ? formatClock(sessionElapsed(person.open, now)) : null
   const loginTime = person.logged_in_at ? formatLoginTime(person.logged_in_at) : null
+  const permission = permissionNote(person.desk_permission)
   const offlineFor =
     !away && !person.online && person.offline_since
       ? Math.max(0, Math.floor((now - new Date(person.offline_since).getTime()) / 1000))
@@ -254,6 +262,11 @@ function PersonCard({
             <div className="truncate text-xs text-gray-500">
               {loginTime ? `Logged in ${loginTime}` : 'No login'}
             </div>
+            {permission && (
+              <div className="truncate text-xs font-medium text-rose-600 dark:text-rose-300">
+                {permission}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

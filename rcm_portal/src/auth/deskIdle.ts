@@ -53,6 +53,15 @@ export function deviceReportsIdle() {
   return state.watching && !state.userActive
 }
 
+export type DeskPermissionReport = 'watching' | 'prompt' | 'denied' | 'unsupported'
+
+export function deskPermissionReport(): DeskPermissionReport {
+  if (!state.supported) return 'unsupported'
+  if (state.watching && state.permission === 'granted') return 'watching'
+  if (state.permission === 'denied') return 'denied'
+  return 'prompt'
+}
+
 export function subscribeDeskIdle(listener: (next: DeskIdleState) => void) {
   listeners.add(listener)
   listener(state)

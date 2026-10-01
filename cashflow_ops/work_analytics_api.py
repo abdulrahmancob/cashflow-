@@ -53,6 +53,7 @@ class HeartbeatBody(BaseModel):
     idle: bool = False
     presence: bool = False
     closed: bool = False
+    desk_permission: str | None = Field(default=None, max_length=32)
 
 
 def _period_bounds(
@@ -81,6 +82,7 @@ def heartbeat(
                 idle=body.idle,
                 presence=body.presence,
                 closed=body.closed,
+                desk_permission=body.desk_permission,
             )
         )
 

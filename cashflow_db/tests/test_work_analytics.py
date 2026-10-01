@@ -401,6 +401,53 @@ def test_presence_heartbeat_refreshes_ping_without_work_seconds(monkeypatch):
     assert captured["params"][3] == "/eligibility"
 
 
+def test_desk_permission_is_stored_without_changing_time(monkeypatch):
+    now = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
+    calls: list[tuple] = []
+
+    def fetchone(conn, sql, params):
+        return {
+            "slice_id": "slice-1",
+            "last_ping_at": now - timedelta(seconds=40),
+            "seconds_active": 100,
+        }
+
+    def execute(conn, sql, params):
+        calls.append((sql, params))
+
+    monkeypatch.setattr(wa.client, "fetchone", fetchone)
+    monkeypatch.setattr(wa.client, "execute", execute)
+    user_id = "11111111-1111-1111-1111-111111111111"
+    saved = wa.record_heartbeat(
+        object(),
+        user_id,
+        presence=True,
+        desk_permission=" Denied ",
+        now=now,
+    )
+    assert saved["add_seconds"] == 0
+    assert saved["add_desk_seconds"] == 40
+    assert saved["add_idle_seconds"] == 0
+    permission = [params for sql, params in calls if "desk_permission" in sql]
+    assert permission == [("denied", user_id)]
+    slice_update = [params for sql, params in calls if "seconds_desk" in sql][0]
+    assert slice_update[1] == 0
+    assert slice_update[2] == 40
+
+    calls.clear()
+    ignored = wa.record_heartbeat(
+        object(),
+        user_id,
+        presence=True,
+        desk_permission="camera",
+        now=now,
+    )
+    assert ignored["add_desk_seconds"] == 40
+    assert ignored["add_idle_seconds"] == 0
+    assert not any("desk_permission" in sql for sql, _params in calls)
+    assert "070_desk_permission.sql" in MIGRATIONS
+
+
 def test_closed_heartbeat_stamps_ping_without_desk_time(monkeypatch):
     now = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
     captured: dict = {}

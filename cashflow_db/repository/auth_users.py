@@ -63,7 +63,7 @@ def list_users(conn: psycopg.Connection) -> list[dict[str, Any]]:
         conn,
         """
         SELECT u.user_id, u.username, u.email, u.display_name, u.is_active,
-               u.created_at, u.updated_at, u.last_login_at,
+               u.created_at, u.updated_at, u.last_login_at, u.desk_permission,
                COALESCE(
                    array_agg(r.role_key ORDER BY r.role_key)
                    FILTER (WHERE r.role_key IS NOT NULL),

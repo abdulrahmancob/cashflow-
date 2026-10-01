@@ -35,6 +35,7 @@ MIGRATIONS = [
     "021_fk_indexes.sql",
     "022_acquire_sla.sql",
     "069_paid_patient_responsibility.sql",
+    "070_desk_permission.sql",
 ]
 
 

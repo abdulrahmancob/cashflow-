@@ -337,6 +337,7 @@ def _user_fields(user: dict[str, Any]) -> dict[str, Any]:
         "display_name": user.get("display_name") or user.get("username") or "",
         "username": user.get("username") or "",
         "roles": list(user.get("roles") or []),
+        "desk_permission": user.get("desk_permission") or None,
     }
 
 
