@@ -342,7 +342,8 @@ function emptyCopy(bucket: Bucket, loading: boolean) {
   if (bucket === 'paid_patient_responsibility') {
     return {
       title: 'No paid patient responsibility visits',
-      description: 'PR-3 visits appear here after Collection Status is set to Paid.',
+      description:
+        'Patient Responsibility visits appear here after Collection Status is set to Paid.',
     }
   }
   return {

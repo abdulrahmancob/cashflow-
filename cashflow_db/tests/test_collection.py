@@ -436,6 +436,33 @@ def test_collection_denied_includes_pr3_unpaid():
     assert "eob_carc_raw" in paid
 
 
+def test_patient_responsibility_paid_joins_that_tab():
+    from cashflow_db.repository.eligibility import (
+        PAID_PATIENT_RESPONSIBILITY_VISIT_SQL,
+        collection_bucket_predicate,
+    )
+
+    paid = collection_bucket_predicate("paid_patient_responsibility")
+    denied = collection_bucket_predicate("denied")
+    overdue = collection_bucket_predicate("overdue")
+    assert "patient_responsibility" in PAID_PATIENT_RESPONSIBILITY_VISIT_SQL
+    assert "= 'paid'" in PAID_PATIENT_RESPONSIBILITY_VISIT_SQL
+    assert PAID_PATIENT_RESPONSIBILITY_VISIT_SQL in paid
+    assert f"NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})" in denied
+    assert f"NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})" in overdue
+    refresh_src = (ROOT / "cashflow_db" / "repository" / "eligibility.py").read_text(
+        encoding="utf-8"
+    )
+    refresh_fn = refresh_src.split("def refresh_collection_queue", 1)[1].split("\ndef ", 1)[0]
+    assert "PAID_PATIENT_RESPONSIBILITY_VISIT_SQL" in refresh_fn
+    assert "visit_status == \"patient_responsibility\"" in refresh_src
+    assert "_visit_is_patient_responsibility" in refresh_src
+    page = (ROOT / "rcm_portal" / "src" / "pages" / "CollectionQueue.tsx").read_text(
+        encoding="utf-8"
+    )
+    assert "Patient Responsibility visits appear here after Collection Status is set to Paid." in page
+
+
 def test_collection_denied_exposure_sql_membership_and_charged(monkeypatch):
     from cashflow_db.repository import eligibility
     from cashflow_db.repository.eligibility import (

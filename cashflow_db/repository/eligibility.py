@@ -3130,6 +3130,11 @@ PR3_PAID_COLLECTION_SQL = f"""(
     AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
 )"""
 
+PAID_PATIENT_RESPONSIBILITY_VISIT_SQL = f"""(
+    lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, ''))) = 'patient_responsibility'
+    AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
+)"""
+
 
 def dead_tab_membership_sql() -> str:
     """Denied or Overdue visits whose Collection Status is Dead."""
@@ -3157,17 +3162,22 @@ def collection_bucket_predicate(bucket: str | None) -> str:
     """Live membership rules stored by refresh_collection_queue()."""
     key = _collection_bucket(bucket)
     if key == "overdue":
-        return f"{OVERDUE_PENDING_SQL} AND NOT {PR3_UNPAID_SQL}"
+        return (
+            f"{OVERDUE_PENDING_SQL} AND NOT {PR3_UNPAID_SQL} "
+            f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})"
+        )
     if key == "collection":
         return f"{COLLECTION_VISIT_SQL} AND NOT {PR3_UNPAID_SQL}"
     if key == "paid_patient_responsibility":
         return (
-            f"{PR3_CODE_SQL} AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid' "
-            f"AND NOT {PAID_OR_DEDUCT_SQL}"
+            f"(({PR3_CODE_SQL} AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid' "
+            f"AND NOT {PAID_OR_DEDUCT_SQL}) "
+            f"OR ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}))"
         )
     return (
         f"(({DENIED_VISIT_SQL}) OR ({PR3_UNPAID_SQL})) "
-        f"AND NOT ({PR3_PAID_COLLECTION_SQL})"
+        f"AND NOT ({PR3_PAID_COLLECTION_SQL}) "
+        f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})"
     )
 
 
@@ -3372,6 +3382,7 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
                 OR ({PR3_UNPAID_SQL})
             ) AND NOT ({ROUTED_COLLECTION_SQL})
               AND NOT ({PR3_PAID_COLLECTION_SQL})
+              AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
         )""",
         "overdue": f"""(
             EXISTS (
@@ -3398,14 +3409,18 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
             AND NOT {COLLECTION_VISIT_SQL}
             AND NOT {PAID_OR_DEDUCT_SQL}
             AND NOT ({ROUTED_COLLECTION_SQL})
+            AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
         )""",
         "arbitration": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'arbitration'",
         "action": f"{EFFECTIVE_COLLECTION_FOLD_SQL} IN ('actiontaken', 'pending')",
         "at_risk": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'submittedwithoutauth'",
         "paid_patient_responsibility": f"""(
-            {PR3_CODE_SQL}
-            AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
-            AND NOT {PAID_OR_DEDUCT_SQL}
+            (
+                {PR3_CODE_SQL}
+                AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
+                AND NOT {PAID_OR_DEDUCT_SQL}
+            )
+            OR ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
         )""",
     }
     denied_for_dead = rules["denied"].replace(ROUTED_COLLECTION_SQL, ROUTED_EXCEPT_DEAD_SQL)
@@ -5568,13 +5583,27 @@ def _collection_membership_bucket(
 ) -> str | None:
     """Tab for the visit's current Collection Status, including paid PR-3."""
     bucket = collection_status_bucket(collection_status)
-    if (
-        bucket is None
-        and fold_label(collection_status) == "paid"
-        and work_item_has_pr3(conn, work_item_id)
+    if bucket is None and fold_label(collection_status) == "paid" and (
+        work_item_has_pr3(conn, work_item_id)
+        or _visit_is_patient_responsibility(conn, work_item_id)
     ):
         return "paid_patient_responsibility"
     return bucket
+
+
+def _visit_is_patient_responsibility(conn: psycopg.Connection, work_item_id: str) -> bool:
+    row = client.fetchone(
+        conn,
+        f"""
+        SELECT 1 AS ok
+        FROM ops.eligibility_work_item wi
+        WHERE wi.work_item_id = %s::uuid
+          AND lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, ''))) = 'patient_responsibility'
+        LIMIT 1
+        """,
+        (work_item_id,),
+    )
+    return row is not None
 
 
 def _rehome_collection_member(
@@ -5624,11 +5653,12 @@ def _rehome_collection_member(
                 (({DENIED_VISIT_SQL}) OR ({COLLECTION_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))
                 AND NOT ({ROUTED_COLLECTION_SQL})
                 AND NOT ({PR3_PAID_COLLECTION_SQL})
+                AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
             )""",
         ),
         (
             "overdue",
-            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL})",
+            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL}) AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})",
         ),
     ):
         client.execute(
@@ -5668,11 +5698,17 @@ def patch_work_item(
         if "collection_status" in updates
         else None
     )
+    visit_status = str(
+        new_ov.get("source_visit_status") or item.get("source_visit_status") or ""
+    ).strip().lower()
     if (
         routed is None
         and "collection_status" in updates
         and fold_label(str(new_ov.get("collection_status") or "")) == "paid"
-        and work_item_has_pr3(conn, work_item_id)
+        and (
+            work_item_has_pr3(conn, work_item_id)
+            or visit_status == "patient_responsibility"
+        )
     ):
         routed = "paid_patient_responsibility"
     if routed == "action":
