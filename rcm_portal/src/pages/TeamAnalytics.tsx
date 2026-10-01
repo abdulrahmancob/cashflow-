@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -1018,7 +1019,7 @@ export function TeamAnalyticsPage() {
           description={
             deadLoading
               ? 'Loading…'
-              : 'Each current Dead claim counts once, under the root cause on the visit. The percentage is its share of all Dead claims.'
+              : 'Denied and Overdue visits marked Dead. Each bar is one root cause, with its count and share of all Dead claims.'
           }
         >
           {deadError && (
@@ -1027,32 +1028,31 @@ export function TeamAnalyticsPage() {
             </div>
           )}
           {deadCauses?.rows.length ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <THead>
-                  <tr>
-                    <Th>Root cause</Th>
-                    <Th>Number</Th>
-                    <Th>Percentage</Th>
-                  </tr>
-                </THead>
-                <tbody>
-                  {deadCauses.rows.map((row) => (
-                    <Tr key={row.label}>
-                      <Td>{row.label}</Td>
-                      <Td className="tabular-nums">{n(row.count)}</Td>
-                      <Td className="tabular-nums">{Number(row.percent).toFixed(1)}%</Td>
-                    </Tr>
-                  ))}
-                  <Tr>
-                    <Td className="font-medium text-gray-900 dark:text-white">Total</Td>
-                    <Td className="tabular-nums font-medium text-gray-900 dark:text-white">
-                      {n(deadCauses.total)}
-                    </Td>
-                    <Td className="tabular-nums font-medium text-gray-900 dark:text-white">100.0%</Td>
-                  </Tr>
-                </tbody>
-              </Table>
+            <div style={{ height: Math.max(240, deadCauses.rows.length * 40) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={deadCauses.rows.map((row) => ({
+                    label: row.label,
+                    count: Number(row.count),
+                    caption: `${n(Number(row.count))} (${Number(row.percent).toFixed(1)}%)`,
+                  }))}
+                  layout="vertical"
+                  margin={{ top: 8, right: 88, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={200}
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip />
+                  <Bar dataKey="count" name="Dead" fill="#7c3aed" radius={[0, 4, 4, 0]}>
+                    <LabelList dataKey="caption" position="right" style={{ fontSize: 12 }} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           ) : (
             <EmptyState title={deadLoading ? 'Loading dead claims' : 'No dead claims'} />

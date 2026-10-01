@@ -19,7 +19,6 @@ from cashflow_db.repository.collection import (
 from cashflow_db.repository.eligibility import (
     COLLECTION_VISIT_SQL,
     DENIED_VISIT_SQL,
-    EFFECTIVE_COLLECTION_FOLD_SQL,
     PAID_OR_DEDUCT_SQL,
 )
 from cashflow_db.util import parse_money
@@ -2399,7 +2398,9 @@ def dead_root_cause_sql() -> str:
                 )
             ) AS root_cause
             FROM ops.eligibility_work_item wi
-            WHERE ({EFFECTIVE_COLLECTION_FOLD_SQL}) = 'dead'
+            JOIN analytics.collection_queue_member m
+              ON m.work_item_id = wi.work_item_id
+             AND m.bucket = 'dead'
         ) dead_claims
         GROUP BY root_cause
     """

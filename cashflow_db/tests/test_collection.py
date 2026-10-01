@@ -247,8 +247,11 @@ def test_dead_tab_uses_its_own_bucket():
         encoding="utf-8"
     )
     refresh_fn = refresh_src.split("def refresh_collection_queue", 1)[1].split("\ndef ", 1)[0]
-    assert '"dead":' in refresh_fn
+    assert "denied_for_dead" in refresh_fn
+    assert "overdue_for_dead" in refresh_fn
+    assert "ROUTED_EXCEPT_DEAD_SQL" in refresh_fn
     assert "= 'dead'" in refresh_fn
+    assert "dead_tab_membership_sql" in refresh_src
     migration = (ROOT / "cashflow_db" / "sql" / "071_collection_dead_bucket.sql").read_text(
         encoding="utf-8"
     )
@@ -257,7 +260,7 @@ def test_dead_tab_uses_its_own_bucket():
         encoding="utf-8"
     )
     assert "{ key: 'dead', label: 'Dead' }" in page
-    assert "Visits marked Dead appear here." in page
+    assert "Denied and Overdue visits appear here after Collection Status is set to Dead." in page
 
 
 def test_follow_up_is_aged_action():

@@ -390,6 +390,11 @@ ROUTED_COLLECTION_SQL = f"""{EFFECTIVE_COLLECTION_FOLD_SQL} IN (
     'arbitration', 'actiontaken', 'pending', 'submittedwithoutauth', 'dead'
 )"""
 
+# Dead still leaves Denied and Overdue, but those visits stay eligible for the Dead tab.
+ROUTED_EXCEPT_DEAD_SQL = f"""{EFFECTIVE_COLLECTION_FOLD_SQL} IN (
+    'arbitration', 'actiontaken', 'pending', 'submittedwithoutauth'
+)"""
+
 ACTION_WORK_DATE_SQL = """COALESCE(
     CASE
         WHEN NULLIF(btrim(wi.manual_overrides->>'work_date'), '') ~ '^\\d{4}-\\d{2}-\\d{2}'
@@ -3126,6 +3131,28 @@ PR3_PAID_COLLECTION_SQL = f"""(
 )"""
 
 
+def dead_tab_membership_sql() -> str:
+    """Denied or Overdue visits whose Collection Status is Dead."""
+    denied = f"""(
+        (({DENIED_VISIT_SQL}) OR ({COLLECTION_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))
+        AND NOT ({ROUTED_EXCEPT_DEAD_SQL})
+        AND NOT ({PR3_PAID_COLLECTION_SQL})
+    )"""
+    overdue = f"""(
+        {WAYSTAR_PAST_SLA_SQL}
+        AND NOT {SKIPPED_VISIT_SQL}
+        AND NOT {DENIED_VISIT_SQL}
+        AND NOT {COLLECTION_VISIT_SQL}
+        AND NOT {PAID_OR_DEDUCT_SQL}
+        AND NOT ({ROUTED_EXCEPT_DEAD_SQL})
+        AND NOT ({PR3_UNPAID_SQL})
+    )"""
+    return f"""(
+        ({EFFECTIVE_COLLECTION_FOLD_SQL}) = 'dead'
+        AND (({denied}) OR ({overdue}))
+    )"""
+
+
 def collection_bucket_predicate(bucket: str | None) -> str:
     """Live membership rules stored by refresh_collection_queue()."""
     key = _collection_bucket(bucket)
@@ -3375,13 +3402,21 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
         "arbitration": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'arbitration'",
         "action": f"{EFFECTIVE_COLLECTION_FOLD_SQL} IN ('actiontaken', 'pending')",
         "at_risk": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'submittedwithoutauth'",
-        "dead": f"{EFFECTIVE_COLLECTION_FOLD_SQL} = 'dead'",
         "paid_patient_responsibility": f"""(
             {PR3_CODE_SQL}
             AND {EFFECTIVE_COLLECTION_FOLD_SQL} = 'paid'
             AND NOT {PAID_OR_DEDUCT_SQL}
         )""",
     }
+    denied_for_dead = rules["denied"].replace(ROUTED_COLLECTION_SQL, ROUTED_EXCEPT_DEAD_SQL)
+    overdue_for_dead = rules["overdue"].replace(ROUTED_COLLECTION_SQL, ROUTED_EXCEPT_DEAD_SQL)
+    rules["dead"] = f"""(
+        ({EFFECTIVE_COLLECTION_FOLD_SQL}) = 'dead'
+        AND (
+            ({denied_for_dead})
+            OR (({overdue_for_dead}) AND NOT ({PR3_UNPAID_SQL}))
+        )
+    )"""
     counts: dict[str, int] = {}
     for bucket, rule in rules.items():
         scope = base_scope
@@ -5557,6 +5592,20 @@ def _rehome_collection_member(
         "DELETE FROM analytics.collection_queue_member WHERE work_item_id = %s::uuid",
         (work_item_id,),
     )
+    if bucket == "dead":
+        match = client.fetchone(
+            conn,
+            f"""
+            SELECT 1 AS ok
+            FROM ops.eligibility_work_item wi
+            WHERE wi.work_item_id = %s::uuid
+              AND {dead_tab_membership_sql()}
+            LIMIT 1
+            """,
+            (work_item_id,),
+        )
+        if not match:
+            bucket = None
     if bucket:
         client.execute(
             conn,

@@ -258,7 +258,7 @@ def test_collection_dead_root_causes_ok(monkeypatch):
         Path(__file__).resolve().parents[2] / "rcm_portal" / "src" / "pages" / "TeamAnalytics.tsx"
     ).read_text(encoding="utf-8")
     assert "Dead by root cause" in page
-    assert "Percentage" in page
+    assert 'layout="vertical"' in page
 
 
 def test_ss_lead_cannot_open_collection_root_causes(monkeypatch):

@@ -893,7 +893,8 @@ def test_dead_root_cause_rollup_counts_and_share():
     assert payload["rows"][1] == {"label": "Other", "count": 2, "percent": 33.3}
     assert payload["rows"][2] == {"label": "No root cause", "count": 1, "percent": 16.7}
     sql = wa.dead_root_cause_sql()
-    assert "= 'dead'" in sql
+    assert "collection_queue_member" in sql
+    assert "m.bucket = 'dead'" in sql
     assert "manual_overrides->>'root_cause'" in sql
     assert "context->>'root_cause'" in sql
     assert "snowflake_visit_kpi" in sql

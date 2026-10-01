@@ -336,7 +336,7 @@ function emptyCopy(bucket: Bucket, loading: boolean) {
   if (bucket === 'dead') {
     return {
       title: 'No dead visits',
-      description: 'Visits marked Dead appear here.',
+      description: 'Denied and Overdue visits appear here after Collection Status is set to Dead.',
     }
   }
   if (bucket === 'paid_patient_responsibility') {
