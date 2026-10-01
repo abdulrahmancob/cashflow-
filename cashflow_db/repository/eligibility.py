@@ -907,16 +907,96 @@ def overlay_live_recon(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> 
         row["recon_missing_tracker_checks"] = picked.get("missing_tracker_checks")
 
 
-def overlay_live_sf(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> None:
+# Sheet fields read from the Snowflake JSON. Export projects these keys
+# instead of transferring the whole payload document for every visit.
+_SF_EXPORT_PAYLOAD_KEYS: tuple[tuple[str, ...], ...] = (
+    ("STATUS",),
+    ("CLIENT_PAYMENT",),
+    ("INSURANCE_PAYMENT",),
+    ("UPDATED_PAYMENT",),
+    ("CO_INSURANCE_PAYMENT",),
+    ("REDUCTIONS", "REDUCTION"),
+    ("ADJUSTED",),
+    ("CHARGED_AMOUNT",),
+    ("DETAILS",),
+    ("PRIMARY_CHECK_NUMBER", "INSURANCE_PAYEMNT_CHECK#"),
+    ("PRIMARY_CHECK_DATE", "INSURANCE_PAYEMNT_CHECK_DATE"),
+    ("PRIMARY_CHECK_AMOUNT", "INSURANCE_PAYEMNT_CHECK_AMOUNT"),
+    ("SECONDARY_CHECK_NUMBER",),
+    ("SECONDARY_CHECK_DATE",),
+    ("SECONDARY_CHECK_AMOUNT",),
+    ("COLLECTOR_1",),
+    ("DATE_OF_FIRST_POSTING", "1ST_POSTING_DATE"),
+    ("COLLECTOR_2",),
+    ("DATE_OF_SECOND_POSTING", "2ND_POSTING_DATE"),
+    ("COLLECTOR_3",),
+    ("DATE_OF_THIRD_POSTING", "THIRD_POSTING_DATE"),
+    ("VISIT_STATUS",),
+    ("CORRECTED",),
+    ("CORRECTED_DATE",),
+    ("VISIT_ID",),
+    ("INSURANCE_ID",),
+    ("SECONDARY_INSURANCE",),
+    ("SECONDARY_INSURANCE_ID",),
+    (
+        "UPDATED_PAYMENT_CHECK#",
+        "UPDATED_PAYMENT_CHECK_NUMBER",
+        "UPDATED_CHECK_NUMBER",
+        "THIRD_CHECK_NUMBER",
+    ),
+    ("UPDATED_PAYMENT_CHECK_DATE", "UPDATED_CHECK_DATE", "THIRD_CHECK_DATE"),
+    ("UPDATED_PAYMENT_CHECK_AMOUNT", "UPDATED_CHECK_AMOUNT", "THIRD_CHECK_AMOUNT"),
+    ("FOURTH_CHECK_NUMBER", "4TH_CHECK#"),
+    ("FOURTH_CHECK_DATE", "4TH_CHECK_DATE"),
+    ("FOURTH_CHECK_AMOUNT", "4TH_CHECK_AMOUNT"),
+    ("WORK_STATUS",),
+    ("WORK_DATE",),
+    ("DENIAL_REASON",),
+    ("ROOTCAUSE", "ROOT_CAUSE"),
+    ("ACTIONS_TAKEN",),
+    ("COLLECTION_STATUS",),
+)
+
+
+def _sf_payload_expr(keys: tuple[str, ...]) -> str:
+    parts = ", ".join(
+        f"NULLIF(btrim(sf.payload->>'{key}'), '')" for key in keys
+    )
+    return f"COALESCE({parts})"
+
+
+def _sf_export_payload(rec: dict[str, Any]) -> dict[str, Any]:
+    """Rebuild the keys overlay_live_sf reads, without the source document."""
+    payload: dict[str, Any] = {}
+    for index, keys in enumerate(_SF_EXPORT_PAYLOAD_KEYS):
+        value = rec.get(f"p{index}")
+        if value is not None and str(value).strip() != "":
+            payload[keys[0]] = value
+    return payload
+
+
+def overlay_live_sf(
+    conn: psycopg.Connection,
+    rows: list[dict[str, Any]],
+    *,
+    full_payload: bool = True,
+) -> None:
     """Copy Snowflake billing-sheet fields for the page's EMR+DOS keys."""
     if not rows:
         return
     emrs, doses = _emr_dos_keys(rows)
     if not emrs:
         return
+    if full_payload:
+        payload_cols = "sf.payload"
+    else:
+        payload_cols = ",\n            ".join(
+            f"{_sf_payload_expr(keys)} AS p{index}"
+            for index, keys in enumerate(_SF_EXPORT_PAYLOAD_KEYS)
+        )
     sf_rows = client.fetchall(
         conn,
-        """
+        f"""
         SELECT
             sf.emr_id,
             sf.date_of_service,
@@ -935,7 +1015,7 @@ def overlay_live_sf(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> Non
             sf.secondary_check_amount,
             sf.sf_visit_id,
             sf.insurance,
-            sf.payload
+            {payload_cols}
         FROM unnest(%s::text[], %s::date[]) AS k(emr, dos)
         JOIN analytics.snowflake_visit_kpi sf
           ON sf.emr_id = k.emr
@@ -958,6 +1038,8 @@ def overlay_live_sf(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> Non
         picked = by_key.get((emr, dos_key))
         if not picked:
             continue
+        if not full_payload:
+            picked["payload"] = _sf_export_payload(picked)
         payload = _payload_map(picked.get("payload"))
         row["sf_status"] = _first_text(
             picked.get("status"), _payload_get(payload, "STATUS")
@@ -2780,9 +2862,10 @@ def _finish_work_item_rows(
     *,
     tracker_dates: dict[str, str] | None = None,
     eft_totals: dict[str, float] | None = None,
+    slim_sf: bool = False,
 ) -> list[dict[str, Any]]:
     """Apply the same overlays the sheet list uses, then drop raw context."""
-    overlay_live_sf(conn, rows)
+    overlay_live_sf(conn, rows, full_payload=not slim_sf)
     overlay_live_recon(conn, rows)
     overlay_pr1_reductions(conn, rows)
     overlay_rtm_amounts(conn, rows)
@@ -2982,6 +3065,7 @@ def iter_export_work_items(
             rows,
             tracker_dates=tracker_dates,
             eft_totals=eft_totals,
+            slim_sf=True,
         )
         if len(rows) < batch_size:
             break
