@@ -2569,6 +2569,7 @@ waystar_missing AS (
         WHERE k.compact <> '' AND k.compact = waystar_claim_check.compact
     )
     GROUP BY compact, COALESCE(NULLIF(btrim(payer_name), ''), 'Unknown')
+    HAVING sum(total_remit_amount) <> 0
 ),
 tracker_rows AS (
     SELECT
@@ -2616,6 +2617,7 @@ SELECT 'tracker' AS side,
        t.transaction_type
 FROM tracker_rows t
 JOIN tracker_refs r ON r.row_id = t.row_id AND r.compact <> ''
+WHERE t.amount <> 0
 GROUP BY t.row_id, t.txn_date, t.amount, t.description, t.transaction_type
 HAVING count(*) FILTER (
     WHERE r.compact IN (SELECT compact FROM waystar_keys WHERE compact <> '')
