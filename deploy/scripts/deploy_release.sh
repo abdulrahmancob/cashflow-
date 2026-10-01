@@ -208,7 +208,7 @@ if [[ "${nginx}" -eq 1 ]]; then
   fi
   (
     cd "${DEST}/deploy"
-    docker compose --env-file .env up -d --no-deps nginx
+    docker compose --env-file .env up -d --no-deps --force-recreate nginx
     reloaded=0
     for _ in $(seq 1 15); do
       if docker compose --env-file .env exec -T nginx nginx -s reload; then
