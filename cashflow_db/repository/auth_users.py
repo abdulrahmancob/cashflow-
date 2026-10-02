@@ -22,7 +22,7 @@ def get_user_by_username(conn: psycopg.Connection, username: str) -> dict[str, A
         conn,
         """
         SELECT user_id, username, email, password_hash, display_name,
-               is_active, created_at, updated_at, last_login_at
+               collector_code, is_active, created_at, updated_at, last_login_at
         FROM auth.app_user
         WHERE lower(username) = lower(%s)
         """,
@@ -35,7 +35,7 @@ def get_user_by_id(conn: psycopg.Connection, user_id: str) -> dict[str, Any] | N
         conn,
         """
         SELECT user_id, username, email, password_hash, display_name,
-               is_active, created_at, updated_at, last_login_at
+               collector_code, is_active, created_at, updated_at, last_login_at
         FROM auth.app_user
         WHERE user_id = %s::uuid
         """,
@@ -58,11 +58,25 @@ def get_user_roles(conn: psycopg.Connection, user_id: str) -> list[str]:
     return [str(r["role_key"]) for r in rows]
 
 
+def count_active_super_admins(conn: psycopg.Connection) -> int:
+    row = client.fetchone(
+        conn,
+        """
+        SELECT COUNT(*) AS n
+        FROM auth.app_user u
+        JOIN auth.user_role ur ON ur.user_id = u.user_id
+        JOIN auth.role r ON r.role_id = ur.role_id
+        WHERE r.role_key = 'super_admin' AND u.is_active
+        """,
+    )
+    return int((row or {}).get("n") or 0)
+
+
 def list_users(conn: psycopg.Connection) -> list[dict[str, Any]]:
     rows = client.fetchall(
         conn,
         """
-        SELECT u.user_id, u.username, u.email, u.display_name, u.is_active,
+        SELECT u.user_id, u.username, u.email, u.display_name, u.collector_code, u.is_active,
                u.created_at, u.updated_at, u.last_login_at, u.desk_permission,
                COALESCE(
                    array_agg(r.role_key ORDER BY r.role_key)
@@ -93,15 +107,16 @@ def create_user(
     email: str | None = None,
     roles: list[str] | None = None,
     is_active: bool = True,
+    collector_code: str | None = None,
 ) -> str:
     row = client.fetchone(
         conn,
         """
-        INSERT INTO auth.app_user (username, email, password_hash, display_name, is_active)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO auth.app_user (username, email, password_hash, display_name, is_active, collector_code)
+        VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING user_id
         """,
-        (username, email, password_hash, display_name, is_active),
+        (username, email, password_hash, display_name, is_active, collector_code),
     )
     assert row
     user_id = str(row["user_id"])
@@ -110,18 +125,21 @@ def create_user(
     return user_id
 
 
-def update_user(
-    conn: psycopg.Connection,
-    user_id: str,
+def plan_user_update(
     *,
+    username: str | None = None,
     email: str | None = None,
     display_name: str | None = None,
     password_hash: str | None = None,
     is_active: bool | None = None,
-    roles: list[str] | None = None,
-) -> None:
+    collector_code: str | None = None,
+) -> tuple[list[str], list[Any]]:
+    """Build SET clauses/params for an auth.app_user update (no WHERE)."""
     fields: list[str] = ["updated_at = now()"]
     params: list[Any] = []
+    if username is not None:
+        fields.append("username = %s")
+        params.append(username)
     if email is not None:
         fields.append("email = %s")
         params.append(email)
@@ -134,6 +152,32 @@ def update_user(
     if is_active is not None:
         fields.append("is_active = %s")
         params.append(is_active)
+    if collector_code is not None:
+        fields.append("collector_code = %s")
+        params.append(collector_code)
+    return fields, params
+
+
+def update_user(
+    conn: psycopg.Connection,
+    user_id: str,
+    *,
+    username: str | None = None,
+    email: str | None = None,
+    display_name: str | None = None,
+    password_hash: str | None = None,
+    is_active: bool | None = None,
+    roles: list[str] | None = None,
+    collector_code: str | None = None,
+) -> None:
+    fields, params = plan_user_update(
+        username=username,
+        email=email,
+        display_name=display_name,
+        password_hash=password_hash,
+        is_active=is_active,
+        collector_code=collector_code,
+    )
     params.append(user_id)
     client.execute(
         conn,
@@ -194,13 +238,16 @@ def ensure_user(
     display_name: str,
     email: str | None = None,
     roles: list[str] | None = None,
+    collector_code: str | None = None,
 ) -> tuple[str, bool]:
     """Create user if missing (by username). Does not overwrite existing password/roles.
 
-    Returns (user_id, created).
+    Returns (user_id, created). Fills collector_code if the existing row has none.
     """
     existing = get_user_by_username(conn, username.strip())
     if existing:
+        if collector_code and not (existing.get("collector_code") or "").strip():
+            update_user(conn, str(existing["user_id"]), collector_code=collector_code.strip())
         return str(existing["user_id"]), False
     uid = create_user(
         conn,
@@ -209,6 +256,7 @@ def ensure_user(
         display_name=display_name.strip(),
         email=(email or username).strip(),
         roles=roles or [],
+        collector_code=(collector_code or None) and collector_code.strip(),
     )
     return uid, True
 
