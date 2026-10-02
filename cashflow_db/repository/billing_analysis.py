@@ -45,180 +45,19 @@ WHERE kpi.date_of_service >= %s
 GROUP BY 1
 """
 
-def _compact_check_sql(expr: str) -> str:
-    """SQL twin of waystar_shadow.full_compact_check_ref. Regex runs once."""
-    return (
-        "(SELECT CASE WHEN c ~ '^[0-9]+$' "
-        "THEN COALESCE(NULLIF(ltrim(c, '0'), ''), '0') ELSE c END "
-        "FROM (SELECT regexp_replace(regexp_replace(upper(btrim(COALESCE("
-        + expr
-        + ", ''))), '\\.0+$', ''), '[^A-Z0-9]', '', 'g') AS c) compacted)"
-    )
-
-
-def _override_date_sql(key: str) -> str:
-    raw = f"wi.manual_overrides->>'{key}'"
-    return (
-        "CASE WHEN btrim(COALESCE("
-        + raw
-        + ", '')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' "
-        "THEN substring(btrim(" + raw + ") from 1 for 10)::date END"
-    )
-
-
-# Collection date: tracker txn_date, then Waystar trans_date, then the
-# eligibility sheet date, then Snowflake primary_check_date.
-# Shared by the cash-collected grid and the cash conversion cycle.
-_COLLECT_SQL = f"""
-WITH bounds AS (
-    SELECT %s::date AS start_on, %s::date AS end_on, %s::text AS clinic_key
-),
-visits AS (
-    SELECT btrim(kpi.emr_id) AS emr_id,
-           kpi.date_of_service,
-           kpi.primary_check_date,
-           COALESCE(kpi.insurance_payment, 0) + COALESCE(kpi.client_payment, 0) AS amount,
-           {_compact_check_sql("kpi.primary_check_number")} AS sf_ref
-    FROM analytics.snowflake_visit_kpi kpi
-    CROSS JOIN bounds b
-    WHERE kpi.date_of_service >= b.start_on
-      AND kpi.date_of_service < b.end_on
-      AND (
-          b.clinic_key IS NULL
-          OR lower(btrim(kpi.clinic)) = lower(btrim(b.clinic_key))
-      )
-),
-tracker_min AS (
-    SELECT ref, MIN(txn_date) AS txn_date
-    FROM (
-        SELECT {_compact_check_sql("ref_raw")} AS ref,
-               t.txn_date
-        FROM billing.transaction_tracker_row t
-        CROSS JOIN LATERAL (
-            VALUES (t.eft_1), (t.eft_2), (t.check_reference)
-        ) AS refs(ref_raw)
-        WHERE t.deleted_at IS NULL
-          AND t.txn_date IS NOT NULL
-    ) compact_refs
-    WHERE ref <> ''
-    GROUP BY ref
-),
-waystar_base AS (
-    SELECT m.webpt_patient_id AS emr_id,
-           c.from_date AS date_of_service,
-           c.trans_date,
-           c.total_remit_amount,
-           c.remit_numbers
-    FROM billing.waystar_claim c
-    JOIN billing.waystar_webpt_map m
-      ON m.waystar_claim_key = c.claim_key
-    CROSS JOIN bounds b
-    WHERE c.from_date >= b.start_on
-      AND c.from_date < b.end_on
-      AND COALESCE(m.webpt_patient_id, '') <> ''
-),
-waystar AS (
-    SELECT emr_id,
-           date_of_service,
-           MIN(trans_date) AS trans_date
-    FROM waystar_base
-    WHERE COALESCE(total_remit_amount, 0) > 0
-      AND trans_date IS NOT NULL
-    GROUP BY emr_id, date_of_service
-),
-ws_tracker AS (
-    SELECT refs.emr_id, refs.date_of_service, MIN(t.txn_date) AS txn_date
-    FROM (
-        SELECT w.emr_id,
-               w.date_of_service,
-               {_compact_check_sql("num")} AS ref
-        FROM waystar_base w
-        CROSS JOIN LATERAL unnest(COALESCE(w.remit_numbers, ARRAY[]::text[])) AS num
-    ) refs
-    JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
-    GROUP BY refs.emr_id, refs.date_of_service
-),
-elig_base AS (
-    SELECT wi.emr_patient_id AS emr_id,
-           wi.dos AS date_of_service,
-           COALESCE(
-               {_override_date_sql("check_date")},
-               {_override_date_sql("insurance_check_date")}
-           ) AS check_date,
-           wi.manual_overrides
-    FROM ops.eligibility_work_item wi
-    CROSS JOIN bounds b
-    WHERE wi.dos >= b.start_on
-      AND wi.dos < b.end_on
-      AND COALESCE(wi.emr_patient_id, '') <> ''
-),
-elig AS (
-    SELECT emr_id, date_of_service, MIN(check_date) AS check_date
-    FROM elig_base
-    WHERE check_date IS NOT NULL
-    GROUP BY emr_id, date_of_service
-),
-el_tracker AS (
-    SELECT refs.emr_id, refs.date_of_service, MIN(t.txn_date) AS txn_date
-    FROM (
-        SELECT e.emr_id,
-               e.date_of_service,
-               {_compact_check_sql("num")} AS ref
-        FROM elig_base e
-        CROSS JOIN LATERAL (
-            VALUES
-                (e.manual_overrides->>'check_number'),
-                (e.manual_overrides->>'insurance_check_number')
-        ) AS nums(num)
-    ) refs
-    JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
-    GROUP BY refs.emr_id, refs.date_of_service
-),
-sf_tracker AS (
-    SELECT v.emr_id, v.date_of_service, MIN(t.txn_date) AS txn_date
-    FROM visits v
-    JOIN tracker_min t ON t.ref = v.sf_ref AND v.sf_ref <> ''
-    GROUP BY v.emr_id, v.date_of_service
-)
-SELECT v.date_of_service,
-       v.amount,
-       COALESCE(
-           sf_tracker.txn_date,
-           ws_tracker.txn_date,
-           el_tracker.txn_date,
-           waystar.trans_date,
-           elig.check_date,
-           v.primary_check_date
-       ) AS collect_date
-FROM visits v
-LEFT JOIN sf_tracker
-  ON sf_tracker.emr_id = v.emr_id
- AND sf_tracker.date_of_service = v.date_of_service
-LEFT JOIN ws_tracker
-  ON ws_tracker.emr_id = v.emr_id
- AND ws_tracker.date_of_service = v.date_of_service
-LEFT JOIN el_tracker
-  ON el_tracker.emr_id = v.emr_id
- AND el_tracker.date_of_service = v.date_of_service
-LEFT JOIN waystar
-  ON waystar.emr_id = v.emr_id
- AND waystar.date_of_service = v.date_of_service
-LEFT JOIN elig
-  ON elig.emr_id = v.emr_id
- AND elig.date_of_service = v.date_of_service
+_VISIT_WINDOW = """
+aged.date_of_service >= %s
+  AND aged.date_of_service < %s
+  AND (%s::text IS NULL OR lower(btrim(aged.clinic)) = lower(btrim(%s)))
 """
 
-# One materialization per request. Aging and cycle both read this table.
-LOAD_AGED_SQL = (
-    "CREATE TEMP TABLE billing_collect_aged ON COMMIT DROP AS\n" + _COLLECT_SQL
-)
-
-AGING_SQL = """
+AGING_SQL = f"""
 SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
        date_trunc('month', aged.collect_date)::date AS collect_month,
        COALESCE(SUM(aged.amount), 0) AS amount
-FROM billing_collect_aged aged
+FROM analytics.billing_collect_visit aged
 WHERE aged.collect_date IS NOT NULL
+  AND {_VISIT_WINDOW}
 GROUP BY 1, 2
 """
 
@@ -243,7 +82,8 @@ SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
        COALESCE(SUM(
            aged.amount * (aged.collect_date - aged.date_of_service)
        ) FILTER (WHERE {_NONNEG_LAG}), 0) AS sum_amount_days
-FROM billing_collect_aged aged
+FROM analytics.billing_collect_visit aged
+WHERE {_VISIT_WINDOW}
 GROUP BY GROUPING SETS ((1), ())
 """
 
@@ -458,6 +298,16 @@ def _as_month(value: Any) -> date | None:
     return None
 
 
+def refresh_billing_collect_visit() -> None:
+    """Rebuild the stored collection dates. Cannot run inside a transaction."""
+    from cashflow_db.config import DATABASE_URL
+
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        conn.execute(
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY analytics.billing_collect_visit"
+        )
+
+
 def list_clinics(conn: psycopg.Connection, year: int) -> list[str]:
     start, end = year_bounds(year)
     rows = client.fetchall(conn, CLINICS_SQL, (start, end))
@@ -475,13 +325,10 @@ def monthly_analysis(
         raise ValueError("year out of range")
     clinic_key = (clinic or "").strip() or None
     start, end = year_bounds(y)
-    month_rows = client.fetchall(
-        conn, MONTHLY_SQL, (start, end, clinic_key, clinic_key)
-    )
-    client.execute(conn, "DROP TABLE IF EXISTS billing_collect_aged")
-    client.execute(conn, LOAD_AGED_SQL, (start, end, clinic_key))
-    aging_rows = client.fetchall(conn, AGING_SQL)
-    cycle_rows = client.fetchall(conn, CYCLE_SQL)
+    window = (start, end, clinic_key, clinic_key)
+    month_rows = client.fetchall(conn, MONTHLY_SQL, window)
+    aging_rows = client.fetchall(conn, AGING_SQL, window)
+    cycle_rows = client.fetchall(conn, CYCLE_SQL, window)
     monthly: dict[date, dict[str, Any]] = {}
     for raw in month_rows:
         month = _as_month(raw.get("month"))

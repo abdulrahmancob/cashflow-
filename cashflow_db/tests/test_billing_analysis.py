@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 from cashflow_db.repository.billing_analysis import (
     AGING_SQL,
     CLINICS_SQL,
     CYCLE_SQL,
-    LOAD_AGED_SQL,
     MONTHLY_SQL,
-    _COLLECT_SQL,
     apply_visit_rates,
     attach_cycle,
     classify_billing_status,
     cycle_metrics,
     fill_year_rows,
 )
+
+_COLLECT_SQL = (
+    Path(__file__).resolve().parents[1] / "sql" / "072_billing_collect_visit.sql"
+).read_text(encoding="utf-8")
 
 
 def test_classify_billing_status():
@@ -61,7 +64,8 @@ def test_collect_date_source_order():
     assert "btrim(m.webpt_patient_id)" not in _COLLECT_SQL
     assert "btrim(wi.emr_patient_id)" not in _COLLECT_SQL
     assert "m.dos" not in _COLLECT_SQL
-    assert "c.from_date >= b.start_on" in _COLLECT_SQL
+    assert "MATERIALIZED VIEW" in _COLLECT_SQL
+    assert "analytics.billing_collect_visit" in _COLLECT_SQL
     assert _COLLECT_SQL.count("regexp_replace") == 8
     waystar = _COLLECT_SQL.split("waystar_base AS", 1)[1].split("elig_base AS", 1)[0]
     elig = _COLLECT_SQL.split("elig_base AS", 1)[1].split("sf_tracker AS", 1)[0]
@@ -71,18 +75,21 @@ def test_collect_date_source_order():
     assert "FROM visits" not in elig
 
 
-def test_collect_sql_materializes_once():
-    assert "CREATE TEMP TABLE billing_collect_aged" in LOAD_AGED_SQL
+def test_page_reads_stored_view():
+    assert "analytics.billing_collect_visit" in AGING_SQL
+    assert "analytics.billing_collect_visit" in CYCLE_SQL
+    assert "CREATE TEMP TABLE" not in AGING_SQL
+    assert "CREATE TEMP TABLE" not in CYCLE_SQL
     assert "WITH visits" not in AGING_SQL
     assert "WITH visits" not in CYCLE_SQL
-    assert "billing_collect_aged" in AGING_SQL
-    assert "billing_collect_aged" in CYCLE_SQL
 
 
 def test_cycle_sql_keeps_later_year_collections():
-    suffix = CYCLE_SQL.rsplit("FROM billing_collect_aged", 1)[1]
-    assert "where" not in suffix.lower()
-    assert "GROUPING SETS" in suffix
+    after_from = CYCLE_SQL.lower().split("from analytics.billing_collect_visit", 1)[1]
+    window = after_from.split("where", 1)[1].split("group", 1)[0]
+    assert "collect_date" not in window
+    assert "date_of_service" in window
+    assert "GROUPING SETS" in CYCLE_SQL
     assert "date_trunc('year'" not in CYCLE_SQL
     assert "EXTRACT(YEAR" not in CYCLE_SQL.upper()
     assert "aged.collect_date >= aged.date_of_service" in CYCLE_SQL

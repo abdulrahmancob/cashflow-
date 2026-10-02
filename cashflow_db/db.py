@@ -37,6 +37,7 @@ MIGRATIONS = [
     "069_paid_patient_responsibility.sql",
     "070_desk_permission.sql",
     "071_collection_dead_bucket.sql",
+    "072_billing_collect_visit.sql",
 ]
 
 
