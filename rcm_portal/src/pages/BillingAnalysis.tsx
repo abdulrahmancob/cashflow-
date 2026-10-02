@@ -32,6 +32,11 @@ function days(n: number | null | undefined) {
   return Number(n).toFixed(1)
 }
 
+function wholeDays(n: number | null | undefined) {
+  if (n == null || Number.isNaN(Number(n))) return '—'
+  return String(Math.round(Number(n)))
+}
+
 function currentYear() {
   return new Date().getFullYear()
 }
@@ -78,6 +83,10 @@ function CycleRow({ row, total = false }: { row: BillingMonthRow; total?: boolea
       <Td className="tabular-nums">{days(row.median_days)}</Td>
       <Td className="tabular-nums">{days(row.avg_days)}</Td>
       <Td className="tabular-nums">{days(row.weighted_avg_days)}</Td>
+      <Td className="tabular-nums">{wholeDays(row.cash_50_days)}</Td>
+      <Td className="tabular-nums">{wholeDays(row.cash_80_days)}</Td>
+      <Td className="tabular-nums">{wholeDays(row.cash_90_days)}</Td>
+      <Td className="tabular-nums">{wholeDays(row.cash_95_days)}</Td>
       <Td className="tabular-nums">{row.open_visits || 0}</Td>
     </Tr>
   )
@@ -255,7 +264,7 @@ export function BillingAnalysisPage() {
         title="Cash conversion cycle"
         count={data?.rows.length}
         countLabel="months"
-        description="Days from Date of Service to the collection date: Transaction Tracker, then Waystar, then Eligibility, then Snowflake. Open visits have no collection date and are left out of the averages."
+        description="Days from Date of Service to the collection date: Transaction Tracker, then Waystar, then Eligibility, then Snowflake. Open visits are left out of the averages. 50%, 80%, 90%, and 95% are the first day that share of collected dollars has arrived."
       >
         {data?.rows.length ? (
           <div className="overflow-x-auto">
@@ -269,6 +278,10 @@ export function BillingAnalysisPage() {
                   <Th>Median days</Th>
                   <Th>Average days</Th>
                   <Th>Dollar-weighted days</Th>
+                  <Th>50% days</Th>
+                  <Th>80% days</Th>
+                  <Th>90% days</Th>
+                  <Th>95% days</Th>
                   <Th className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
                     Open visits
                   </Th>

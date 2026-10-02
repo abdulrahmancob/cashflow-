@@ -87,6 +87,19 @@ WHERE {_VISIT_WINDOW}
 GROUP BY GROUPING SETS ((1), ())
 """
 
+# Collected dollars by visit month and lag day. Later-year collections stay
+# on the visit month. Only positive amounts move the cash-share curve.
+CASH_SHARE_SQL = f"""
+SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
+       (aged.collect_date - aged.date_of_service)::int AS lag_days,
+       COALESCE(SUM(aged.amount), 0) AS amount
+FROM analytics.billing_collect_visit aged
+WHERE {_VISIT_WINDOW}
+  AND {_NONNEG_LAG}
+  AND aged.amount > 0
+GROUP BY 1, 2
+"""
+
 CLINICS_SQL = """
 SELECT DISTINCT btrim(kpi.clinic) AS clinic
 FROM analytics.snowflake_visit_kpi kpi
@@ -239,6 +252,63 @@ def attach_cycle(
     totals.update(year_cycle)
 
 
+_CASH_SHARE_KEYS = (
+    ("cash_50_days", 0.50),
+    ("cash_80_days", 0.80),
+    ("cash_90_days", 0.90),
+    ("cash_95_days", 0.95),
+)
+
+
+def empty_cash_share() -> dict[str, int | None]:
+    return {key: None for key, _share in _CASH_SHARE_KEYS}
+
+
+def cash_share_days(buckets: list[tuple[int, float]]) -> dict[str, int | None]:
+    """First lag day where cumulative collected dollars reach each share."""
+    ordered = sorted(
+        (int(days), float(amount))
+        for days, amount in buckets
+        if float(amount) > 0
+    )
+    total = sum(amount for _days, amount in ordered)
+    out = empty_cash_share()
+    if total <= 0:
+        return out
+    running = 0.0
+    next_i = 0
+    for days, amount in ordered:
+        running += amount
+        while next_i < len(_CASH_SHARE_KEYS) and running + 1e-6 >= _CASH_SHARE_KEYS[next_i][1] * total:
+            out[_CASH_SHARE_KEYS[next_i][0]] = days
+            next_i += 1
+        if next_i >= len(_CASH_SHARE_KEYS):
+            break
+    return out
+
+
+def attach_cash_share(
+    rows: list[dict[str, Any]],
+    totals: dict[str, Any],
+    share_rows: list[dict[str, Any]],
+) -> None:
+    """Stamp cash-share days. The year row pools every month's dollars by lag."""
+    by_month: dict[date, list[tuple[int, float]]] = {}
+    year_buckets: dict[int, float] = {}
+    for raw in share_rows:
+        amount = _num(raw.get("amount"))
+        if amount <= 0:
+            continue
+        lag = _int(raw.get("lag_days"))
+        month = _period_month(raw.get("visit_month"))
+        if month is not None:
+            by_month.setdefault(month, []).append((lag, amount))
+        year_buckets[lag] = year_buckets.get(lag, 0.0) + amount
+    for row in rows:
+        row.update(cash_share_days(by_month.get(_period_month(row.get("period_start"))) or []))
+    totals.update(cash_share_days(list(year_buckets.items())))
+
+
 def _sum_metrics(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     out = empty_month_metrics()
     for key in ("insurance_payment", "copay", "total_payment"):
@@ -329,6 +399,7 @@ def monthly_analysis(
     month_rows = client.fetchall(conn, MONTHLY_SQL, window)
     aging_rows = client.fetchall(conn, AGING_SQL, window)
     cycle_rows = client.fetchall(conn, CYCLE_SQL, window)
+    share_rows = client.fetchall(conn, CASH_SHARE_SQL, window)
     monthly: dict[date, dict[str, Any]] = {}
     for raw in month_rows:
         month = _as_month(raw.get("month"))
@@ -352,6 +423,7 @@ def monthly_analysis(
         aging[(visit_month, collect_month.month)] = _num(raw.get("amount"))
     rows, totals = fill_year_rows(y, monthly, aging)
     attach_cycle(rows, totals, cycle_rows)
+    attach_cash_share(rows, totals, share_rows)
     return {
         "year": y,
         "clinic": clinic_key,

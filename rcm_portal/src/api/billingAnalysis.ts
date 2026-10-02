@@ -19,6 +19,10 @@ export type BillingMonthRow = {
   median_days: number | null
   avg_days: number | null
   weighted_avg_days: number | null
+  cash_50_days: number | null
+  cash_80_days: number | null
+  cash_90_days: number | null
+  cash_95_days: number | null
 }
 
 export type BillingMonthly = {

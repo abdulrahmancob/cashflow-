@@ -7,11 +7,14 @@ from pathlib import Path
 
 from cashflow_db.repository.billing_analysis import (
     AGING_SQL,
+    CASH_SHARE_SQL,
     CLINICS_SQL,
     CYCLE_SQL,
     MONTHLY_SQL,
     apply_visit_rates,
+    attach_cash_share,
     attach_cycle,
+    cash_share_days,
     classify_billing_status,
     cycle_metrics,
     fill_year_rows,
@@ -33,7 +36,7 @@ def test_classify_billing_status():
 
 
 def test_sql_is_snowflake_not_ss():
-    blob = MONTHLY_SQL + _COLLECT_SQL + AGING_SQL + CYCLE_SQL + CLINICS_SQL
+    blob = MONTHLY_SQL + _COLLECT_SQL + AGING_SQL + CYCLE_SQL + CASH_SHARE_SQL + CLINICS_SQL
     assert "analytics.snowflake_visit_kpi" in blob
     assert "pr_queue_flag" not in blob
     assert "second_submission" not in blob
@@ -78,6 +81,7 @@ def test_collect_date_source_order():
 def test_page_reads_stored_view():
     assert "analytics.billing_collect_visit" in AGING_SQL
     assert "analytics.billing_collect_visit" in CYCLE_SQL
+    assert "analytics.billing_collect_visit" in CASH_SHARE_SQL
     assert "CREATE TEMP TABLE" not in AGING_SQL
     assert "CREATE TEMP TABLE" not in CYCLE_SQL
     assert "WITH visits" not in AGING_SQL
@@ -93,6 +97,48 @@ def test_cycle_sql_keeps_later_year_collections():
     assert "date_trunc('year'" not in CYCLE_SQL
     assert "EXTRACT(YEAR" not in CYCLE_SQL.upper()
     assert "aged.collect_date >= aged.date_of_service" in CYCLE_SQL
+
+
+def test_cash_share_sql_keeps_later_year_collections():
+    assert "date_trunc('year'" not in CASH_SHARE_SQL
+    assert "EXTRACT(YEAR" not in CASH_SHARE_SQL.upper()
+    assert "aged.collect_date >= aged.date_of_service" in CASH_SHARE_SQL
+    assert "aged.amount > 0" in CASH_SHARE_SQL
+    after_from = CASH_SHARE_SQL.lower().split("from analytics.billing_collect_visit", 1)[1]
+    window = after_from.split("where", 1)[1]
+    assert "extract(year" not in window
+
+
+def test_cash_share_days_walk():
+    got = cash_share_days([(5, 200), (70, 100), (20, 300), (50, 100), (35, 300)])
+    assert got["cash_50_days"] == 20
+    assert got["cash_80_days"] == 35
+    assert got["cash_90_days"] == 50
+    assert got["cash_95_days"] == 70
+    blank = cash_share_days([])
+    assert blank["cash_50_days"] is None
+    assert blank["cash_95_days"] is None
+
+
+def test_attach_cash_share_pools_year_dollars():
+    rows, totals = fill_year_rows(2026, {}, {})
+    attach_cash_share(
+        rows,
+        totals,
+        [
+            {"visit_month": date(2026, 1, 1), "lag_days": 10, "amount": 1000},
+            {"visit_month": date(2026, 12, 1), "lag_days": 100, "amount": 1000},
+        ],
+    )
+    assert rows[0]["cash_50_days"] == 10
+    assert rows[0]["cash_95_days"] == 10
+    assert rows[1]["cash_50_days"] is None
+    assert rows[11]["cash_50_days"] == 100
+    assert rows[11]["cash_95_days"] == 100
+    assert totals["cash_50_days"] == 10
+    assert totals["cash_80_days"] == 100
+    assert totals["cash_90_days"] == 100
+    assert totals["cash_95_days"] == 100
 
 
 def test_cycle_year_rollup_uses_sums_and_supplied_median():
