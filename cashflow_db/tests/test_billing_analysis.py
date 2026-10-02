@@ -8,7 +8,9 @@ from cashflow_db.repository.billing_analysis import (
     AGING_SQL,
     CLINICS_SQL,
     CYCLE_SQL,
+    LOAD_AGED_SQL,
     MONTHLY_SQL,
+    _COLLECT_SQL,
     apply_visit_rates,
     attach_cycle,
     classify_billing_status,
@@ -28,14 +30,14 @@ def test_classify_billing_status():
 
 
 def test_sql_is_snowflake_not_ss():
-    blob = MONTHLY_SQL + AGING_SQL + CYCLE_SQL + CLINICS_SQL
+    blob = MONTHLY_SQL + _COLLECT_SQL + AGING_SQL + CYCLE_SQL + CLINICS_SQL
     assert "analytics.snowflake_visit_kpi" in blob
     assert "pr_queue_flag" not in blob
     assert "second_submission" not in blob
     assert "timely_filing" not in blob
     assert "reconciliation_visit_agg" not in blob
     assert "client_payment" in MONTHLY_SQL
-    assert "primary_check_date" in AGING_SQL
+    assert "primary_check_date" in _COLLECT_SQL
 
 
 def test_collect_date_source_order():
@@ -47,21 +49,32 @@ def test_collect_date_source_order():
         "elig.check_date",
         "v.primary_check_date",
     ]
-    positions = [AGING_SQL.index(token) for token in order]
+    positions = [_COLLECT_SQL.index(token) for token in order]
     assert positions == sorted(positions)
-    assert "billing.transaction_tracker_row" in AGING_SQL
-    assert "billing.waystar_claim" in AGING_SQL
-    assert "billing.waystar_webpt_map" in AGING_SQL
-    assert "ops.eligibility_work_item" in AGING_SQL
-    assert "manual_overrides" in AGING_SQL
-    assert "insurance_payment" in AGING_SQL
-    assert "client_payment" in AGING_SQL
-    cycle_positions = [CYCLE_SQL.index(token) for token in order]
-    assert cycle_positions == sorted(cycle_positions)
+    assert "billing.transaction_tracker_row" in _COLLECT_SQL
+    assert "billing.waystar_claim" in _COLLECT_SQL
+    assert "billing.waystar_webpt_map" in _COLLECT_SQL
+    assert "ops.eligibility_work_item" in _COLLECT_SQL
+    assert "manual_overrides" in _COLLECT_SQL
+    assert "insurance_payment" in _COLLECT_SQL
+    assert "client_payment" in _COLLECT_SQL
+    assert "btrim(m.webpt_patient_id)" not in _COLLECT_SQL
+    assert "btrim(wi.emr_patient_id)" not in _COLLECT_SQL
+    assert "m.dos" not in _COLLECT_SQL
+    assert "c.from_date = v.date_of_service" in _COLLECT_SQL
+    assert _COLLECT_SQL.count("regexp_replace") == 8
+
+
+def test_collect_sql_materializes_once():
+    assert "CREATE TEMP TABLE billing_collect_aged" in LOAD_AGED_SQL
+    assert "WITH visits" not in AGING_SQL
+    assert "WITH visits" not in CYCLE_SQL
+    assert "billing_collect_aged" in AGING_SQL
+    assert "billing_collect_aged" in CYCLE_SQL
 
 
 def test_cycle_sql_keeps_later_year_collections():
-    suffix = CYCLE_SQL.rsplit("FROM aged", 1)[1]
+    suffix = CYCLE_SQL.rsplit("FROM billing_collect_aged", 1)[1]
     assert "where" not in suffix.lower()
     assert "GROUPING SETS" in suffix
     assert "date_trunc('year'" not in CYCLE_SQL

@@ -46,20 +46,13 @@ GROUP BY 1
 """
 
 def _compact_check_sql(expr: str) -> str:
-    """SQL twin of waystar_shadow.full_compact_check_ref."""
-    stripped = (
-        "regexp_replace(regexp_replace(upper(btrim(COALESCE("
-        + expr
-        + ", ''))), '\\.0+$', ''), '[^A-Z0-9]', '', 'g')"
-    )
+    """SQL twin of waystar_shadow.full_compact_check_ref. Regex runs once."""
     return (
-        "CASE WHEN "
-        + stripped
-        + " ~ '^[0-9]+$' THEN COALESCE(NULLIF(ltrim("
-        + stripped
-        + ", '0'), ''), '0') ELSE "
-        + stripped
-        + " END"
+        "(SELECT CASE WHEN c ~ '^[0-9]+$' "
+        "THEN COALESCE(NULLIF(ltrim(c, '0'), ''), '0') ELSE c END "
+        "FROM (SELECT regexp_replace(regexp_replace(upper(btrim(COALESCE("
+        + expr
+        + ", ''))), '\\.0+$', ''), '[^A-Z0-9]', '', 'g') AS c) compacted)"
     )
 
 
@@ -117,10 +110,10 @@ ws_tracker AS (
                {_compact_check_sql("num")} AS ref
         FROM visits v
         JOIN billing.waystar_webpt_map m
-          ON btrim(m.webpt_patient_id) = v.emr_id
+          ON m.webpt_patient_id = v.emr_id
         JOIN billing.waystar_claim c
           ON c.claim_key = m.waystar_claim_key
-         AND (c.from_date = v.date_of_service OR m.dos = v.date_of_service)
+         AND c.from_date = v.date_of_service
         CROSS JOIN LATERAL unnest(COALESCE(c.remit_numbers, ARRAY[]::text[])) AS num
     ) refs
     JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
@@ -134,7 +127,7 @@ el_tracker AS (
                {_compact_check_sql("num")} AS ref
         FROM visits v
         JOIN ops.eligibility_work_item wi
-          ON btrim(wi.emr_patient_id) = v.emr_id
+          ON wi.emr_patient_id = v.emr_id
          AND wi.dos = v.date_of_service
         CROSS JOIN LATERAL (
             VALUES
@@ -151,76 +144,72 @@ waystar AS (
            MIN(c.trans_date) AS trans_date
     FROM visits v
     JOIN billing.waystar_webpt_map m
-      ON btrim(m.webpt_patient_id) = v.emr_id
+      ON m.webpt_patient_id = v.emr_id
     JOIN billing.waystar_claim c
       ON c.claim_key = m.waystar_claim_key
-     AND (c.from_date = v.date_of_service OR m.dos = v.date_of_service)
+     AND c.from_date = v.date_of_service
     WHERE COALESCE(c.total_remit_amount, 0) > 0
       AND c.trans_date IS NOT NULL
     GROUP BY v.emr_id, v.date_of_service
 ),
 elig AS (
-    SELECT v.emr_id,
-           v.date_of_service,
-           MIN(
+    SELECT emr_id, date_of_service, MIN(check_date) AS check_date
+    FROM (
+        SELECT v.emr_id,
+               v.date_of_service,
                COALESCE(
                    {_override_date_sql("check_date")},
                    {_override_date_sql("insurance_check_date")}
-               )
-           ) AS check_date
-    FROM visits v
-    JOIN ops.eligibility_work_item wi
-      ON btrim(wi.emr_patient_id) = v.emr_id
-     AND wi.dos = v.date_of_service
-    GROUP BY v.emr_id, v.date_of_service
-    HAVING MIN(
-        COALESCE(
-            {_override_date_sql("check_date")},
-            {_override_date_sql("insurance_check_date")}
-        )
-    ) IS NOT NULL
-),
-aged AS (
-    SELECT v.date_of_service,
-           v.amount,
-           COALESCE(
-               sf_tracker.txn_date,
-               ws_tracker.txn_date,
-               el_tracker.txn_date,
-               waystar.trans_date,
-               elig.check_date,
-               v.primary_check_date
-           ) AS collect_date
-    FROM visits v
-    LEFT JOIN sf_tracker
-      ON sf_tracker.emr_id = v.emr_id
-     AND sf_tracker.date_of_service = v.date_of_service
-    LEFT JOIN ws_tracker
-      ON ws_tracker.emr_id = v.emr_id
-     AND ws_tracker.date_of_service = v.date_of_service
-    LEFT JOIN el_tracker
-      ON el_tracker.emr_id = v.emr_id
-     AND el_tracker.date_of_service = v.date_of_service
-    LEFT JOIN waystar
-      ON waystar.emr_id = v.emr_id
-     AND waystar.date_of_service = v.date_of_service
-    LEFT JOIN elig
-      ON elig.emr_id = v.emr_id
-     AND elig.date_of_service = v.date_of_service
+               ) AS check_date
+        FROM visits v
+        JOIN ops.eligibility_work_item wi
+          ON wi.emr_patient_id = v.emr_id
+         AND wi.dos = v.date_of_service
+    ) parsed
+    WHERE check_date IS NOT NULL
+    GROUP BY emr_id, date_of_service
 )
+SELECT v.date_of_service,
+       v.amount,
+       COALESCE(
+           sf_tracker.txn_date,
+           ws_tracker.txn_date,
+           el_tracker.txn_date,
+           waystar.trans_date,
+           elig.check_date,
+           v.primary_check_date
+       ) AS collect_date
+FROM visits v
+LEFT JOIN sf_tracker
+  ON sf_tracker.emr_id = v.emr_id
+ AND sf_tracker.date_of_service = v.date_of_service
+LEFT JOIN ws_tracker
+  ON ws_tracker.emr_id = v.emr_id
+ AND ws_tracker.date_of_service = v.date_of_service
+LEFT JOIN el_tracker
+  ON el_tracker.emr_id = v.emr_id
+ AND el_tracker.date_of_service = v.date_of_service
+LEFT JOIN waystar
+  ON waystar.emr_id = v.emr_id
+ AND waystar.date_of_service = v.date_of_service
+LEFT JOIN elig
+  ON elig.emr_id = v.emr_id
+ AND elig.date_of_service = v.date_of_service
 """
 
-AGING_SQL = (
-    _COLLECT_SQL
-    + """
+# One materialization per request. Aging and cycle both read this table.
+LOAD_AGED_SQL = (
+    "CREATE TEMP TABLE billing_collect_aged ON COMMIT DROP AS\n" + _COLLECT_SQL
+)
+
+AGING_SQL = """
 SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
        date_trunc('month', aged.collect_date)::date AS collect_month,
        COALESCE(SUM(aged.amount), 0) AS amount
-FROM aged
+FROM billing_collect_aged aged
 WHERE aged.collect_date IS NOT NULL
 GROUP BY 1, 2
 """
-)
 
 # Days from date of service to collect_date. Later-year collections stay on
 # the visit month. Negative lags are left out of the day stats.
@@ -229,9 +218,7 @@ aged.collect_date IS NOT NULL
   AND aged.collect_date >= aged.date_of_service
 """
 
-CYCLE_SQL = (
-    _COLLECT_SQL
-    + f"""
+CYCLE_SQL = f"""
 SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
        (count(*) FILTER (WHERE {_NONNEG_LAG}))::int AS collected_visits,
        (count(*) FILTER (WHERE aged.collect_date IS NULL))::int AS open_visits,
@@ -245,10 +232,9 @@ SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
        COALESCE(SUM(
            aged.amount * (aged.collect_date - aged.date_of_service)
        ) FILTER (WHERE {_NONNEG_LAG}), 0) AS sum_amount_days
-FROM aged
+FROM billing_collect_aged aged
 GROUP BY GROUPING SETS ((1), ())
 """
-)
 
 CLINICS_SQL = """
 SELECT DISTINCT btrim(kpi.clinic) AS clinic
@@ -481,8 +467,12 @@ def monthly_analysis(
     month_rows = client.fetchall(
         conn, MONTHLY_SQL, (start, end, clinic_key, clinic_key)
     )
-    aging_rows = client.fetchall(conn, AGING_SQL, (start, end, clinic_key, clinic_key))
-    cycle_rows = client.fetchall(conn, CYCLE_SQL, (start, end, clinic_key, clinic_key))
+    client.execute(conn, "DROP TABLE IF EXISTS billing_collect_aged")
+    client.execute(
+        conn, LOAD_AGED_SQL, (start, end, clinic_key, clinic_key)
+    )
+    aging_rows = client.fetchall(conn, AGING_SQL)
+    cycle_rows = client.fetchall(conn, CYCLE_SQL)
     monthly: dict[date, dict[str, Any]] = {}
     for raw in month_rows:
         month = _as_month(raw.get("month"))
