@@ -245,7 +245,7 @@ def test_denied_and_skipped_sql_use_indexed_exists():
     assert "manual_overrides->>'source_visit_status'" in DENIED_VISIT_SQL
     assert "total_remit_amount" in DENIED_VISIT_SQL
     assert "NULLIF(btrim(el.carcs), '')" in DENIED_VISIT_SQL
-    assert "sf.emr_id = wi.emr_patient_id" in DENIED_VISIT_SQL
+    assert "sf.emr_id = wi.emr_patient_id" not in DENIED_VISIT_SQL
     assert "IN ('paid', 'deduct')" in DENIED_VISIT_SQL
     assert "IN (SELECT sf.emr_id" not in DENIED_VISIT_SQL
     assert "EXISTS (" in SKIPPED_VISIT_SQL

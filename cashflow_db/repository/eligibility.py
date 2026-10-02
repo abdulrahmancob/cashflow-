@@ -191,8 +191,13 @@ EFFECTIVE_VISIT_STATUS_SQL = """COALESCE(
     wi.source_visit_status
 )"""
 
-PAID_OR_DEDUCT_SQL = f"""(
+# The status shown on the sheet. Snowflake or recon paid does not change it.
+SHEET_PAID_OR_DEDUCT_SQL = f"""(
     lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, ''))) IN ('paid', 'deduct')
+)"""
+
+PAID_OR_DEDUCT_SQL = f"""(
+    {SHEET_PAID_OR_DEDUCT_SQL}
     OR EXISTS (
         SELECT 1 FROM analytics.snowflake_visit_kpi sf
         WHERE sf.emr_id = wi.emr_patient_id
@@ -269,38 +274,6 @@ WAYSTAR_PAID_CHECK_SQL = f"""EXISTS (
 
 WAYSTAR_COLLECTION_EXIT_REASON = "Exited collection after payment"
 
-# Insurance money on the sheet, Snowflake, or the latest reconciliation.
-# A denied visit with this payment leaves Denied and Overdue.
-HAS_INSURANCE_PAYMENT_SQL = f"""(
-    (
-        NULLIF(btrim(wi.manual_overrides->>'insurance_payment'), '') ~ '^-?[0-9]+(\\.[0-9]+)?$'
-        AND (wi.manual_overrides->>'insurance_payment')::numeric > 0
-    )
-    OR (
-        NULLIF(btrim(wi.manual_overrides->>'paid_amount'), '') ~ '^-?[0-9]+(\\.[0-9]+)?$'
-        AND (wi.manual_overrides->>'paid_amount')::numeric > 0
-    )
-    OR EXISTS (
-        SELECT 1 FROM analytics.snowflake_visit_kpi sf
-        WHERE sf.emr_id = wi.emr_patient_id
-          AND sf.date_of_service = wi.dos
-          AND COALESCE(sf.insurance_payment, 0) > 0
-    )
-    OR EXISTS (
-        SELECT 1 FROM billing.reconciliation_visit_agg rv
-        WHERE rv.reconciliation_run_id = (
-            SELECT reconciliation_run_id
-            FROM billing.reconciliation_run
-            WHERE status = 'success'
-            ORDER BY created_at DESC
-            LIMIT 1
-        )
-          AND rv.webpt_patient_id = wi.emr_patient_id
-          AND rv.date_of_service = wi.dos
-          AND COALESCE(rv.total_paid, 0) > 0
-    )
-)"""
-
 WAYSTAR_PAST_SLA_SQL = """EXISTS (
     SELECT 1
     FROM analytics.forecast_prediction fp
@@ -320,14 +293,7 @@ WAYSTAR_PAST_SLA_SQL = """EXISTS (
         OR (
           fp.webpt_patient_id IS NULL
           AND NULLIF(BTRIM(fp.payload->>'webpt_patient_id'), '') = wi.emr_patient_id
-          AND COALESCE(
-                fp.date_of_service,
-                CASE
-                    WHEN fp.payload->>'date_of_service' ~ '^\\d{4}-\\d{2}-\\d{2}'
-                        THEN substring(fp.payload->>'date_of_service' from 1 for 10)::date
-                    ELSE NULL
-                END
-              ) = wi.dos
+          AND analytics.forecast_payload_dos(fp.payload, fp.date_of_service) = wi.dos
         )
       )
 )"""
@@ -340,7 +306,7 @@ DENIED_VISIT_SQL = f"""(
             AND {WAYSTAR_HAS_DETAILS_SQL}
         )
     )
-    AND NOT {PAID_OR_DEDUCT_SQL}
+    AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
 )"""
 
 COLLECTION_VISIT_SQL = f"""(
@@ -476,7 +442,7 @@ OVERDUE_PENDING_SQL = f"""(
     AND NOT {SKIPPED_VISIT_SQL}
     AND NOT {DENIED_VISIT_SQL}
     AND NOT {COLLECTION_VISIT_SQL}
-    AND NOT {PAID_OR_DEDUCT_SQL}
+    AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
     AND NOT ({ROUTED_COLLECTION_SQL})
 )"""
 
@@ -3227,7 +3193,7 @@ def dead_tab_membership_sql() -> str:
         AND NOT {SKIPPED_VISIT_SQL}
         AND NOT {DENIED_VISIT_SQL}
         AND NOT {COLLECTION_VISIT_SQL}
-        AND NOT {PAID_OR_DEDUCT_SQL}
+        AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
         AND NOT ({ROUTED_EXCEPT_DEAD_SQL})
         AND NOT ({PR3_UNPAID_SQL})
     )"""
@@ -3244,7 +3210,7 @@ def collection_bucket_predicate(bucket: str | None) -> str:
         return (
             f"{OVERDUE_PENDING_SQL} AND NOT {PR3_UNPAID_SQL} "
             f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) "
-            f"AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
+            f"AND NOT {SHEET_PAID_OR_DEDUCT_SQL}"
         )
     if key == "collection":
         return f"{COLLECTION_VISIT_SQL} AND NOT {PR3_UNPAID_SQL}"
@@ -3258,8 +3224,7 @@ def collection_bucket_predicate(bucket: str | None) -> str:
         f"(({DENIED_VISIT_SQL}) OR ({PR3_UNPAID_SQL})) "
         f"AND NOT ({PR3_PAID_COLLECTION_SQL}) "
         f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) "
-        f"AND NOT {PAID_OR_DEDUCT_SQL} "
-        f"AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
+        f"AND NOT {SHEET_PAID_OR_DEDUCT_SQL}"
     )
 
 
@@ -3279,77 +3244,19 @@ def work_item_has_pr3(conn: psycopg.Connection, work_item_id: str) -> bool:
 
 
 def waystar_paid_exit_sql() -> str:
-    """Promote denied and overdue visits that Waystar has paid with a real check."""
-    scope = f"""
-        {ELIGIBILITY_MIN_DOS_SQL}
-        AND {ELIGIBILITY_MAX_DOS_SQL}
-        AND {KEEP_WORK_ITEM_SQL}
-    """
-    return f"""
-        WITH candidates AS (
-            SELECT
-                wi.work_item_id,
-                CASE
-                    WHEN ({DENIED_VISIT_SQL}) THEN 'denied'
-                    ELSE 'overdue'
-                END AS exited_from
-            FROM ops.eligibility_work_item wi
-            WHERE {scope}
-              AND NOT ({ROUTED_COLLECTION_SQL})
-              AND (
-                    {WAYSTAR_PAID_CHECK_SQL}
-                    OR ({HAS_INSURANCE_PAYMENT_SQL})
-                    OR ({PAID_OR_DEDUCT_SQL})
-              )
-              AND (
-                    ({DENIED_VISIT_SQL})
-                 OR (({OVERDUE_PENDING_SQL}) AND NOT ({PR3_UNPAID_SQL}))
-                 OR lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, '')))
-                    IN ('denied', 'pending', 'collection', '')
-              )
-        ),
-        updated AS (
-            UPDATE ops.eligibility_work_item wi
-            SET
-                source_visit_status = 'paid',
-                manual_overrides = CASE
-                    WHEN lower(btrim(COALESCE(
-                        wi.manual_overrides->>'source_visit_status', ''
-                    ))) IN ('denied', 'pending', 'collection', '')
-                        THEN COALESCE(wi.manual_overrides, '{{}}'::jsonb)
-                             - 'source_visit_status'
-                    ELSE wi.manual_overrides
-                END,
-                context = COALESCE(wi.context, '{{}}'::jsonb) || jsonb_build_object(
-                    'exited_from', c.exited_from,
-                    'exited_from_at', to_char(CURRENT_DATE, 'YYYY-MM-DD')
-                ),
-                updated_at = now()
-            FROM candidates c
-            WHERE wi.work_item_id = c.work_item_id
-            RETURNING wi.work_item_id, c.exited_from
-        )
-        INSERT INTO ops.eligibility_history (
-            work_item_id, column_name, old_value, new_value, reason_text
-        )
-        SELECT
-            work_item_id,
-            'source_visit_status',
-            exited_from,
-            'paid',
-            '{WAYSTAR_COLLECTION_EXIT_REASON}'
-        FROM updated
-        """
+    """Paid and deduct visits leave by membership. Status is not rewritten."""
+    return "SELECT 0"
 
 
 def _promote_waystar_paid_collection(conn: psycopg.Connection) -> int:
-    """Set denied, pending, and collection visits to paid once money has arrived.
+    """Keep denied, overdue, and other collection visits on their tabs.
 
-    Arbitration, action, at-risk, and dead rows stay put. History and
-    context.exited_from keep the bucket the visit left.
+    A visit leaves Denied or Overdue only when the status on the sheet is
+    paid or deduct. Money, a Waystar check, or a Snowflake status does not
+    change source_visit_status.
     """
-    cur = conn.execute(waystar_paid_exit_sql())
-    return cur.rowcount
+    del conn
+    return 0
 
 
 def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
@@ -3464,7 +3371,7 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
                             WHERE d.emr = wi.emr_patient_id AND d.dos = wi.dos
                         )
                     )
-                ) AND NOT {PAID_OR_DEDUCT_SQL}
+                ) AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
                 ) OR {COLLECTION_VISIT_SQL}
                 OR ({PR3_UNPAID_SQL})
             ) AND NOT ({ROUTED_COLLECTION_SQL})
@@ -3491,10 +3398,10 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
                         )
                     )
                 )
-                AND NOT {PAID_OR_DEDUCT_SQL}
+                AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
             )
             AND NOT {COLLECTION_VISIT_SQL}
-            AND NOT {PAID_OR_DEDUCT_SQL}
+            AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
             AND NOT ({ROUTED_COLLECTION_SQL})
             AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
         )""",
@@ -3519,13 +3426,8 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
             OR (({overdue_for_dead}) AND NOT ({PR3_UNPAID_SQL}))
         )
     )"""
-    rules["denied"] = (
-        f"({rules['denied']}) AND NOT {PAID_OR_DEDUCT_SQL} "
-        f"AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
-    )
-    rules["overdue"] = (
-        f"({rules['overdue']}) AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
-    )
+    rules["denied"] = f"({rules['denied']}) AND NOT {SHEET_PAID_OR_DEDUCT_SQL}"
+    rules["overdue"] = f"({rules['overdue']}) AND NOT {SHEET_PAID_OR_DEDUCT_SQL}"
     counts: dict[str, int] = {}
     for bucket, rule in rules.items():
         scope = base_scope
@@ -5749,13 +5651,12 @@ def _rehome_collection_member(
                 AND NOT ({ROUTED_COLLECTION_SQL})
                 AND NOT ({PR3_PAID_COLLECTION_SQL})
                 AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
-                AND NOT {PAID_OR_DEDUCT_SQL}
-                AND NOT ({HAS_INSURANCE_PAYMENT_SQL})
+                AND NOT {SHEET_PAID_OR_DEDUCT_SQL}
             )""",
         ),
         (
             "overdue",
-            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL}) AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) AND NOT ({HAS_INSURANCE_PAYMENT_SQL})",
+            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL}) AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) AND NOT {SHEET_PAID_OR_DEDUCT_SQL}",
         ),
     ):
         client.execute(

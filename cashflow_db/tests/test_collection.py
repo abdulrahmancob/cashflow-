@@ -124,7 +124,8 @@ def test_collection_refresh_keeps_bucket_rules():
     assert "NULLIF(btrim(el.carcs), '')" in overdue
     assert "IN ('paid', 'deduct')" in overdue
     assert "analytics.snowflake_visit_kpi" in overdue
-    assert "rv.visit_status" in overdue
+    assert "rv.visit_status" not in overdue
+    assert "forecast_payload_dos" in overdue
     assert " = 'collection'" in collection_status
     assert "NOT IN ('paid', 'deduct')" in COLLECTION_VISIT_SQL
     assert " = 'collection'" in COLLECTION_VISIT_SQL
@@ -206,7 +207,8 @@ def test_collection_overdue_is_pending_after_sla():
     assert "NULLIF(btrim(el.carcs), '')" in predicate
     assert "IN ('paid', 'deduct')" in predicate
     assert "analytics.snowflake_visit_kpi" in predicate
-    assert "rv.visit_status" in predicate
+    assert "rv.visit_status" not in predicate
+    assert "forecast_payload_dos" in predicate
     assert "fp.webpt_patient_id = wi.emr_patient_id" in predicate
     assert "fp.date_of_service = wi.dos" in predicate
     assert "fp.webpt_patient_id IS NULL" in predicate
@@ -222,6 +224,10 @@ def test_collection_status_routes_to_tabs():
     assert "064_collection_status_buckets.sql" in MIGRATIONS
     assert "069_paid_patient_responsibility.sql" in MIGRATIONS
     assert "071_collection_dead_bucket.sql" in MIGRATIONS
+    assert "073_collection_exit_indexes.sql" in MIGRATIONS
+    assert MIGRATIONS.index("073_collection_exit_indexes.sql") > MIGRATIONS.index(
+        "072_billing_collect_visit.sql"
+    )
     assert MIGRATIONS.index("071_collection_dead_bucket.sql") > MIGRATIONS.index(
         "070_desk_permission.sql"
     )
@@ -798,8 +804,8 @@ def test_account_number_sql_avoids_psycopg_percent_placeholder():
 def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
     from cashflow_db.repository.eligibility import (
         PAID_OR_DEDUCT_SQL,
-        PR3_UNPAID_SQL,
         ROUTED_COLLECTION_SQL,
+        SHEET_PAID_OR_DEDUCT_SQL,
         SKIPPED_VISIT_SQL,
         WAYSTAR_COLLECTION_EXIT_REASON,
         WAYSTAR_PAID_CHECK_SQL,
@@ -816,27 +822,12 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
     assert "c.from_date = wi.dos" in paid_check
 
     sql = waystar_paid_exit_sql()
-    assert "source_visit_status = 'paid'" in sql
-    assert "- 'source_visit_status'" in sql
-    assert "THEN 'denied'" in sql
-    assert "ELSE 'overdue'" in sql
-    assert "'exited_from', c.exited_from" in sql
-    assert "exited_from_at" in sql
-    assert "ops.eligibility_history" in sql
-    assert "exited_from,\n            'paid'" in sql
-    assert WAYSTAR_COLLECTION_EXIT_REASON in sql
-    assert "insurance_payment" in sql
-    assert "IN ('denied', 'pending', 'collection', '')" in sql
-    assert f"NOT ({ROUTED_COLLECTION_SQL})" in sql
+    assert "source_visit_status = 'paid'" not in sql
+    assert "UPDATE ops.eligibility_work_item" not in sql
+    assert WAYSTAR_COLLECTION_EXIT_REASON == "Exited collection after payment"
     assert "arbitration" in ROUTED_COLLECTION_SQL
     assert "actiontaken" in ROUTED_COLLECTION_SQL
     assert "submittedwithoutauth" in ROUTED_COLLECTION_SQL
-    assert paid_check in sql
-    assert f"({DENIED_VISIT_SQL})" in sql
-    assert f"({OVERDUE_PENDING_SQL}) AND NOT ({PR3_UNPAID_SQL})" in sql
-    assert sql.count(PR3_UNPAID_SQL) == 1
-    assert "'{}'::jsonb" in sql
-    assert "ZEROPAY%%" in sql
 
     sheet_sql, _params = _build_filters(
         q=None,
@@ -850,9 +841,13 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
     assert f"NOT {DENIED_VISIT_SQL}" not in sheet_sql
     assert f"NOT {COLLECTION_VISIT_SQL}" not in sheet_sql
     assert f"NOT {SKIPPED_VISIT_SQL}" in sheet_sql
-    assert "'paid'" in PAID_OR_DEDUCT_SQL
-    assert PAID_OR_DEDUCT_SQL in DENIED_VISIT_SQL
-    assert PAID_OR_DEDUCT_SQL in OVERDUE_PENDING_SQL
+    assert "'paid'" in SHEET_PAID_OR_DEDUCT_SQL
+    assert "'deduct'" in SHEET_PAID_OR_DEDUCT_SQL
+    assert "snowflake_visit_kpi" not in SHEET_PAID_OR_DEDUCT_SQL
+    assert SHEET_PAID_OR_DEDUCT_SQL in DENIED_VISIT_SQL
+    assert SHEET_PAID_OR_DEDUCT_SQL in OVERDUE_PENDING_SQL
+    assert PAID_OR_DEDUCT_SQL not in DENIED_VISIT_SQL
+    assert PAID_OR_DEDUCT_SQL not in OVERDUE_PENDING_SQL
 
     refresh_src = (ROOT / "cashflow_db" / "repository" / "eligibility.py").read_text(
         encoding="utf-8"
@@ -864,6 +859,9 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
         "DELETE FROM analytics.collection_queue_member"
     )
     assert 'counts["promoted_paid"]' in refresh_fn
+    assert "source_visit_status = 'paid'" not in refresh_fn
+    assert "HAS_INSURANCE_PAYMENT_SQL" not in refresh_fn
+    assert "SHEET_PAID_OR_DEDUCT_SQL" in refresh_fn
 
     loader = (ROOT / "cashflow_db" / "loaders" / "load_waystar_claims.py").read_text(
         encoding="utf-8"
