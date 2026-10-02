@@ -293,6 +293,9 @@ def test_ui_collection_assignee_is_ops_admin_bulk():
     assert "/api/eligibility/items/assign-filter" in page
     assert "Assign all in this filter" in page
     assert "posting-users?role=collector" in page
+    assert 'aria-label="Actions taken"' in page
+    assert "<textarea" in page
+    assert "Write what was done" in page
 
 
 def test_ops_admin_can_assign_filter(monkeypatch):

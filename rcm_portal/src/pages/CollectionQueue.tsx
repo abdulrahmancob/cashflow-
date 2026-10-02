@@ -191,6 +191,13 @@ function isFollowUpDue(workDate: string | null | undefined, daysRaw: string): bo
 const CELL_INPUT =
   'rounded border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-950'
 
+const ACTIONS_TAKEN_MAX_HEIGHT = 160
+
+function sizeActionsTaken(el: HTMLTextAreaElement) {
+  el.style.height = 'auto'
+  el.style.height = `${Math.min(el.scrollHeight, ACTIONS_TAKEN_MAX_HEIGHT)}px`
+}
+
 const UNASSIGNED = '__unassigned__'
 const BLANK = '__blank__'
 
@@ -1029,12 +1036,19 @@ export function CollectionQueueTab() {
                           options={optionsFor(lookups.root_cause, row.root_cause)}
                         />
                       </td>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <input
-                          className={`${CELL_INPUT} w-40`}
+                      <td className="whitespace-normal" style={{ whiteSpace: 'normal' }} onClick={(e) => e.stopPropagation()}>
+                        <textarea
+                          className={`${CELL_INPUT} w-72 resize-none overflow-y-auto whitespace-pre-wrap`}
+                          rows={2}
+                          placeholder="Write what was done"
+                          aria-label="Actions taken"
                           defaultValue={row.actions_taken || ''}
                           key={`${row.work_item_id}-${row.actions_taken || ''}`}
                           disabled={busy}
+                          ref={(el) => {
+                            if (el) sizeActionsTaken(el)
+                          }}
+                          onInput={(e) => sizeActionsTaken(e.currentTarget)}
                           onBlur={(e) => {
                             const next = e.target.value.trim()
                             if (next === (row.actions_taken || '')) return
