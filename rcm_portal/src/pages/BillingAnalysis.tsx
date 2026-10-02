@@ -27,6 +27,11 @@ function pct(n: number) {
   return `${(Number(n) || 0).toFixed(1)}%`
 }
 
+function days(n: number | null | undefined) {
+  if (n == null || Number.isNaN(Number(n))) return '—'
+  return Number(n).toFixed(1)
+}
+
 function currentYear() {
   return new Date().getFullYear()
 }
@@ -61,6 +66,19 @@ function MetricRow({ row, total = false }: { row: BillingMonthRow; total?: boole
           </Td>
         )
       })}
+    </Tr>
+  )
+}
+
+function CycleRow({ row, total = false }: { row: BillingMonthRow; total?: boolean }) {
+  return (
+    <Tr className={total ? 'bg-gray-50 font-semibold dark:bg-gray-800/60' : undefined}>
+      <Td>{row.period}</Td>
+      <Td className="tabular-nums">{row.collected_visits || 0}</Td>
+      <Td className="tabular-nums">{days(row.median_days)}</Td>
+      <Td className="tabular-nums">{days(row.avg_days)}</Td>
+      <Td className="tabular-nums">{days(row.weighted_avg_days)}</Td>
+      <Td className="tabular-nums">{row.open_visits || 0}</Td>
     </Tr>
   )
 }
@@ -230,6 +248,42 @@ export function BillingAnalysisPage() {
           </div>
         ) : (
           <EmptyState title={loading ? 'Loading cash flow' : 'No collections in this year'} />
+        )}
+      </TableCard>
+
+      <TableCard
+        title="Cash conversion cycle"
+        count={data?.rows.length}
+        countLabel="months"
+        description="Days from Date of Service to the collection date: Transaction Tracker, then Waystar, then Eligibility, then Snowflake. Open visits have no collection date and are left out of the averages."
+      >
+        {data?.rows.length ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <THead>
+                <tr>
+                  <Th>Period</Th>
+                  <Th className="bg-emerald-100 text-emerald-900 dark:bg-emerald-900/50 dark:text-emerald-100">
+                    Collected visits
+                  </Th>
+                  <Th>Median days</Th>
+                  <Th>Average days</Th>
+                  <Th>Dollar-weighted days</Th>
+                  <Th className="bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100">
+                    Open visits
+                  </Th>
+                </tr>
+              </THead>
+              <tbody>
+                {data.rows.map((row) => (
+                  <CycleRow key={`cycle-${row.period_start || row.period}`} row={row} />
+                ))}
+                <CycleRow row={data.totals} total />
+              </tbody>
+            </Table>
+          </div>
+        ) : (
+          <EmptyState title={loading ? 'Loading cash cycle' : 'No Snowflake visits in this year'} />
         )}
       </TableCard>
     </div>

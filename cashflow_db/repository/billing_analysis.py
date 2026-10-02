@@ -73,9 +73,10 @@ def _override_date_sql(key: str) -> str:
     )
 
 
-# Collection month: tracker txn_date, then Waystar trans_date, then the
+# Collection date: tracker txn_date, then Waystar trans_date, then the
 # eligibility sheet date, then Snowflake primary_check_date.
-AGING_SQL = f"""
+# Shared by the cash-collected grid and the cash conversion cycle.
+_COLLECT_SQL = f"""
 WITH visits AS (
     SELECT btrim(kpi.emr_id) AS emr_id,
            kpi.date_of_service,
@@ -178,11 +179,8 @@ elig AS (
             {_override_date_sql("insurance_check_date")}
         )
     ) IS NOT NULL
-)
-SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
-       date_trunc('month', aged.collect_date)::date AS collect_month,
-       COALESCE(SUM(aged.amount), 0) AS amount
-FROM (
+),
+aged AS (
     SELECT v.date_of_service,
            v.amount,
            COALESCE(
@@ -209,10 +207,48 @@ FROM (
     LEFT JOIN elig
       ON elig.emr_id = v.emr_id
      AND elig.date_of_service = v.date_of_service
-) aged
+)
+"""
+
+AGING_SQL = (
+    _COLLECT_SQL
+    + """
+SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
+       date_trunc('month', aged.collect_date)::date AS collect_month,
+       COALESCE(SUM(aged.amount), 0) AS amount
+FROM aged
 WHERE aged.collect_date IS NOT NULL
 GROUP BY 1, 2
 """
+)
+
+# Days from date of service to collect_date. Later-year collections stay on
+# the visit month. Negative lags are left out of the day stats.
+_NONNEG_LAG = """
+aged.collect_date IS NOT NULL
+  AND aged.collect_date >= aged.date_of_service
+"""
+
+CYCLE_SQL = (
+    _COLLECT_SQL
+    + f"""
+SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
+       (count(*) FILTER (WHERE {_NONNEG_LAG}))::int AS collected_visits,
+       (count(*) FILTER (WHERE aged.collect_date IS NULL))::int AS open_visits,
+       percentile_cont(0.5) WITHIN GROUP (
+           ORDER BY (aged.collect_date - aged.date_of_service)::double precision
+       ) FILTER (WHERE {_NONNEG_LAG}) AS median_days,
+       COALESCE(SUM(aged.collect_date - aged.date_of_service) FILTER (
+           WHERE {_NONNEG_LAG}
+       ), 0) AS sum_days,
+       COALESCE(SUM(aged.amount) FILTER (WHERE {_NONNEG_LAG}), 0) AS sum_amount,
+       COALESCE(SUM(
+           aged.amount * (aged.collect_date - aged.date_of_service)
+       ) FILTER (WHERE {_NONNEG_LAG}), 0) AS sum_amount_days
+FROM aged
+GROUP BY GROUPING SETS ((1), ())
+"""
+)
 
 CLINICS_SQL = """
 SELECT DISTINCT btrim(kpi.clinic) AS clinic
@@ -283,6 +319,87 @@ def _int(value: Any) -> int:
         return int(value or 0)
     except (TypeError, ValueError):
         return 0
+
+
+def _optional_num(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def empty_cycle() -> dict[str, Any]:
+    return {
+        "collected_visits": 0,
+        "open_visits": 0,
+        "median_days": None,
+        "avg_days": None,
+        "weighted_avg_days": None,
+    }
+
+
+def cycle_metrics(
+    *,
+    collected_visits: int,
+    open_visits: int,
+    median_days: float | None,
+    sum_days: float,
+    sum_amount: float,
+    sum_amount_days: float,
+) -> dict[str, Any]:
+    """Average and dollar-weighted days from summed visits. Median is supplied."""
+    n = int(collected_visits or 0)
+    amount = float(sum_amount or 0)
+    median = None if median_days is None or n == 0 else round(float(median_days), 1)
+    return {
+        "collected_visits": n,
+        "open_visits": int(open_visits or 0),
+        "median_days": median,
+        "avg_days": round(float(sum_days) / n, 1) if n else None,
+        "weighted_avg_days": round(float(sum_amount_days) / amount, 1) if amount else None,
+    }
+
+
+def _period_month(value: Any) -> date | None:
+    month = _as_month(value)
+    if month is not None:
+        return month
+    if isinstance(value, str) and len(value) >= 10:
+        try:
+            parsed = date.fromisoformat(value[:10])
+        except ValueError:
+            return None
+        return date(parsed.year, parsed.month, 1)
+    return None
+
+
+def attach_cycle(
+    rows: list[dict[str, Any]],
+    totals: dict[str, Any],
+    cycle_rows: list[dict[str, Any]],
+) -> None:
+    """Stamp visit-month cycle stats. The null visit_month row is the year total."""
+    by_month: dict[date, dict[str, Any]] = {}
+    year_cycle = empty_cycle()
+    for raw in cycle_rows:
+        metrics = cycle_metrics(
+            collected_visits=_int(raw.get("collected_visits")),
+            open_visits=_int(raw.get("open_visits")),
+            median_days=_optional_num(raw.get("median_days")),
+            sum_days=_num(raw.get("sum_days")),
+            sum_amount=_num(raw.get("sum_amount")),
+            sum_amount_days=_num(raw.get("sum_amount_days")),
+        )
+        month = _period_month(raw.get("visit_month"))
+        if month is None:
+            year_cycle = metrics
+        else:
+            by_month[month] = metrics
+    for row in rows:
+        row.update(by_month.get(_period_month(row.get("period_start"))) or empty_cycle())
+    totals.update(year_cycle)
 
 
 def _sum_metrics(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
@@ -365,6 +482,7 @@ def monthly_analysis(
         conn, MONTHLY_SQL, (start, end, clinic_key, clinic_key)
     )
     aging_rows = client.fetchall(conn, AGING_SQL, (start, end, clinic_key, clinic_key))
+    cycle_rows = client.fetchall(conn, CYCLE_SQL, (start, end, clinic_key, clinic_key))
     monthly: dict[date, dict[str, Any]] = {}
     for raw in month_rows:
         month = _as_month(raw.get("month"))
@@ -387,6 +505,7 @@ def monthly_analysis(
             continue
         aging[(visit_month, collect_month.month)] = _num(raw.get("amount"))
     rows, totals = fill_year_rows(y, monthly, aging)
+    attach_cycle(rows, totals, cycle_rows)
     return {
         "year": y,
         "clinic": clinic_key,
