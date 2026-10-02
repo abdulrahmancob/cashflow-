@@ -1,0 +1,397 @@
+"""Primary billing / cash-flow monthly analysis from Snowflake visit KPIs."""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Any
+
+import psycopg
+
+from cashflow_db.repository import client
+
+_MONTH_LABELS = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
+PAID_STATUSES = frozenset({"paid", "partial"})
+DENIED_STATUSES = frozenset({"denied", "not paid"})
+
+MONTHLY_SQL = """
+SELECT date_trunc('month', kpi.date_of_service)::date AS month,
+       count(*)::int AS visits,
+       count(*) FILTER (
+           WHERE lower(btrim(COALESCE(kpi.status, ''))) IN ('paid', 'partial')
+       )::int AS paid_visits,
+       count(*) FILTER (
+           WHERE lower(btrim(COALESCE(kpi.status, ''))) IN ('denied', 'not paid')
+       )::int AS denied_visits,
+       COALESCE(SUM(kpi.insurance_payment), 0) AS insurance_payment,
+       COALESCE(SUM(kpi.client_payment), 0) AS copay
+FROM analytics.snowflake_visit_kpi kpi
+WHERE kpi.date_of_service >= %s
+  AND kpi.date_of_service < %s
+  AND (%s::text IS NULL OR lower(btrim(kpi.clinic)) = lower(btrim(%s)))
+GROUP BY 1
+"""
+
+def _compact_check_sql(expr: str) -> str:
+    """SQL twin of waystar_shadow.full_compact_check_ref."""
+    stripped = (
+        "regexp_replace(regexp_replace(upper(btrim(COALESCE("
+        + expr
+        + ", ''))), '\\.0+$', ''), '[^A-Z0-9]', '', 'g')"
+    )
+    return (
+        "CASE WHEN "
+        + stripped
+        + " ~ '^[0-9]+$' THEN COALESCE(NULLIF(ltrim("
+        + stripped
+        + ", '0'), ''), '0') ELSE "
+        + stripped
+        + " END"
+    )
+
+
+def _override_date_sql(key: str) -> str:
+    raw = f"wi.manual_overrides->>'{key}'"
+    return (
+        "CASE WHEN btrim(COALESCE("
+        + raw
+        + ", '')) ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' "
+        "THEN substring(btrim(" + raw + ") from 1 for 10)::date END"
+    )
+
+
+# Collection month: tracker txn_date, then Waystar trans_date, then the
+# eligibility sheet date, then Snowflake primary_check_date.
+AGING_SQL = f"""
+WITH visits AS (
+    SELECT btrim(kpi.emr_id) AS emr_id,
+           kpi.date_of_service,
+           kpi.primary_check_date,
+           COALESCE(kpi.insurance_payment, 0) + COALESCE(kpi.client_payment, 0) AS amount,
+           {_compact_check_sql("kpi.primary_check_number")} AS sf_ref
+    FROM analytics.snowflake_visit_kpi kpi
+    WHERE kpi.date_of_service >= %s
+      AND kpi.date_of_service < %s
+      AND (%s::text IS NULL OR lower(btrim(kpi.clinic)) = lower(btrim(%s)))
+),
+tracker_min AS (
+    SELECT ref, MIN(txn_date) AS txn_date
+    FROM (
+        SELECT {_compact_check_sql("ref_raw")} AS ref,
+               t.txn_date
+        FROM billing.transaction_tracker_row t
+        CROSS JOIN LATERAL (
+            VALUES (t.eft_1), (t.eft_2), (t.check_reference)
+        ) AS refs(ref_raw)
+        WHERE t.deleted_at IS NULL
+          AND t.txn_date IS NOT NULL
+    ) compact_refs
+    WHERE ref <> ''
+    GROUP BY ref
+),
+sf_tracker AS (
+    SELECT v.emr_id, v.date_of_service, MIN(t.txn_date) AS txn_date
+    FROM visits v
+    JOIN tracker_min t ON t.ref = v.sf_ref AND v.sf_ref <> ''
+    GROUP BY v.emr_id, v.date_of_service
+),
+ws_tracker AS (
+    SELECT refs.emr_id, refs.date_of_service, MIN(t.txn_date) AS txn_date
+    FROM (
+        SELECT v.emr_id,
+               v.date_of_service,
+               {_compact_check_sql("num")} AS ref
+        FROM visits v
+        JOIN billing.waystar_webpt_map m
+          ON btrim(m.webpt_patient_id) = v.emr_id
+        JOIN billing.waystar_claim c
+          ON c.claim_key = m.waystar_claim_key
+         AND (c.from_date = v.date_of_service OR m.dos = v.date_of_service)
+        CROSS JOIN LATERAL unnest(COALESCE(c.remit_numbers, ARRAY[]::text[])) AS num
+    ) refs
+    JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
+    GROUP BY refs.emr_id, refs.date_of_service
+),
+el_tracker AS (
+    SELECT refs.emr_id, refs.date_of_service, MIN(t.txn_date) AS txn_date
+    FROM (
+        SELECT v.emr_id,
+               v.date_of_service,
+               {_compact_check_sql("num")} AS ref
+        FROM visits v
+        JOIN ops.eligibility_work_item wi
+          ON btrim(wi.emr_patient_id) = v.emr_id
+         AND wi.dos = v.date_of_service
+        CROSS JOIN LATERAL (
+            VALUES
+                (wi.manual_overrides->>'check_number'),
+                (wi.manual_overrides->>'insurance_check_number')
+        ) AS nums(num)
+    ) refs
+    JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
+    GROUP BY refs.emr_id, refs.date_of_service
+),
+waystar AS (
+    SELECT v.emr_id,
+           v.date_of_service,
+           MIN(c.trans_date) AS trans_date
+    FROM visits v
+    JOIN billing.waystar_webpt_map m
+      ON btrim(m.webpt_patient_id) = v.emr_id
+    JOIN billing.waystar_claim c
+      ON c.claim_key = m.waystar_claim_key
+     AND (c.from_date = v.date_of_service OR m.dos = v.date_of_service)
+    WHERE COALESCE(c.total_remit_amount, 0) > 0
+      AND c.trans_date IS NOT NULL
+    GROUP BY v.emr_id, v.date_of_service
+),
+elig AS (
+    SELECT v.emr_id,
+           v.date_of_service,
+           MIN(
+               COALESCE(
+                   {_override_date_sql("check_date")},
+                   {_override_date_sql("insurance_check_date")}
+               )
+           ) AS check_date
+    FROM visits v
+    JOIN ops.eligibility_work_item wi
+      ON btrim(wi.emr_patient_id) = v.emr_id
+     AND wi.dos = v.date_of_service
+    GROUP BY v.emr_id, v.date_of_service
+    HAVING MIN(
+        COALESCE(
+            {_override_date_sql("check_date")},
+            {_override_date_sql("insurance_check_date")}
+        )
+    ) IS NOT NULL
+)
+SELECT date_trunc('month', aged.date_of_service)::date AS visit_month,
+       date_trunc('month', aged.collect_date)::date AS collect_month,
+       COALESCE(SUM(aged.amount), 0) AS amount
+FROM (
+    SELECT v.date_of_service,
+           v.amount,
+           COALESCE(
+               sf_tracker.txn_date,
+               ws_tracker.txn_date,
+               el_tracker.txn_date,
+               waystar.trans_date,
+               elig.check_date,
+               v.primary_check_date
+           ) AS collect_date
+    FROM visits v
+    LEFT JOIN sf_tracker
+      ON sf_tracker.emr_id = v.emr_id
+     AND sf_tracker.date_of_service = v.date_of_service
+    LEFT JOIN ws_tracker
+      ON ws_tracker.emr_id = v.emr_id
+     AND ws_tracker.date_of_service = v.date_of_service
+    LEFT JOIN el_tracker
+      ON el_tracker.emr_id = v.emr_id
+     AND el_tracker.date_of_service = v.date_of_service
+    LEFT JOIN waystar
+      ON waystar.emr_id = v.emr_id
+     AND waystar.date_of_service = v.date_of_service
+    LEFT JOIN elig
+      ON elig.emr_id = v.emr_id
+     AND elig.date_of_service = v.date_of_service
+) aged
+WHERE aged.collect_date IS NOT NULL
+GROUP BY 1, 2
+"""
+
+CLINICS_SQL = """
+SELECT DISTINCT btrim(kpi.clinic) AS clinic
+FROM analytics.snowflake_visit_kpi kpi
+WHERE kpi.date_of_service >= %s
+  AND kpi.date_of_service < %s
+  AND NULLIF(btrim(kpi.clinic), '') IS NOT NULL
+ORDER BY 1
+"""
+
+
+def classify_billing_status(status: str | None) -> str:
+    key = (status or "").strip().casefold()
+    if key in PAID_STATUSES:
+        return "paid"
+    if key in DENIED_STATUSES:
+        return "denied"
+    return "pending"
+
+
+def year_bounds(year: int) -> tuple[date, date]:
+    return date(int(year), 1, 1), date(int(year) + 1, 1, 1)
+
+
+def empty_month_metrics() -> dict[str, Any]:
+    return {
+        "insurance_payment": 0.0,
+        "copay": 0.0,
+        "total_payment": 0.0,
+        "visits": 0,
+        "ave_visit": 0.0,
+        "paid_visits": 0,
+        "pending_visits": 0,
+        "denied_visits": 0,
+        "payment_pct": 0.0,
+        "act_ave_visit": 0.0,
+        "collection": {f"{m:02d}": 0.0 for m in range(1, 13)},
+    }
+
+
+def apply_visit_rates(row: dict[str, Any]) -> dict[str, Any]:
+    visits = int(row.get("visits") or 0)
+    paid = int(row.get("paid_visits") or 0)
+    denied = int(row.get("denied_visits") or 0)
+    pending = max(0, visits - paid - denied)
+    insurance = float(row.get("insurance_payment") or 0)
+    copay = float(row.get("copay") or 0)
+    total = insurance + copay
+    row["pending_visits"] = pending
+    row["insurance_payment"] = round(insurance, 2)
+    row["copay"] = round(copay, 2)
+    row["total_payment"] = round(total, 2)
+    row["ave_visit"] = round(total / visits, 2) if visits else 0.0
+    row["payment_pct"] = round(100.0 * paid / visits, 3) if visits else 0.0
+    row["act_ave_visit"] = round(total / paid, 2) if paid else 0.0
+    return row
+
+
+def _num(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _sum_metrics(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    out = empty_month_metrics()
+    for key in ("insurance_payment", "copay", "total_payment"):
+        out[key] = _num(left.get(key)) + _num(right.get(key))
+    for key in ("visits", "paid_visits", "pending_visits", "denied_visits"):
+        out[key] = _int(left.get(key)) + _int(right.get(key))
+    collection = dict(out["collection"])
+    for month_key, amount in (left.get("collection") or {}).items():
+        collection[str(month_key)] = collection.get(str(month_key), 0.0) + _num(amount)
+    for month_key, amount in (right.get("collection") or {}).items():
+        collection[str(month_key)] = collection.get(str(month_key), 0.0) + _num(amount)
+    out["collection"] = {k: round(_num(v), 2) for k, v in collection.items()}
+    return apply_visit_rates(out)
+
+
+def fill_year_rows(
+    year: int,
+    monthly: dict[date, dict[str, Any]],
+    aging: dict[tuple[date, int], float],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    totals = empty_month_metrics()
+    for month_num in range(1, 13):
+        start = date(year, month_num, 1)
+        src = dict(empty_month_metrics())
+        src.update(monthly.get(start) or {})
+        collection = dict(src.get("collection") or empty_month_metrics()["collection"])
+        for collect_month in range(1, 13):
+            key = (start, collect_month)
+            if key in aging:
+                collection[f"{collect_month:02d}"] = round(
+                    _num(collection.get(f"{collect_month:02d}")) + _num(aging[key]),
+                    2,
+                )
+        src["collection"] = collection
+        src = apply_visit_rates(src)
+        row = {
+            "period": f"{_MONTH_LABELS[month_num - 1]} {year}",
+            "period_start": start.isoformat(),
+            **src,
+        }
+        totals = _sum_metrics(totals, src)
+        rows.append(row)
+    totals_row = {
+        "period": "Total",
+        "period_start": None,
+        **apply_visit_rates(totals),
+    }
+    return rows, totals_row
+
+
+def _as_month(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return date(value.year, value.month, 1)
+    if isinstance(value, date):
+        return date(value.year, value.month, 1)
+    return None
+
+
+def list_clinics(conn: psycopg.Connection, year: int) -> list[str]:
+    start, end = year_bounds(year)
+    rows = client.fetchall(conn, CLINICS_SQL, (start, end))
+    return [str(r["clinic"]) for r in rows if r.get("clinic")]
+
+
+def monthly_analysis(
+    conn: psycopg.Connection,
+    *,
+    year: int,
+    clinic: str | None = None,
+) -> dict[str, Any]:
+    y = int(year)
+    if y < 2000 or y > 2100:
+        raise ValueError("year out of range")
+    clinic_key = (clinic or "").strip() or None
+    start, end = year_bounds(y)
+    month_rows = client.fetchall(
+        conn, MONTHLY_SQL, (start, end, clinic_key, clinic_key)
+    )
+    aging_rows = client.fetchall(conn, AGING_SQL, (start, end, clinic_key, clinic_key))
+    monthly: dict[date, dict[str, Any]] = {}
+    for raw in month_rows:
+        month = _as_month(raw.get("month"))
+        if month is None:
+            continue
+        monthly[month] = {
+            "insurance_payment": _num(raw.get("insurance_payment")),
+            "copay": _num(raw.get("copay")),
+            "visits": _int(raw.get("visits")),
+            "paid_visits": _int(raw.get("paid_visits")),
+            "denied_visits": _int(raw.get("denied_visits")),
+        }
+    aging: dict[tuple[date, int], float] = {}
+    for raw in aging_rows:
+        visit_month = _as_month(raw.get("visit_month"))
+        collect_month = _as_month(raw.get("collect_month"))
+        if visit_month is None or collect_month is None:
+            continue
+        if collect_month.year != y:
+            continue
+        aging[(visit_month, collect_month.month)] = _num(raw.get("amount"))
+    rows, totals = fill_year_rows(y, monthly, aging)
+    return {
+        "year": y,
+        "clinic": clinic_key,
+        "clinics": list_clinics(conn, y),
+        "rows": rows,
+        "totals": totals,
+        "aging_columns": [f"{_MONTH_LABELS[m - 1]} {y}" for m in range(1, 13)],
+    }
