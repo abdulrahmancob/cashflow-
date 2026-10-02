@@ -354,7 +354,11 @@ def _iter_snowflake_sheet_rows(conn) -> Iterator[dict[str, Any]]:
 
 
 def write_compare_workbook(conn, path: Path | None = None) -> dict[str, int]:
-    """Write Eligibility, Snowflake, and remaining Differences after the copy."""
+    """Write Eligibility, Snowflake, and remaining Differences after the copy.
+
+    Amount differences compare the sheet Total Amount with Snowflake's
+    insurance payment.
+    """
     try:
         from openpyxl import Workbook
     except ImportError as exc:
@@ -385,7 +389,7 @@ def write_compare_workbook(conn, path: Path | None = None) -> dict[str, int]:
                     emr=emr,
                     dos=dos,
                     local_status=row.get("source_visit_status"),
-                    local_amount=row.get("insurance_payment"),
+                    local_amount=row.get("total_amount"),
                     sf_status=None,
                     sf_amount=None,
                     on_sheet=True,
@@ -399,7 +403,7 @@ def write_compare_workbook(conn, path: Path | None = None) -> dict[str, int]:
                 emr=emr,
                 dos=dos,
                 local_status=row.get("source_visit_status"),
-                local_amount=row.get("insurance_payment"),
+                local_amount=row.get("total_amount"),
                 sf_status=sf[0],
                 sf_amount=sf[1],
                 on_sheet=True,

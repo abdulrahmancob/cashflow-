@@ -1,5 +1,7 @@
 """Pending Snowflake copy and the difference rows that remain after it."""
 
+from pathlib import Path
+
 from cashflow_db.services.sf_eligibility_take import (
     remaining_differences,
     sheet_values_from_sf,
@@ -88,3 +90,13 @@ def test_status_amount_and_presence_differences():
         on_sheet=False,
         on_snowflake=True,
     ) == [("E3", "2026-04-01", "only-on-snowflake", "", "collection")]
+
+
+def test_amount_difference_uses_sheet_total_amount():
+    source = Path(__file__).resolve().parents[1].joinpath(
+        "services", "sf_eligibility_take.py"
+    ).read_text(encoding="utf-8")
+    fn = source.split("def write_compare_workbook", 1)[1].split("\ndef ", 1)[0]
+    assert 'local_amount=row.get("total_amount")' in fn
+    assert 'local_amount=row.get("insurance_payment")' not in fn
+    assert 'sf_amount=sf[1]' in fn
