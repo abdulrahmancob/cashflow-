@@ -136,6 +136,7 @@ SHEET_EXPORT_COLUMNS: tuple[tuple[str, str], ...] = (
     ("dos", "DOS"),
     ("insurance_payment", "Insurance Payment"),
     ("source_visit_status", "Status"),
+    ("collection_status", "Collection Status"),
     ("updated_payment", "Updated Payment"),
     ("coinsurance_payment", "Co-Insurance Payment"),
     ("rtm", "RTM"),
@@ -266,7 +267,39 @@ WAYSTAR_PAID_CHECK_SQL = f"""EXISTS (
       AND {_WAYSTAR_REAL_CHECK_SQL}
 )"""
 
-WAYSTAR_COLLECTION_EXIT_REASON = "Exited collection after Waystar payment and check"
+WAYSTAR_COLLECTION_EXIT_REASON = "Exited collection after payment"
+
+# Insurance money on the sheet, Snowflake, or the latest reconciliation.
+# A denied visit with this payment leaves Denied and Overdue.
+HAS_INSURANCE_PAYMENT_SQL = f"""(
+    (
+        NULLIF(btrim(wi.manual_overrides->>'insurance_payment'), '') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+        AND (wi.manual_overrides->>'insurance_payment')::numeric > 0
+    )
+    OR (
+        NULLIF(btrim(wi.manual_overrides->>'paid_amount'), '') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+        AND (wi.manual_overrides->>'paid_amount')::numeric > 0
+    )
+    OR EXISTS (
+        SELECT 1 FROM analytics.snowflake_visit_kpi sf
+        WHERE sf.emr_id = wi.emr_patient_id
+          AND sf.date_of_service = wi.dos
+          AND COALESCE(sf.insurance_payment, 0) > 0
+    )
+    OR EXISTS (
+        SELECT 1 FROM billing.reconciliation_visit_agg rv
+        WHERE rv.reconciliation_run_id = (
+            SELECT reconciliation_run_id
+            FROM billing.reconciliation_run
+            WHERE status = 'success'
+            ORDER BY created_at DESC
+            LIMIT 1
+        )
+          AND rv.webpt_patient_id = wi.emr_patient_id
+          AND rv.date_of_service = wi.dos
+          AND COALESCE(rv.total_paid, 0) > 0
+    )
+)"""
 
 WAYSTAR_PAST_SLA_SQL = """EXISTS (
     SELECT 1
@@ -658,6 +691,51 @@ def _is_pr3_queue(queue: str | None) -> bool:
     return str(queue or "").strip().lower() in {"pr3", "patient_responsibility"}
 
 
+COLLECTION_TAB_LABELS: dict[str, str] = {
+    "denied": "Denied",
+    "overdue": "Overdue",
+    "collection": "Collection",
+    "arbitration": "Arbitration",
+    "action": "Action",
+    "at_risk": "At Risk",
+    "paid_patient_responsibility": "Paid - Patient Responsibility",
+    "dead": "Dead",
+}
+
+
+def collection_tab_label(buckets: list[str] | None) -> str | None:
+    """Readable collection-tab names for a visit that has no Collection Status yet."""
+    order = list(COLLECTION_TAB_LABELS)
+    seen: list[str] = []
+    for raw in buckets or []:
+        key = str(raw or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.append(key)
+    seen.sort(key=lambda key: order.index(key) if key in order else len(order))
+    labels = [COLLECTION_TAB_LABELS.get(key, key.replace("_", " ").title()) for key in seen]
+    return ", ".join(labels) or None
+
+
+def _attach_collection_tabs(conn: psycopg.Connection, rows: list[dict[str, Any]]) -> None:
+    ids = [str(row.get("work_item_id")) for row in rows if row.get("work_item_id")]
+    by_id: dict[str, list[str]] = {}
+    if ids:
+        found = client.fetchall(
+            conn,
+            """
+            SELECT work_item_id::text AS work_item_id, bucket
+            FROM analytics.collection_queue_member
+            WHERE work_item_id = ANY(%s::uuid[])
+            """,
+            (ids,),
+        )
+        for item in found:
+            by_id.setdefault(str(item["work_item_id"]), []).append(str(item["bucket"]))
+    for row in rows:
+        row["collection_tab"] = collection_tab_label(by_id.get(str(row.get("work_item_id"))))
+
+
 def _collection_bucket(bucket: str | None) -> str:
     raw = str(bucket or "denied").strip().lower()
     if raw in {
@@ -682,6 +760,8 @@ def sheet_export_row(row: dict[str, Any], queue: str | None = None) -> list[Any]
     out: list[Any] = []
     for key, _label in _export_columns(queue):
         value = row.get(key)
+        if key == "collection_status" and not _as_text(value):
+            value = row.get("collection_tab")
         if key == "collector_1" and not _as_text(value):
             value = row.get("assigned_to_code") or row.get("assigned_to_name")
         if key == "assigned_to_code" and not _as_text(value):
@@ -2743,8 +2823,6 @@ def _build_filters(
         clauses.append(f"NOT {SKIPPED_VISIT_SQL}")
     else:
         clauses.append(f"NOT {SKIPPED_VISIT_SQL}")
-        clauses.append(f"NOT {DENIED_VISIT_SQL}")
-        clauses.append(f"NOT {COLLECTION_VISIT_SQL}")
     return " AND ".join(clauses), params
 
 
@@ -2883,6 +2961,7 @@ def _finish_work_item_rows(
     overlay_eft_totals(conn, rows, index=eft_totals)
     overlay_ledger_totals(conn, rows)
     items: list[dict[str, Any]] = []
+    _attach_collection_tabs(conn, rows)
     for row in rows:
         apply_manual_overrides(row)
         row.pop("context", None)
@@ -3121,7 +3200,7 @@ PR3_CODE_SQL = f"""(
 )"""
 
 PR3_UNPAID_SQL = f"""(
-    lower(btrim(COALESCE(wi.source_visit_status, ''))) NOT IN ('paid', 'partial')
+    lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, ''))) NOT IN ('paid', 'partial')
     AND {PR3_CODE_SQL}
 )"""
 
@@ -3164,7 +3243,8 @@ def collection_bucket_predicate(bucket: str | None) -> str:
     if key == "overdue":
         return (
             f"{OVERDUE_PENDING_SQL} AND NOT {PR3_UNPAID_SQL} "
-            f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})"
+            f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) "
+            f"AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
         )
     if key == "collection":
         return f"{COLLECTION_VISIT_SQL} AND NOT {PR3_UNPAID_SQL}"
@@ -3177,7 +3257,9 @@ def collection_bucket_predicate(bucket: str | None) -> str:
     return (
         f"(({DENIED_VISIT_SQL}) OR ({PR3_UNPAID_SQL})) "
         f"AND NOT ({PR3_PAID_COLLECTION_SQL}) "
-        f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})"
+        f"AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) "
+        f"AND NOT {PAID_OR_DEDUCT_SQL} "
+        f"AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
     )
 
 
@@ -3214,10 +3296,16 @@ def waystar_paid_exit_sql() -> str:
             FROM ops.eligibility_work_item wi
             WHERE {scope}
               AND NOT ({ROUTED_COLLECTION_SQL})
-              AND {WAYSTAR_PAID_CHECK_SQL}
+              AND (
+                    {WAYSTAR_PAID_CHECK_SQL}
+                    OR ({HAS_INSURANCE_PAYMENT_SQL})
+                    OR ({PAID_OR_DEDUCT_SQL})
+              )
               AND (
                     ({DENIED_VISIT_SQL})
                  OR (({OVERDUE_PENDING_SQL}) AND NOT ({PR3_UNPAID_SQL}))
+                 OR lower(btrim(COALESCE({EFFECTIVE_VISIT_STATUS_SQL}, '')))
+                    IN ('denied', 'pending', 'collection', '')
               )
         ),
         updated AS (
@@ -3227,7 +3315,7 @@ def waystar_paid_exit_sql() -> str:
                 manual_overrides = CASE
                     WHEN lower(btrim(COALESCE(
                         wi.manual_overrides->>'source_visit_status', ''
-                    ))) = 'denied'
+                    ))) IN ('denied', 'pending', 'collection', '')
                         THEN COALESCE(wi.manual_overrides, '{{}}'::jsonb)
                              - 'source_visit_status'
                     ELSE wi.manual_overrides
@@ -3255,11 +3343,10 @@ def waystar_paid_exit_sql() -> str:
 
 
 def _promote_waystar_paid_collection(conn: psycopg.Connection) -> int:
-    """Set denied and overdue visits to paid once Waystar has money and a check.
+    """Set denied, pending, and collection visits to paid once money has arrived.
 
-    Arbitration, action, and at-risk rows stay put. A PR-3 visit stays put unless
-    it is actually denied or overdue. History and context.exited_from keep the
-    bucket the visit left.
+    Arbitration, action, at-risk, and dead rows stay put. History and
+    context.exited_from keep the bucket the visit left.
     """
     cur = conn.execute(waystar_paid_exit_sql())
     return cur.rowcount
@@ -3432,6 +3519,13 @@ def refresh_collection_queue(conn: psycopg.Connection) -> dict[str, int]:
             OR (({overdue_for_dead}) AND NOT ({PR3_UNPAID_SQL}))
         )
     )"""
+    rules["denied"] = (
+        f"({rules['denied']}) AND NOT {PAID_OR_DEDUCT_SQL} "
+        f"AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
+    )
+    rules["overdue"] = (
+        f"({rules['overdue']}) AND NOT ({HAS_INSURANCE_PAYMENT_SQL})"
+    )
     counts: dict[str, int] = {}
     for bucket, rule in rules.items():
         scope = base_scope
@@ -5395,6 +5489,7 @@ def get_work_item(conn: psycopg.Connection, work_item_id: str) -> dict[str, Any]
     overlay_tracker_dates(conn, [row])
     overlay_eft_totals(conn, [row])
     overlay_ledger_totals(conn, [row])
+    _attach_collection_tabs(conn, [row])
     apply_manual_overrides(row)
     row.pop("context", None)
     return _drop_overlay_keys(row)
@@ -5654,11 +5749,13 @@ def _rehome_collection_member(
                 AND NOT ({ROUTED_COLLECTION_SQL})
                 AND NOT ({PR3_PAID_COLLECTION_SQL})
                 AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})
+                AND NOT {PAID_OR_DEDUCT_SQL}
+                AND NOT ({HAS_INSURANCE_PAYMENT_SQL})
             )""",
         ),
         (
             "overdue",
-            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL}) AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL})",
+            f"({OVERDUE_PENDING_SQL}) AND NOT ({ROUTED_COLLECTION_SQL}) AND NOT ({PR3_UNPAID_SQL}) AND NOT ({PAID_PATIENT_RESPONSIBILITY_VISIT_SQL}) AND NOT ({HAS_INSURANCE_PAYMENT_SQL})",
         ),
     ):
         client.execute(

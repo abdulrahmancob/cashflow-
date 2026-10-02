@@ -385,8 +385,14 @@ def test_collection_bucket_lists_collection_status():
     assert f"NOT {PR3_UNPAID_SQL}" in predicate
 
 
-def test_sheet_queue_hides_collection_status():
-    from cashflow_db.repository.eligibility import COLLECTION_VISIT_SQL
+def test_sheet_queue_keeps_collection_visits():
+    from cashflow_db.repository.eligibility import (
+        COLLECTION_VISIT_SQL,
+        SKIPPED_VISIT_SQL,
+        collection_tab_label,
+        sheet_export_headers,
+        sheet_export_row,
+    )
 
     sql, _params = _build_filters(
         q=None,
@@ -397,8 +403,26 @@ def test_sheet_queue_hides_collection_status():
         assigned_to=None,
         queue="sheet",
     )
-    assert f"NOT {COLLECTION_VISIT_SQL}" in sql
-    assert f"NOT {DENIED_VISIT_SQL}" in sql
+    assert f"NOT {COLLECTION_VISIT_SQL}" not in sql
+    assert f"NOT {DENIED_VISIT_SQL}" not in sql
+    assert f"NOT {SKIPPED_VISIT_SQL}" in sql
+    assert collection_tab_label(["overdue", "denied"]) == "Denied, Overdue"
+    assert collection_tab_label([]) is None
+    headers = sheet_export_headers()
+    status_at = headers.index("Status")
+    assert headers[status_at + 1] == "Collection Status"
+    exported = sheet_export_row(
+        {
+            "source_visit_status": "denied",
+            "collection_status": None,
+            "collection_tab": "Denied",
+        }
+    )
+    assert exported[status_at + 1] == "Denied"
+    exported_set = sheet_export_row(
+        {"collection_status": "Action Taken", "collection_tab": "Denied"}
+    )
+    assert exported_set[headers.index("Collection Status")] == "Action Taken"
 
 
 def test_sheet_queue_ignores_overdue_bucket():
@@ -413,7 +437,7 @@ def test_sheet_queue_ignores_overdue_bucket():
         bucket="overdue",
     )
     assert OVERDUE_PENDING_SQL not in sql
-    assert f"NOT {DENIED_VISIT_SQL}" in sql
+    assert f"NOT {DENIED_VISIT_SQL}" not in sql
 
 
 def test_collection_denied_includes_pr3_unpaid():
@@ -776,6 +800,7 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
         PAID_OR_DEDUCT_SQL,
         PR3_UNPAID_SQL,
         ROUTED_COLLECTION_SQL,
+        SKIPPED_VISIT_SQL,
         WAYSTAR_COLLECTION_EXIT_REASON,
         WAYSTAR_PAID_CHECK_SQL,
         waystar_paid_exit_sql,
@@ -800,6 +825,8 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
     assert "ops.eligibility_history" in sql
     assert "exited_from,\n            'paid'" in sql
     assert WAYSTAR_COLLECTION_EXIT_REASON in sql
+    assert "insurance_payment" in sql
+    assert "IN ('denied', 'pending', 'collection', '')" in sql
     assert f"NOT ({ROUTED_COLLECTION_SQL})" in sql
     assert "arbitration" in ROUTED_COLLECTION_SQL
     assert "actiontaken" in ROUTED_COLLECTION_SQL
@@ -820,9 +847,9 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
         assigned_to=None,
         queue="sheet",
     )
-    assert f"NOT {DENIED_VISIT_SQL}" in sheet_sql
-    assert f"NOT {COLLECTION_VISIT_SQL}" in sheet_sql
-    assert "collection_queue_member" not in sheet_sql
+    assert f"NOT {DENIED_VISIT_SQL}" not in sheet_sql
+    assert f"NOT {COLLECTION_VISIT_SQL}" not in sheet_sql
+    assert f"NOT {SKIPPED_VISIT_SQL}" in sheet_sql
     assert "'paid'" in PAID_OR_DEDUCT_SQL
     assert PAID_OR_DEDUCT_SQL in DENIED_VISIT_SQL
     assert PAID_OR_DEDUCT_SQL in OVERDUE_PENDING_SQL

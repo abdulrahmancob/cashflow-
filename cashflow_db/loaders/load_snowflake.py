@@ -32,6 +32,8 @@ def load_snowflake_kpi(
         try:
             for row in rows:
                 counts["rows"] += 1
+                if counts["rows"] % 10000 == 0:
+                    print(f"snowflake kpi {counts['rows']}", flush=True)
                 emr = safe_str(row.get("EMR_ID"))
                 dos = parse_date(row.get("DATE_OF_SERVICE"))
                 if not emr or not dos:
@@ -140,6 +142,15 @@ def load_snowflake_kpi(
                 counts["upserted"] += 1
 
             finish_etl_run(conn, etl_id, status="success", row_count=counts["upserted"])
+            from cashflow_db.repository.visits import refresh_elig_keep_visit
+
+            counts["keep_visits"] = refresh_elig_keep_visit(conn)
+            from cashflow_db.repository.eligibility import refresh_collection_queue
+
+            counts["collection_queue"] = refresh_collection_queue(conn)
+            from cashflow_db.repository.eligibility import refresh_ss_eligible_visits
+
+            counts["ss_eligible"] = refresh_ss_eligible_visits(conn)
         except Exception as exc:
             finish_etl_run(conn, etl_id, status="failed", notes=str(exc)[:2000])
             raise
