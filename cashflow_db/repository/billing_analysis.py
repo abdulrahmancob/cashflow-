@@ -70,16 +70,23 @@ def _override_date_sql(key: str) -> str:
 # eligibility sheet date, then Snowflake primary_check_date.
 # Shared by the cash-collected grid and the cash conversion cycle.
 _COLLECT_SQL = f"""
-WITH visits AS (
+WITH bounds AS (
+    SELECT %s::date AS start_on, %s::date AS end_on, %s::text AS clinic_key
+),
+visits AS (
     SELECT btrim(kpi.emr_id) AS emr_id,
            kpi.date_of_service,
            kpi.primary_check_date,
            COALESCE(kpi.insurance_payment, 0) + COALESCE(kpi.client_payment, 0) AS amount,
            {_compact_check_sql("kpi.primary_check_number")} AS sf_ref
     FROM analytics.snowflake_visit_kpi kpi
-    WHERE kpi.date_of_service >= %s
-      AND kpi.date_of_service < %s
-      AND (%s::text IS NULL OR lower(btrim(kpi.clinic)) = lower(btrim(%s)))
+    CROSS JOIN bounds b
+    WHERE kpi.date_of_service >= b.start_on
+      AND kpi.date_of_service < b.end_on
+      AND (
+          b.clinic_key IS NULL
+          OR lower(btrim(kpi.clinic)) = lower(btrim(b.clinic_key))
+      )
 ),
 tracker_min AS (
     SELECT ref, MIN(txn_date) AS txn_date
@@ -96,78 +103,82 @@ tracker_min AS (
     WHERE ref <> ''
     GROUP BY ref
 ),
-sf_tracker AS (
-    SELECT v.emr_id, v.date_of_service, MIN(t.txn_date) AS txn_date
-    FROM visits v
-    JOIN tracker_min t ON t.ref = v.sf_ref AND v.sf_ref <> ''
-    GROUP BY v.emr_id, v.date_of_service
+waystar_base AS (
+    SELECT m.webpt_patient_id AS emr_id,
+           c.from_date AS date_of_service,
+           c.trans_date,
+           c.total_remit_amount,
+           c.remit_numbers
+    FROM billing.waystar_claim c
+    JOIN billing.waystar_webpt_map m
+      ON m.waystar_claim_key = c.claim_key
+    CROSS JOIN bounds b
+    WHERE c.from_date >= b.start_on
+      AND c.from_date < b.end_on
+      AND COALESCE(m.webpt_patient_id, '') <> ''
+),
+waystar AS (
+    SELECT emr_id,
+           date_of_service,
+           MIN(trans_date) AS trans_date
+    FROM waystar_base
+    WHERE COALESCE(total_remit_amount, 0) > 0
+      AND trans_date IS NOT NULL
+    GROUP BY emr_id, date_of_service
 ),
 ws_tracker AS (
     SELECT refs.emr_id, refs.date_of_service, MIN(t.txn_date) AS txn_date
     FROM (
-        SELECT v.emr_id,
-               v.date_of_service,
+        SELECT w.emr_id,
+               w.date_of_service,
                {_compact_check_sql("num")} AS ref
-        FROM visits v
-        JOIN billing.waystar_webpt_map m
-          ON m.webpt_patient_id = v.emr_id
-        JOIN billing.waystar_claim c
-          ON c.claim_key = m.waystar_claim_key
-         AND c.from_date = v.date_of_service
-        CROSS JOIN LATERAL unnest(COALESCE(c.remit_numbers, ARRAY[]::text[])) AS num
+        FROM waystar_base w
+        CROSS JOIN LATERAL unnest(COALESCE(w.remit_numbers, ARRAY[]::text[])) AS num
     ) refs
     JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
     GROUP BY refs.emr_id, refs.date_of_service
 ),
+elig_base AS (
+    SELECT wi.emr_patient_id AS emr_id,
+           wi.dos AS date_of_service,
+           COALESCE(
+               {_override_date_sql("check_date")},
+               {_override_date_sql("insurance_check_date")}
+           ) AS check_date,
+           wi.manual_overrides
+    FROM ops.eligibility_work_item wi
+    CROSS JOIN bounds b
+    WHERE wi.dos >= b.start_on
+      AND wi.dos < b.end_on
+      AND COALESCE(wi.emr_patient_id, '') <> ''
+),
+elig AS (
+    SELECT emr_id, date_of_service, MIN(check_date) AS check_date
+    FROM elig_base
+    WHERE check_date IS NOT NULL
+    GROUP BY emr_id, date_of_service
+),
 el_tracker AS (
     SELECT refs.emr_id, refs.date_of_service, MIN(t.txn_date) AS txn_date
     FROM (
-        SELECT v.emr_id,
-               v.date_of_service,
+        SELECT e.emr_id,
+               e.date_of_service,
                {_compact_check_sql("num")} AS ref
-        FROM visits v
-        JOIN ops.eligibility_work_item wi
-          ON wi.emr_patient_id = v.emr_id
-         AND wi.dos = v.date_of_service
+        FROM elig_base e
         CROSS JOIN LATERAL (
             VALUES
-                (wi.manual_overrides->>'check_number'),
-                (wi.manual_overrides->>'insurance_check_number')
+                (e.manual_overrides->>'check_number'),
+                (e.manual_overrides->>'insurance_check_number')
         ) AS nums(num)
     ) refs
     JOIN tracker_min t ON t.ref = refs.ref AND refs.ref <> ''
     GROUP BY refs.emr_id, refs.date_of_service
 ),
-waystar AS (
-    SELECT v.emr_id,
-           v.date_of_service,
-           MIN(c.trans_date) AS trans_date
+sf_tracker AS (
+    SELECT v.emr_id, v.date_of_service, MIN(t.txn_date) AS txn_date
     FROM visits v
-    JOIN billing.waystar_webpt_map m
-      ON m.webpt_patient_id = v.emr_id
-    JOIN billing.waystar_claim c
-      ON c.claim_key = m.waystar_claim_key
-     AND c.from_date = v.date_of_service
-    WHERE COALESCE(c.total_remit_amount, 0) > 0
-      AND c.trans_date IS NOT NULL
+    JOIN tracker_min t ON t.ref = v.sf_ref AND v.sf_ref <> ''
     GROUP BY v.emr_id, v.date_of_service
-),
-elig AS (
-    SELECT emr_id, date_of_service, MIN(check_date) AS check_date
-    FROM (
-        SELECT v.emr_id,
-               v.date_of_service,
-               COALESCE(
-                   {_override_date_sql("check_date")},
-                   {_override_date_sql("insurance_check_date")}
-               ) AS check_date
-        FROM visits v
-        JOIN ops.eligibility_work_item wi
-          ON wi.emr_patient_id = v.emr_id
-         AND wi.dos = v.date_of_service
-    ) parsed
-    WHERE check_date IS NOT NULL
-    GROUP BY emr_id, date_of_service
 )
 SELECT v.date_of_service,
        v.amount,
@@ -468,9 +479,7 @@ def monthly_analysis(
         conn, MONTHLY_SQL, (start, end, clinic_key, clinic_key)
     )
     client.execute(conn, "DROP TABLE IF EXISTS billing_collect_aged")
-    client.execute(
-        conn, LOAD_AGED_SQL, (start, end, clinic_key, clinic_key)
-    )
+    client.execute(conn, LOAD_AGED_SQL, (start, end, clinic_key))
     aging_rows = client.fetchall(conn, AGING_SQL)
     cycle_rows = client.fetchall(conn, CYCLE_SQL)
     monthly: dict[date, dict[str, Any]] = {}

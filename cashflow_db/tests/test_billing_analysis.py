@@ -61,8 +61,14 @@ def test_collect_date_source_order():
     assert "btrim(m.webpt_patient_id)" not in _COLLECT_SQL
     assert "btrim(wi.emr_patient_id)" not in _COLLECT_SQL
     assert "m.dos" not in _COLLECT_SQL
-    assert "c.from_date = v.date_of_service" in _COLLECT_SQL
+    assert "c.from_date >= b.start_on" in _COLLECT_SQL
     assert _COLLECT_SQL.count("regexp_replace") == 8
+    waystar = _COLLECT_SQL.split("waystar_base AS", 1)[1].split("elig_base AS", 1)[0]
+    elig = _COLLECT_SQL.split("elig_base AS", 1)[1].split("sf_tracker AS", 1)[0]
+    assert "FROM billing.waystar_claim" in waystar
+    assert "FROM visits" not in waystar
+    assert "FROM ops.eligibility_work_item" in elig
+    assert "FROM visits" not in elig
 
 
 def test_collect_sql_materializes_once():
