@@ -407,6 +407,7 @@ export function EligibilityQueuePage({
   const [month, setMonth] = useState<string[]>([])
   const [filtersReady, setFiltersReady] = useState(false)
   const [visitStatus, setVisitStatus] = useState<string[]>([])
+  const [collectionStatus, setCollectionStatus] = useState<string[]>([])
   const [checkDate, setCheckDate] = useState<string[]>([])
   const [insurance, setInsurance] = useState<string[]>([])
   const [assignedTo] = useState<string[]>([])
@@ -448,6 +449,7 @@ export function EligibilityQueuePage({
       facility,
       month,
       visit_status: visitStatus,
+      collection_status: collectionStatus,
       check_date: checkDate,
       insurance,
       assigned_to: assigned,
@@ -457,7 +459,7 @@ export function EligibilityQueuePage({
       sort_by: sortBy,
       sort_dir: sortDir,
     }
-  }, [q, facility, month, visitStatus, checkDate, insurance, assignedTo, mine, user, queue, page, pageSize, sortBy, sortDir])
+  }, [q, facility, month, visitStatus, collectionStatus, checkDate, insurance, assignedTo, mine, user, queue, page, pageSize, sortBy, sortDir])
 
   const loadList = useCallback(async () => {
     const data = await api<{
@@ -744,6 +746,7 @@ export function EligibilityQueuePage({
       facility,
       month,
       visit_status: visitStatus,
+      collection_status: collectionStatus,
       check_date: checkDate,
       insurance,
       assigned_to: mine && user ? [user.user_id] : assignedTo,
@@ -926,6 +929,22 @@ export function EligibilityQueuePage({
             ))}
           </Select>
           )}
+          <Select
+            value={collectionStatus[0] || ''}
+            onChange={(e) => {
+              setPage(1)
+              setCollectionStatus(e.target.value ? [e.target.value] : [])
+            }}
+            className="w-44"
+          >
+            <option value="">All collection status</option>
+            <option value="__blank__">(Blank)</option>
+            {collectionStatuses.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
           <Select
             value={checkDate[0] || ''}
             onChange={(e) => {
