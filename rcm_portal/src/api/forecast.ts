@@ -314,6 +314,7 @@ export const forecastApi = {
       overdue_analysis?: OverdueAnalysis
     }>(`/api/mission${qs(f, { grain: 'day' })}`),
   cashOverview: (f: Partial<Filters>) => api<CashOverview>(`/api/cash/overview${qs(f)}`),
+  overdueAnalysis: (f: Partial<Filters>) => api<OverdueAnalysis>(`/api/overdue/analysis${qs(f)}`),
   execScorecard: (f: Partial<Filters>) => api<ExecScorecard>(`/api/exec/scorecard${qs(f)}`),
   insights: (f: Partial<Filters>) =>
     api<{

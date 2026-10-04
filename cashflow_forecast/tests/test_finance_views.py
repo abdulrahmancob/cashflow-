@@ -188,6 +188,109 @@ def test_waterfall_and_grade():
     assert payer_grade(None, None) == ""
 
 
+def test_clinic_totals_are_not_rolled_up_from_the_insurance_grid():
+    payload = build_overdue_analysis(
+        [_grid_row(amount=100, facility_name="")],
+        [],
+        [],
+        clinics=[
+            {
+                "facility_name": "Bedstuy",
+                "amount": 40,
+                "line_count": 2,
+                "overdue_days_sum": 20,
+            }
+        ],
+    )
+    assert payload["by_clinic"] == [
+        {
+            "facility_name": "Bedstuy",
+            "amount": 40.0,
+            "count": 2,
+            "avg_overdue_days": 10.0,
+        }
+    ]
+
+
+def test_cash_overview_calls_history_once(monkeypatch):
+    from cashflow_forecast import api as forecast_api
+
+    calls = {"hist": 0, "act": 0}
+
+    def hist(month=None, date_from=None, date_to=None):
+        calls["hist"] += 1
+        assert month is None
+        assert date_from is None
+        assert date_to is None
+        return {
+            "daily": [
+                {"period": "2026-09-15", "amount": 4, "forecast_as_of": "2026-09-01"},
+                {"period": "2026-10-01", "amount": 10, "forecast_as_of": "2026-09-01"},
+            ],
+            "monthly": [
+                {"period": "2026-09", "amount": 4},
+                {"period": "2026-10", "amount": 10},
+            ],
+        }
+
+    def act(**_kwargs):
+        calls["act"] += 1
+        return [
+            {"period": "2026-09-15", "amount": 3, "line_count": 1},
+            {"period": "2026-10-01", "amount": 8, "line_count": 1},
+        ]
+
+    monkeypatch.setattr(forecast_api, "projected_history", hist)
+    monkeypatch.setattr(forecast_api, "actual_daily", act)
+    monkeypatch.setattr(forecast_api, "_use_db", lambda: False)
+    monkeypatch.setattr(forecast_api, "_day_ahead_history", lambda _n: [])
+    monkeypatch.setattr(forecast_api, "_settled_as_of", lambda: date(2026, 10, 2))
+    payload = forecast_api._cash_overview_payload(
+        facility=None,
+        ins=None,
+        month="2026-10",
+        date_from=None,
+        date_to=None,
+    )
+    assert calls["hist"] == 1
+    assert calls["act"] == 1
+    assert [row["period"] for row in payload["daily"]] == ["2026-10-01"]
+    assert [row["period"] for row in payload["actual"]] == ["2026-10-01"]
+
+
+def test_tracker_scorecard_is_one_labeled_pass(monkeypatch):
+    from cashflow_db.repository import insurance as ins_repo
+
+    captured: dict[str, object] = {}
+
+    def fake_fetchone(_conn, sql, params=None):
+        captured["sql"] = sql
+        captured["params"] = params
+        return {"cash_last": 1, "cash_prior": 2, "cash_90": 3, "cash_prior_90": 4}
+
+    monkeypatch.setattr(ins_repo.client, "fetchone", fake_fetchone)
+    out = ins_repo.tracker_scorecard_cash(
+        None,  # type: ignore[arg-type]
+        last_start=date(2026, 9, 1),
+        last_end=date(2026, 9, 30),
+        prior_start=date(2026, 8, 1),
+        prior_end=date(2026, 8, 31),
+        recent_start=date(2026, 7, 7),
+        recent_end=date(2026, 10, 5),
+        prior_recent_start=date(2026, 6, 9),
+        prior_recent_end=date(2026, 9, 7),
+    )
+    sql = str(captured["sql"])
+    assert sql.count("FILTER") == 4
+    assert sql.count("WITH latest") == 1
+    assert out == {
+        "cash_last": 1.0,
+        "cash_prior": 2.0,
+        "cash_90": 3.0,
+        "cash_prior_90": 4.0,
+    }
+
+
 def test_endpoints_degrade_without_a_database(monkeypatch):
     from cashflow_forecast import api as forecast_api
 

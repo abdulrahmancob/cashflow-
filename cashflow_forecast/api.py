@@ -2222,23 +2222,38 @@ def _overdue_analysis_payload(
     try:
         from cashflow_db.repository import connection, forecast as forecast_repo
 
-        with connection() as conn:
-            grid = forecast_repo.overdue_grid(
-                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+        def _query(fn):
+            try:
+                with connection() as conn:
+                    return fn(conn)
+            except Exception:
+                return []
+
+        names = dict(d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            fut_grid = pool.submit(lambda: _query(lambda conn: forecast_repo.overdue_grid(conn, **names)))
+            fut_clinics = pool.submit(
+                lambda: _query(lambda conn: forecast_repo.overdue_clinic_totals(conn, **names))
             )
-            trend = forecast_repo.ar_trend(
-                conn, facilities=fac or None, insurers=insurers or None, weeks=12
+            fut_trend = pool.submit(
+                lambda: _query(
+                    lambda conn: forecast_repo.overdue_four_week_points(
+                        conn, facilities=fac or None, insurers=insurers or None
+                    )
+                )
             )
-            claims = forecast_repo.list_overdue_claims(
-                conn,
-                d0=d0,
-                d1=d1,
-                facilities=fac or None,
-                insurers=insurers or None,
-                rank="recovery",
-                limit=15,
+            fut_claims = pool.submit(
+                lambda: _query(
+                    lambda conn: forecast_repo.list_overdue_claims(
+                        conn, rank="recovery", limit=15, **names
+                    )
+                )
             )
-        return build_overdue_analysis(grid, trend, claims)
+            grid = fut_grid.result()
+            clinics = fut_clinics.result()
+            trend = fut_trend.result()
+            claims = fut_claims.result()
+        return build_overdue_analysis(grid, trend, claims, clinics=clinics)
     except Exception:
         return empty_overdue_analysis()
 
@@ -2277,13 +2292,9 @@ def mission_dashboard(
         queued = _queue_open_risk(fac=fac, insurers=insurers, d0=d0, d1=d1)
         return queued if queued is not None else _empty_queue_risk()
 
-    def _load_overdue() -> dict[str, Any]:
-        return _overdue_analysis_payload(fac=fac, insurers=insurers, d0=d0, d1=d1)
-
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         fut_behavior = pool.submit(_load_behavior)
         fut_risk = pool.submit(_load_risk)
-        fut_overdue = pool.submit(_load_overdue)
         queued = fut_risk.result()
         fut_kpi = pool.submit(
             _kpi_payload,
@@ -2308,7 +2319,6 @@ def mission_dashboard(
         behavior = fut_behavior.result()
         kpi_data = fut_kpi.result()
         outcomes = fut_outcomes.result()
-        overdue_analysis = fut_overdue.result()
     return {
         "kpi": kpi_data,
         "monthly": [],
@@ -2317,8 +2327,66 @@ def mission_dashboard(
         "outcomes": outcomes,
         "behavior": behavior,
         "day_ahead": _day_ahead_recent(),
-        "overdue_analysis": overdue_analysis,
     }
+
+
+@app.get("/api/overdue/analysis")
+def overdue_analysis(
+    facility: str | None = None,
+    ins: str | None = None,
+    month: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict[str, Any]:
+    """Overdue charts for Mission Control. Loaded beside /api/mission, not inside it."""
+    fac, insurers = _split_multi(facility), _split_multi(ins)
+    d0, d1 = _resolve_date_bounds(date_from, date_to, _split_multi(month))
+    return _overdue_analysis_payload(fac=fac, insurers=insurers, d0=d0, d1=d1)
+
+
+def _period_on(row: dict[str, Any]) -> date | None:
+    text = str(row.get("period") or "")[:10]
+    try:
+        return date.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _rows_between(
+    rows: list[dict[str, Any]], d0: date | None, d1: date | None
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        day = _period_on(row)
+        if day is None:
+            continue
+        if d0 is not None and day < d0:
+            continue
+        if d1 is not None and day > d1:
+            continue
+        out.append(row)
+    return out
+
+
+def _months_from_daily(daily: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_month: dict[str, float] = {}
+    as_of_month: dict[str, str] = {}
+    for row in daily:
+        ym = str(row.get("period") or "")[:7]
+        if len(ym) < 7:
+            continue
+        by_month[ym] = by_month.get(ym, 0.0) + float(row.get("amount") or 0)
+        fa = row.get("forecast_as_of")
+        if fa and (ym not in as_of_month or str(fa) > as_of_month[ym]):
+            as_of_month[ym] = str(fa)
+    return [
+        {
+            "period": ym,
+            "amount": round(amt, 2),
+            "forecast_as_of": as_of_month.get(ym),
+        }
+        for ym, amt in sorted(by_month.items())
+    ]
 
 
 def _cash_overview_payload(
@@ -2337,53 +2405,65 @@ def _cash_overview_payload(
         month_bounds,
     )
 
-    hist = projected_history(month=month, date_from=date_from, date_to=date_to)
-    actual = actual_daily(
-        facility=facility, ins=ins, month=month, date_from=date_from, date_to=date_to
-    )
     settled = _settled_as_of()
     today = date.today()
     start, end = month_bounds(today)
-    month_hist = projected_history(date_from=start.isoformat(), date_to=end.isoformat())
-    month_actual = actual_daily(date_from=start.isoformat(), date_to=end.isoformat())
-    forward_daily = projected_history()
+    d0, d1 = _resolve_date_bounds(date_from, date_to, _split_multi(month))
     fac, insurers = _split_multi(facility), _split_multi(ins)
-    forward_rows: list[dict[str, Any]] = []
-    payer_months: list[dict[str, Any]] = []
-    if _use_db():
+
+    def _load_forward() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        if not _use_db():
+            return [], []
         try:
             from cashflow_db.repository import connection
             from cashflow_db.repository import forecast as forecast_repo
             from cashflow_db.repository import insurance as ins_repo
 
-            d0, d1 = _resolve_date_bounds(date_from, date_to, _split_multi(month))
-            if d0 is None and d1 is None:
-                d0 = date(today.year - 1, today.month, 1)
+            trend_d0 = d0 if d0 is not None else date(today.year - 1, today.month, 1)
             with connection() as conn:
-                forward_rows = forecast_repo.forward_expected_by_week(
+                weeks = forecast_repo.forward_expected_by_week(
                     conn,
                     start=today,
                     end=today + timedelta(days=30),
                     facilities=fac or None,
                     insurers=insurers or None,
                 )
-                payer_months = ins_repo.summarize_tracker_paid_trend(
+                payers = ins_repo.summarize_tracker_paid_trend(
                     conn,
                     grain="month",
                     insurers=insurers or None,
-                    d0=d0,
+                    d0=trend_d0,
                     d1=d1,
                     limit_insurers=6,
                 )
+            return weeks, payers
         except Exception:
-            forward_rows = []
-            payer_months = []
+            return [], []
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        fut_hist = pool.submit(projected_history)
+        fut_actual = pool.submit(actual_daily)
+        fut_forward = pool.submit(_load_forward)
+        full_hist = fut_hist.result()
+        full_actual = list(fut_actual.result() or [])
+        forward_rows, payer_months = fut_forward.result()
+    full_daily = list(full_hist.get("daily") or [])
+    if d0 is None and d1 is None:
+        hist_daily = full_daily
+        hist_monthly = list(full_hist.get("monthly") or [])
+    else:
+        hist_daily = _rows_between(full_daily, d0, d1)
+        hist_monthly = _months_from_daily(hist_daily)
+    act_end = settled if d1 is None or d1 > settled else d1
+    actual = _rows_between(full_actual, d0, act_end)
+    month_daily = _rows_between(full_daily, start, end)
+    month_actual = _rows_between(full_actual, start, settled if end > settled else end)
     weeks = build_forward_weeks(forward_rows)
     scored = _day_ahead_history(30)
     kpi = build_cash_kpis(
-        month_daily=list(month_hist.get("daily") or []),
-        month_actual=list(month_actual or []),
-        forward_daily=list(forward_daily.get("daily") or []),
+        month_daily=month_daily,
+        month_actual=month_actual,
+        forward_daily=full_daily,
         settled=settled,
         today=today,
         accuracy_rows=scored,
@@ -2399,14 +2479,14 @@ def _cash_overview_payload(
         for row in scored[:5]
     ]
     return {
-        "daily": list(hist.get("daily") or []),
-        "monthly": list(hist.get("monthly") or []),
-        "actual": list(actual or []),
+        "daily": hist_daily,
+        "monthly": hist_monthly,
+        "actual": actual,
         "last_settled_date": settled.isoformat(),
         "kpi": kpi,
         "burnup": build_burnup(
-            list(month_hist.get("daily") or []),
-            list(month_actual or []),
+            month_daily,
+            month_actual,
             start=start,
             end=end,
             settled=settled,
@@ -2481,61 +2561,105 @@ def _exec_scorecard_payload(
         prior_start, prior_end = previous_month(last_start)
         prior_as_of = today - timedelta(days=28)
         coll_d0 = d0 if d0 is not None else today - timedelta(days=430)
-        with connection() as conn:
-            stages = forecast_repo.summarize_outcome_stages(
-                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
-            )
-            collection_rows = forecast_repo.collection_rate_by_month(
-                conn, d0=coll_d0, d1=d1, facilities=fac or None, insurers=insurers or None
-            )
-            stage_by_ins = forecast_repo.summarize_stages_by_insurance(
-                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
-            )
-            grid = forecast_repo.overdue_grid(
-                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
-            )
-            trend = forecast_repo.ar_trend(
-                conn, facilities=fac or None, insurers=insurers or None, weeks=12
-            )
-            open_ar = forecast_repo.sum_ar_stages_in_range(
-                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
-            )
-            queued = cpt_audit.open_risk_exposure(
-                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
-            )
-            doc_risk = float((queued or {}).get("exposure_amount") or 0)
-            names = insurers or None
-            cash_last = ins_repo.sum_tracker_cash(
-                conn, d0=last_start, d1=last_end, insurers=names
-            )
-            cash_prior = ins_repo.sum_tracker_cash(
-                conn, d0=prior_start, d1=prior_end, insurers=names
-            )
-            cash_90 = ins_repo.sum_tracker_cash(
-                conn, d0=today - timedelta(days=90), d1=today, insurers=names
-            )
-            cash_prior_90 = ins_repo.sum_tracker_cash(
-                conn, d0=prior_as_of - timedelta(days=90), d1=prior_as_of, insurers=names
-            )
-            tracker_by_ins = ins_repo.tracker_cash_by_insurer(
-                conn, d0=today - timedelta(days=90), d1=today, insurers=names, limit=30
-            )
-        return build_exec_scorecard(
-            today=today,
-            stages=stages,
-            doc_risk=doc_risk,
-            collection_rows=collection_rows,
-            grid=grid,
-            trend=trend,
-            stage_by_ins=stage_by_ins,
-            tracker_by_ins=tracker_by_ins,
-            open_ar=open_ar,
-            cash_last_month=cash_last,
-            cash_prior_month=cash_prior,
-            cash_90=cash_90,
-            cash_prior_90=cash_prior_90,
-            accuracy_rows=_day_ahead_history(60),
-        )
+        names = insurers or None
+
+        def _forecast_half() -> dict[str, Any]:
+            with connection() as conn:
+                stages = forecast_repo.summarize_outcome_stages(
+                    conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+                )
+                collection_rows = forecast_repo.collection_rate_by_month(
+                    conn, d0=coll_d0, d1=d1, facilities=fac or None, insurers=insurers or None
+                )
+                stage_by_ins = forecast_repo.summarize_stages_by_insurance(
+                    conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+                )
+                grid = forecast_repo.overdue_grid(
+                    conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+                )
+                trend = forecast_repo.ar_trend(
+                    conn, facilities=fac or None, insurers=insurers or None, weeks=12
+                )
+                open_ar = forecast_repo.sum_ar_stages_in_range(
+                    conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+                )
+                queued = cpt_audit.open_risk_exposure(
+                    conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+                )
+            return {
+                "stages": stages,
+                "collection_rows": collection_rows,
+                "stage_by_ins": stage_by_ins,
+                "grid": grid,
+                "trend": trend,
+                "open_ar": open_ar,
+                "doc_risk": float((queued or {}).get("exposure_amount") or 0),
+            }
+
+        def _tracker_half() -> dict[str, Any]:
+            with connection() as conn:
+                cash = ins_repo.tracker_scorecard_cash(
+                    conn,
+                    last_start=last_start,
+                    last_end=last_end,
+                    prior_start=prior_start,
+                    prior_end=prior_end,
+                    recent_start=today - timedelta(days=90),
+                    recent_end=today,
+                    prior_recent_start=prior_as_of - timedelta(days=90),
+                    prior_recent_end=prior_as_of,
+                    insurers=names,
+                )
+                tracker_by_ins = ins_repo.tracker_cash_by_insurer(
+                    conn,
+                    d0=today - timedelta(days=90),
+                    d1=today,
+                    insurers=names,
+                    limit=30,
+                )
+            accuracy_rows: list[dict[str, Any]] = []
+            try:
+                accuracy_rows = _day_ahead_history(60)
+            except Exception:
+                accuracy_rows = []
+            return {
+                "tracker_by_ins": tracker_by_ins,
+                "cash_last_month": cash["cash_last"],
+                "cash_prior_month": cash["cash_prior"],
+                "cash_90": cash["cash_90"],
+                "cash_prior_90": cash["cash_prior_90"],
+                "accuracy_rows": accuracy_rows,
+            }
+
+        forecast_empty = {
+            "stages": [],
+            "collection_rows": [],
+            "stage_by_ins": [],
+            "grid": [],
+            "trend": [],
+            "open_ar": {},
+            "doc_risk": 0.0,
+        }
+        tracker_empty = {
+            "tracker_by_ins": [],
+            "cash_last_month": 0.0,
+            "cash_prior_month": 0.0,
+            "cash_90": 0.0,
+            "cash_prior_90": 0.0,
+            "accuracy_rows": [],
+        }
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_forecast = pool.submit(_forecast_half)
+            fut_tracker = pool.submit(_tracker_half)
+            try:
+                forecast_bits = fut_forecast.result()
+            except Exception:
+                forecast_bits = forecast_empty
+            try:
+                tracker_bits = fut_tracker.result()
+            except Exception:
+                tracker_bits = tracker_empty
+        return build_exec_scorecard(today=today, **forecast_bits, **tracker_bits)
     except Exception:
         return build_exec_scorecard(**blank)
 

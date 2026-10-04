@@ -626,6 +626,67 @@ def tracker_cash_by_insurer(
     ]
 
 
+def tracker_scorecard_cash(
+    conn: psycopg.Connection,
+    *,
+    last_start: date,
+    last_end: date,
+    prior_start: date,
+    prior_end: date,
+    recent_start: date,
+    recent_end: date,
+    prior_recent_start: date,
+    prior_recent_end: date,
+    insurers: list[str] | None = None,
+) -> dict[str, float]:
+    """Last month, the month before, the last 90 days, and the prior 90 days.
+
+    One pass over the labeled tracker. FILTER keeps a day that sits in more
+    than one window.
+    """
+    earliest = min(last_start, prior_start, recent_start, prior_recent_start)
+    latest = max(last_end, prior_end, recent_end, prior_recent_end)
+    filter_params: list[Any] = [
+        last_start,
+        last_end,
+        prior_start,
+        prior_end,
+        recent_start,
+        recent_end,
+        prior_recent_start,
+        prior_recent_end,
+    ]
+    where_params: list[Any] = []
+    where_sql, where_params = _tracker_ins_date_sql(
+        insurers=insurers, d0=earliest, d1=latest, params=where_params
+    )
+    sql = f"""
+        {_TRACKER_LABELED_SQL}
+        SELECT
+            COALESCE(ROUND(SUM(amount) FILTER (
+                WHERE txn_date >= %s AND txn_date <= %s
+            ), 2), 0) AS cash_last,
+            COALESCE(ROUND(SUM(amount) FILTER (
+                WHERE txn_date >= %s AND txn_date <= %s
+            ), 2), 0) AS cash_prior,
+            COALESCE(ROUND(SUM(amount) FILTER (
+                WHERE txn_date >= %s AND txn_date <= %s
+            ), 2), 0) AS cash_90,
+            COALESCE(ROUND(SUM(amount) FILTER (
+                WHERE txn_date >= %s AND txn_date <= %s
+            ), 2), 0) AS cash_prior_90
+        FROM labeled
+        {where_sql}
+    """
+    row = client.fetchone(conn, sql, filter_params + where_params) or {}
+    return {
+        "cash_last": round(float(row.get("cash_last") or 0), 2),
+        "cash_prior": round(float(row.get("cash_prior") or 0), 2),
+        "cash_90": round(float(row.get("cash_90") or 0), 2),
+        "cash_prior_90": round(float(row.get("cash_prior_90") or 0), 2),
+    }
+
+
 def list_tracker_checks(
     conn: psycopg.Connection,
     *,

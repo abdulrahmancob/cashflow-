@@ -209,6 +209,7 @@ def build_overdue_analysis(
     grid: list[dict[str, Any]] | None,
     trend: list[dict[str, Any]] | None,
     claims: list[dict[str, Any]] | None,
+    clinics: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Month x insurance, aging, recovery, Pareto, days to pay, clinics, chase list."""
     rows = list(grid or [])
@@ -264,10 +265,11 @@ def build_overdue_analysis(
             }
         )
 
-    clinics: dict[str, dict[str, float]] = {}
-    for row in rows:
+    clinic_rows = list(clinics) if clinics is not None else rows
+    clinic_totals: dict[str, dict[str, float]] = {}
+    for row in clinic_rows:
         name = _name(row.get("facility_name"))
-        slot = clinics.setdefault(name, {"amount": 0.0, "count": 0.0, "days": 0.0})
+        slot = clinic_totals.setdefault(name, {"amount": 0.0, "count": 0.0, "days": 0.0})
         slot["amount"] += _f(row.get("amount"))
         slot["count"] += _f(row.get("line_count"))
         slot["days"] += _f(row.get("overdue_days_sum"))
@@ -278,7 +280,7 @@ def build_overdue_analysis(
             "count": int(slot["count"]),
             "avg_overdue_days": round(slot["days"] / slot["count"], 1) if slot["count"] else 0.0,
         }
-        for name, slot in sorted(clinics.items(), key=lambda item: item[1]["amount"], reverse=True)
+        for name, slot in sorted(clinic_totals.items(), key=lambda item: item[1]["amount"], reverse=True)
         if slot["amount"] > 0
     ][:12]
 

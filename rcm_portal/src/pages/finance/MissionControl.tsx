@@ -24,6 +24,14 @@ import { INS_COLORS, InsuranceMixList, MoneyTooltip, PaidTooltip } from '../../c
 import { EmptyState, Table, Td, Th, THead, Tr } from '../../components/table'
 import { Button, Card, KpiCard } from '../../components/ui'
 
+function AnalysisPending() {
+  return (
+    <div className="mb-4 flex h-16 items-center justify-center rounded-xl border border-gray-200 bg-white">
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-brand-600" />
+    </div>
+  )
+}
+
 type OutcomesSummary = Awaited<ReturnType<typeof forecastApi.outcomesSummary>>
 type BehaviorTrend = Awaited<ReturnType<typeof forecastApi.behaviorTrend>>
 
@@ -43,6 +51,7 @@ export function MissionControl({
   const [summary, setSummary] = useState<OutcomesSummary | null>(null)
   const [behavior, setBehavior] = useState<BehaviorTrend | null>(null)
   const [analysis, setAnalysis] = useState<OverdueAnalysis | null>(null)
+  const [analysisLoading, setAnalysisLoading] = useState(true)
   const [missionLoading, setMissionLoading] = useState(true)
   const [dayAhead, setDayAhead] = useState<{
     yesterday: { bank_date: string; forecast_total: number; actual_total: number; error_pct: number | null } | null
@@ -66,16 +75,25 @@ export function MissionControl({
     }
     const handle = window.setTimeout(() => {
       ;(async () => {
+        let analysisPromise = Promise.resolve()
         try {
           onError('')
           if (!missionPainted.current) setMissionLoading(true)
+          setAnalysisLoading(true)
+          analysisPromise = forecastApi.overdueAnalysis(filters).then(
+            (payload) => {
+              if (!cancelled) setAnalysis(payload)
+            },
+            () => {
+              if (!cancelled) setAnalysis(null)
+            },
+          )
           const bundle = await forecastApi.mission(filters)
           if (!cancelled) {
             setKpi(bundle.kpi)
             setSummary(bundle.outcomes)
             setBehavior(bundle.behavior)
             setDayAhead(bundle.day_ahead || null)
-            setAnalysis(bundle.overdue_analysis ?? null)
             missionPainted.current = true
             setMissionLoading(false)
           }
@@ -84,6 +102,9 @@ export function MissionControl({
             onError(String((e as Error).message || e))
             setMissionLoading(false)
           }
+        } finally {
+          await analysisPromise
+          if (!cancelled) setAnalysisLoading(false)
         }
       })()
     }, delay)
@@ -241,7 +262,7 @@ export function MissionControl({
           On track = visits in this range still inside SLA. Overdue = expected to land in this range and still late.
         </p>
       )}
-      <OverdueKpiRow data={analysis} />
+      {analysisLoading ? <AnalysisPending /> : <OverdueKpiRow data={analysis} />}
 
       <Card
         title="Insurance checks"
@@ -321,7 +342,7 @@ export function MissionControl({
         )}
       </Card>
 
-      <OverdueMonthChart data={analysis} />
+      {analysisLoading ? <AnalysisPending /> : <OverdueMonthChart data={analysis} />}
 
       <Card title="Insurance in / overdue / risk" description="In = Eligibility Sheet paid. Overdue = forecast land lag. Risk = open audit queue minus Eligibility Sheet paid status." padded={false}>
         {mixRows.length ? (
@@ -374,11 +395,11 @@ export function MissionControl({
         </Card>
       </div>
 
-      <OverdueAgingAndPareto data={analysis} />
-      <DaysToPayTable data={analysis} onOpenInsurance={onOpenInsurance} />
+      {analysisLoading ? <AnalysisPending /> : <OverdueAgingAndPareto data={analysis} />}
+      {analysisLoading ? <AnalysisPending /> : <DaysToPayTable data={analysis} onOpenInsurance={onOpenInsurance} />}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <OverdueByClinic data={analysis} />
+        {analysisLoading ? <AnalysisPending /> : <OverdueByClinic data={analysis} />}
         <Card title="Outcome mix" description="Expected dollars by stage (forecast / open AR)" padded={false}>
           <div className="h-72 px-2 pb-3 pt-2">
             {stageRows.length ? (
@@ -399,7 +420,7 @@ export function MissionControl({
           </div>
         </Card>
       </div>
-      <ChaseList data={analysis} onOpenClaim={onOpenClaim} />
+      {analysisLoading ? <AnalysisPending /> : <ChaseList data={analysis} onOpenClaim={onOpenClaim} />}
     </>
   )
 }
