@@ -42,6 +42,25 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
     label: 'Operations',
     items: [
       {
+        to: '/my-day',
+        label: 'My day',
+        icon: Timer,
+        roles: [
+          'desk',
+          'collector',
+          'posting_team',
+          'second_submission',
+          'second_submission_lead',
+          'submission',
+          'finance',
+          'medical_audit',
+          'analytics_viewer',
+          'ops_admin',
+          'sub_admin',
+          'super_admin',
+        ],
+      },
+      {
         to: '/eligibility',
         label: 'Eligibility Sheet',
         icon: ClipboardList,
@@ -170,6 +189,7 @@ const PAGE_TITLES: Array<[string, string]> = [
   ['/finance/drill', 'Overdue'],
   ['/billing-analysis', 'Billing cash flow'],
   ['/second-submission', 'Second Submission'],
+  ['/my-day', 'My day'],
   ['/away', 'Away board'],
   ['/activity', 'Activity'],
   ['/platform', 'Platform Health'],

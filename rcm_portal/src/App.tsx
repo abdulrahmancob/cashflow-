@@ -18,19 +18,18 @@ import { TransactionTrackerPage } from './pages/TransactionTracker'
 import { ChecksDepositsPage } from './pages/ChecksDeposits'
 import { TeamAnalyticsPage } from './pages/TeamAnalytics'
 import { AwayBoardPage } from './pages/AwayBoard'
+import { MyDayPage } from './pages/MyDay'
 import { BillingAnalysisPage } from './pages/BillingAnalysis'
 import type { Role } from './api/client'
 
 function Protected({
   children,
   roles,
-  trackerView,
-  checksView,
+  resource,
 }: {
   children: React.ReactNode
   roles?: Role[]
-  trackerView?: boolean
-  checksView?: boolean
+  resource?: 'tracker' | 'checks_deposits'
 }) {
   const { user, loading, hasRole, canTracker, canChecks } = useAuth()
   if (loading) {
@@ -41,22 +40,19 @@ function Protected({
     )
   }
   if (!user) return <Navigate to="/login" replace />
-  if (trackerView && !canTracker('view')) return <Navigate to="/" replace />
-  if (checksView && !canChecks('view')) return <Navigate to="/" replace />
+  if (resource === 'tracker' && !canTracker('view')) return <Navigate to="/" replace />
+  if (resource === 'checks_deposits' && !canChecks('view')) return <Navigate to="/" replace />
   if (roles && !hasRole(...roles)) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
+const ADMIN_HOME: Role[] = ['super_admin', 'sub_admin', 'ops_admin']
+
 function HomeRedirect() {
-  const { hasRole, canTracker } = useAuth()
-  if (hasRole('posting_team', 'collector', 'ops_admin', 'sub_admin')) return <Navigate to="/eligibility" replace />
-  if (canTracker('view')) return <Navigate to="/tracker" replace />
-  if (hasRole('finance')) return <Navigate to="/finance/cash" replace />
-  if (hasRole('second_submission', 'second_submission_lead')) return <Navigate to="/second-submission" replace />
-  if (hasRole('submission')) return <Navigate to="/cpt-guide" replace />
-  if (hasRole('analytics_viewer')) return <Navigate to="/analytics" replace />
-  if (hasRole('medical_audit')) return <Navigate to="/cpt-audit" replace />
-  return <Navigate to="/platform" replace />
+  const { user } = useAuth()
+  const roles = user?.roles ?? []
+  if (roles.some((role) => ADMIN_HOME.includes(role))) return <Navigate to="/away" replace />
+  return <Navigate to="/my-day" replace />
 }
 
 export default function App() {
@@ -148,7 +144,7 @@ export default function App() {
         <Route
           path="/tracker"
           element={
-            <Protected trackerView>
+            <Protected resource="tracker">
               <TransactionTrackerPage />
             </Protected>
           }
@@ -156,7 +152,7 @@ export default function App() {
         <Route
           path="/checks-deposits"
           element={
-            <Protected checksView>
+            <Protected resource="checks_deposits">
               <ChecksDepositsPage />
             </Protected>
           }
@@ -174,6 +170,14 @@ export default function App() {
           element={
             <Protected roles={['finance', 'super_admin', 'sub_admin']}>
               <FinancePage />
+            </Protected>
+          }
+        />
+        <Route
+          path="/my-day"
+          element={
+            <Protected>
+              <MyDayPage />
             </Protected>
           }
         />
