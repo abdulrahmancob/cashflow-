@@ -84,8 +84,8 @@ try:
     from cashflow_ops.eligibility_api import router as _eligibility_router
     from cashflow_ops.security import seed_portal_users
     from cashflow_ops.tracker_api import router as _tracker_router
+    from cashflow_ops.checks_deposits_api import router as _checks_deposits_router
     from cashflow_ops.billing_analysis_api import router as _billing_analysis_router
-    from cashflow_ops.chat.api import router as _chat_router
     from cashflow_ops.collection_api import router as _collection_router
     from cashflow_ops.away_api import router as _away_router
     from cashflow_ops.work_analytics_api import router as _analytics_router
@@ -98,6 +98,8 @@ try:
     app.include_router(_eligibility_router, prefix="/api")
     app.include_router(_tracker_router, prefix="/api/v1")
     app.include_router(_tracker_router, prefix="/api")
+    app.include_router(_checks_deposits_router, prefix="/api/v1")
+    app.include_router(_checks_deposits_router, prefix="/api")
     app.include_router(_cpt_guide_router, prefix="/api/v1")
     app.include_router(_cpt_guide_router, prefix="/api")
     app.include_router(_cpt_audit_router, prefix="/api/v1")
@@ -114,8 +116,6 @@ try:
     app.include_router(_activity_router, prefix="/api")
     app.include_router(_collection_router, prefix="/api/v1")
     app.include_router(_collection_router, prefix="/api")
-    app.include_router(_chat_router, prefix="/api/v1")
-    app.include_router(_chat_router, prefix="/api")
 
     @app.on_event("startup")
     def _portal_startup() -> None:

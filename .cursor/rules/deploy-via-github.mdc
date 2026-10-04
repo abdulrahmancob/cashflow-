@@ -1,0 +1,24 @@
+---
+description: Deploy to production only by pushing to GitHub main
+alwaysApply: true
+---
+
+# Deploy only through GitHub
+
+Any deploy, upload, or ship to the production server goes through GitHub. Do not copy files onto the server by hand.
+
+- Commit only the files that should go live, then push to `main`.
+- Pushing `main` runs `.github/workflows/deploy.yml` on the self-hosted runner. That runs `deploy/scripts/deploy_release.sh`.
+- The script copies added and modified files from that push onto `/opt/cashflow`. It does not delete server-only files. A portal file rebuilds the portal. A Python file recreates the API. A file in `cashflow_db/sql/` runs `python -m cashflow_db migrate`.
+- Do not `scp`, `ssh` a file into `/opt/cashflow` or `/data/portal`, `docker cp` into the API, or recreate containers yourself.
+- Do not commit secrets (`.env`, keys, credentials).
+- Do not include unrelated local edits. Every file in the push overwrites the live copy.
+- The committed file becomes the live file. Shared files must be the production version plus the change, not a local copy that drops server-only code.
+
+```text
+# deploy
+git push origin main
+
+# not a deploy
+scp app.py abdu@server:/opt/cashflow/app.py
+```

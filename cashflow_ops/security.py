@@ -13,18 +13,27 @@ from dataclasses import dataclass
 from typing import Any, Callable
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 JWT_SECRET = os.environ.get("CASHFLOW_JWT_SECRET", "dev-change-me-cashflow-jwt")
 JWT_TTL_SECONDS = int(os.environ.get("CASHFLOW_JWT_TTL_SECONDS", "43200"))  # 12h
 PBKDF2_ITERATIONS = 260_000
+SESSION_COOKIE_NAME = "rcm_session"
 
 _bearer = HTTPBearer(auto_error=False)
 
 ROLE_SUPER = "super_admin"
 ROLE_FINANCE = "finance"
 ROLE_POSTING = "posting_team"
+ROLE_SUBMISSION = "submission"
+ROLE_COLLECTOR = "collector"
+ROLE_OPS_ADMIN = "ops_admin"
+ROLE_SUB_ADMIN = "sub_admin"
+ROLE_SECOND_SUBMISSION = "second_submission"
+ROLE_SECOND_SUBMISSION_LEAD = "second_submission_lead"
+ROLE_ANALYTICS_VIEWER = "analytics_viewer"
+ROLE_MEDICAL_AUDIT = "medical_audit"
 
 
 from cashflow_db.services.bootstrap_admin import (  # noqa: E402
@@ -85,6 +94,92 @@ def decode_access_token(token: str) -> dict[str, Any]:
         raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
 
 
+def cors_allow_origins(raw: str | None = None) -> list[str]:
+    """Comma-separated browser origins. Empty means same-origin only."""
+    value = os.environ.get("CASHFLOW_CORS_ORIGINS", "") if raw is None else raw
+    return [part.strip() for part in value.split(",") if part.strip()]
+
+
+def cookie_should_be_secure(request: Request) -> bool:
+    forwarded = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    if forwarded:
+        return forwarded == "https"
+    return request.url.scheme == "https"
+
+
+def extract_access_token(
+    request: Request,
+    creds: HTTPAuthorizationCredentials | None = None,
+) -> str | None:
+    if creds is not None and creds.credentials:
+        return creds.credentials
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        token = auth.split(" ", 1)[1].strip()
+        if token:
+            return token
+    cookie = (request.cookies.get(SESSION_COOKIE_NAME) or "").strip()
+    return cookie or None
+
+
+def set_session_cookie(
+    response: Response,
+    request: Request,
+    token: str,
+    *,
+    remember: bool = False,
+) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=cookie_should_be_secure(request),
+        samesite="lax",
+        path="/",
+        max_age=JWT_TTL_SECONDS if remember else None,
+    )
+
+
+def clear_session_cookie(response: Response, request: Request) -> None:
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=cookie_should_be_secure(request),
+        httponly=True,
+        samesite="lax",
+    )
+
+
+def load_live_auth_user(user_id: str) -> AuthUser:
+    """Resolve an active user and current DB roles. Fails closed."""
+    from cashflow_db.repository import auth_users, connection
+
+    try:
+        with connection() as conn:
+            row = auth_users.get_user_by_id(conn, user_id)
+            if not row or not row.get("is_active"):
+                raise HTTPException(status_code=401, detail="User inactive")
+            roles = auth_users.get_user_roles(conn, user_id)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=401, detail="Authentication required") from exc
+    return AuthUser(
+        user_id=str(row["user_id"]),
+        username=str(row.get("username") or ""),
+        display_name=str(row.get("display_name") or ""),
+        roles=list(roles),
+    )
+
+
+def auth_user_from_token(token: str) -> AuthUser:
+    payload = decode_access_token(token)
+    user_id = str(payload.get("sub") or "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return load_live_auth_user(user_id)
+
+
 @dataclass
 class AuthUser:
     user_id: str
@@ -100,43 +195,48 @@ class AuthUser:
         return ROLE_SUPER in self.roles
 
     @property
+    def is_sub_admin(self) -> bool:
+        return ROLE_SUB_ADMIN in self.roles or self.is_super_admin
+
+    @property
+    def is_elevated_admin(self) -> bool:
+        """super_admin or sub_admin. Not a global bypass for Platform/Database."""
+        return self.is_super_admin or ROLE_SUB_ADMIN in self.roles
+
+    @property
     def is_finance(self) -> bool:
-        return ROLE_FINANCE in self.roles or self.is_super_admin
+        return ROLE_FINANCE in self.roles or self.is_elevated_admin
 
     @property
     def is_posting(self) -> bool:
         return ROLE_POSTING in self.roles or self.is_super_admin
 
+    @property
+    def is_ops_admin(self) -> bool:
+        return ROLE_OPS_ADMIN in self.roles or self.is_super_admin
+
 
 def get_current_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> AuthUser:
-    if creds is None or not creds.credentials:
+    token = extract_access_token(request, creds)
+    if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
-    payload = decode_access_token(creds.credentials)
-    return AuthUser(
-        user_id=str(payload["sub"]),
-        username=str(payload.get("username") or ""),
-        display_name=str(payload.get("display_name") or ""),
-        roles=list(payload.get("roles") or []),
-    )
+    return auth_user_from_token(token)
 
 
 def get_optional_user(
+    request: Request,
     creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> AuthUser | None:
-    if creds is None or not creds.credentials:
+    token = extract_access_token(request, creds)
+    if not token:
         return None
     try:
-        payload = decode_access_token(creds.credentials)
+        return auth_user_from_token(token)
     except HTTPException:
         return None
-    return AuthUser(
-        user_id=str(payload["sub"]),
-        username=str(payload.get("username") or ""),
-        display_name=str(payload.get("display_name") or ""),
-        roles=list(payload.get("roles") or []),
-    )
 
 
 def require_roles(*role_keys: str) -> Callable[..., AuthUser]:
@@ -151,21 +251,36 @@ def require_roles(*role_keys: str) -> Callable[..., AuthUser]:
 
 
 TRACKER_RESOURCE = "transaction_tracker"
+CHECKS_DEPOSITS_RESOURCE = "checks_deposits"
+
+_PERM_KEYS = {
+    "view": "can_view",
+    "edit": "can_edit",
+    "upload": "can_upload",
+    "admin": "can_admin",
+}
 
 
-def get_tracker_perms(user: AuthUser) -> dict[str, bool]:
-    """Return can_view/edit/upload/admin for transaction_tracker."""
-    if user.is_super_admin:
+def get_resource_perms(user: AuthUser, resource_key: str) -> dict[str, bool]:
+    """Return can_view/edit/upload/admin for a resource_grant key."""
+    if user.is_elevated_admin:
         return {
             "can_view": True,
             "can_edit": True,
             "can_upload": True,
             "can_admin": True,
         }
+    if user.has_role(ROLE_OPS_ADMIN):
+        return {
+            "can_view": True,
+            "can_edit": True,
+            "can_upload": True,
+            "can_admin": False,
+        }
     from cashflow_db.repository import connection, tracker
 
     with connection() as conn:
-        grant = tracker.get_grant(conn, user.user_id, resource_key=TRACKER_RESOURCE)
+        grant = tracker.get_grant(conn, user.user_id, resource_key=resource_key)
     return {
         "can_view": bool(grant.get("can_view")),
         "can_edit": bool(grant.get("can_edit")),
@@ -174,14 +289,32 @@ def get_tracker_perms(user: AuthUser) -> dict[str, bool]:
     }
 
 
+def require_resource_perm(resource_key: str, perm: str) -> Callable[..., AuthUser]:
+    """perm: view | edit | upload | admin"""
+    key = _PERM_KEYS.get(perm)
+    if not key:
+        raise ValueError(f"Unknown resource perm: {perm}")
+
+    def _dep(user: AuthUser = Depends(get_current_user)) -> AuthUser:
+        perms = get_resource_perms(user, resource_key)
+        if not perms.get(key):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Insufficient permissions for {resource_key}",
+            )
+        return user
+
+    return _dep
+
+
+def get_tracker_perms(user: AuthUser) -> dict[str, bool]:
+    """Return can_view/edit/upload/admin for transaction_tracker."""
+    return get_resource_perms(user, TRACKER_RESOURCE)
+
+
 def require_tracker_perm(perm: str) -> Callable[..., AuthUser]:
     """perm: view | edit | upload | admin"""
-    key = {
-        "view": "can_view",
-        "edit": "can_edit",
-        "upload": "can_upload",
-        "admin": "can_admin",
-    }.get(perm)
+    key = _PERM_KEYS.get(perm)
     if not key:
         raise ValueError(f"Unknown tracker perm: {perm}")
 

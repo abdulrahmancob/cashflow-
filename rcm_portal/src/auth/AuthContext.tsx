@@ -10,22 +10,25 @@ import {
 import {
   ApiError,
   fetchMe,
-  getToken,
   login as apiLogin,
-  setToken,
+  logout as apiLogout,
+  setUnauthorizedHandler,
   type Role,
   type User,
 } from '../api/client'
 import { fetchTrackerMe, type TrackerPerms } from '../api/tracker'
+import { fetchChecksMe, type ChecksPerms } from '../api/checksDeposits'
 
 type AuthState = {
   user: User | null
   loading: boolean
   trackerPerms: TrackerPerms | null
-  login: (username: string, password: string) => Promise<void>
-  logout: () => void
+  checksPerms: ChecksPerms | null
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<void>
+  logout: () => Promise<void>
   hasRole: (...roles: Role[]) => boolean
   canTracker: (perm?: 'view' | 'edit' | 'upload' | 'admin') => boolean
+  canChecks: (perm?: 'view' | 'edit' | 'upload' | 'admin') => boolean
   refresh: () => Promise<void>
 }
 
@@ -34,15 +37,21 @@ const AuthContext = createContext<AuthState | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [trackerPerms, setTrackerPerms] = useState<TrackerPerms | null>(null)
+  const [checksPerms, setChecksPerms] = useState<ChecksPerms | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const clearSession = useCallback(() => {
+    setUser(null)
+    setTrackerPerms(null)
+    setChecksPerms(null)
+  }, [])
+
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession)
+    return () => setUnauthorizedHandler(null)
+  }, [clearSession])
+
   const refresh = useCallback(async () => {
-    if (!getToken()) {
-      setUser(null)
-      setTrackerPerms(null)
-      setLoading(false)
-      return
-    }
     try {
       const me = await fetchMe()
       setUser(me)
@@ -51,10 +60,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         setTrackerPerms(null)
       }
+      try {
+        setChecksPerms(await fetchChecksMe())
+      } catch {
+        setChecksPerms(null)
+      }
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) setToken(null)
+      if (!(e instanceof ApiError && e.status === 401)) {
+        /* keep going; treat as signed out */
+      }
       setUser(null)
       setTrackerPerms(null)
+      setChecksPerms(null)
     } finally {
       setLoading(false)
     }
@@ -64,21 +81,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refresh()
   }, [refresh])
 
-  const login = useCallback(async (username: string, password: string) => {
-    const u = await apiLogin(username, password)
+  const login = useCallback(async (username: string, password: string, rememberMe = false) => {
+    const u = await apiLogin(username, password, rememberMe)
     setUser(u)
     try {
       setTrackerPerms(await fetchTrackerMe())
     } catch {
       setTrackerPerms(null)
     }
+    try {
+      setChecksPerms(await fetchChecksMe())
+    } catch {
+      setChecksPerms(null)
+    }
   }, [])
 
-  const logout = useCallback(() => {
-    setToken(null)
-    setUser(null)
-    setTrackerPerms(null)
-  }, [])
+  const logout = useCallback(async () => {
+    await apiLogout()
+    clearSession()
+  }, [clearSession])
 
   const hasRole = useCallback(
     (...roles: Role[]) => {
@@ -105,18 +126,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user, trackerPerms],
   )
 
+  const canChecks = useCallback(
+    (perm: 'view' | 'edit' | 'upload' | 'admin' = 'view') => {
+      if (!user) return false
+      if (user.roles.includes('super_admin')) return true
+      if (!checksPerms) return false
+      const map = {
+        view: checksPerms.can_view,
+        edit: checksPerms.can_edit,
+        upload: checksPerms.can_upload,
+        admin: checksPerms.can_admin,
+      } as const
+      return Boolean(map[perm])
+    },
+    [user, checksPerms],
+  )
+
   const value = useMemo(
     () => ({
       user,
       loading,
       trackerPerms,
+      checksPerms,
       login,
       logout,
       hasRole,
       canTracker,
+      canChecks,
       refresh,
     }),
-    [user, loading, trackerPerms, login, logout, hasRole, canTracker, refresh],
+    [user, loading, trackerPerms, checksPerms, login, logout, hasRole, canTracker, canChecks, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
