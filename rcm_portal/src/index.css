@@ -5,16 +5,40 @@
 @theme {
   --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-25: #f5f9ff;
   --color-brand-50: #eef6ff;
   --color-brand-100: #d9ebff;
+  --color-brand-200: #b6d6fe;
+  --color-brand-300: #84b8fd;
+  --color-brand-400: #5395f8;
   --color-brand-500: #3b82f6;
   --color-brand-600: #2563eb;
   --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+
+  --color-success-50: #ecfdf3;
+  --color-success-500: #12b76a;
+  --color-success-700: #027a48;
+  --color-warning-50: #fffaeb;
+  --color-warning-500: #f79009;
+  --color-warning-700: #b54708;
+  --color-error-50: #fef3f2;
+  --color-error-500: #f04438;
+  --color-error-700: #b42318;
+
   --color-surface: #ffffff;
   --color-surface-2: #f9fafb;
-  --color-ink: #111827;
-  --color-muted: #6b7280;
-  --color-border: #e5e7eb;
+  --color-ink: #101828;
+  --color-muted: #667085;
+  --color-border: #e4e7ec;
+
+  --shadow-xs: 0 1px 2px 0 rgb(16 24 40 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(16 24 40 / 0.1), 0 1px 2px -1px rgb(16 24 40 / 0.1);
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
 }
 
 html,
@@ -25,14 +49,196 @@ body,
 
 body {
   font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .dark body {
-  color: #f3f4f6;
+  color: #f2f4f7;
 }
 
 .font-display {
   font-family: var(--font-display);
+}
+
+/* Untitled UI-style focus ring */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgb(59 130 246 / 0.2);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: none;
+}
+
+/* Thin scrollbars in dense tables */
+.table-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #d0d5dd;
+  border-radius: 999px;
+}
+.dark .table-scroll::-webkit-scrollbar-thumb {
+  background: #475467;
+}
+
+.elig-sheet {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.elig-sheet th,
+.elig-sheet td {
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.elig-sheet th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475467;
+}
+.elig-sheet .elig-sticky-patient_name {
+  left: 0;
+  min-width: 140px;
+}
+.elig-sheet .elig-sticky-emr_patient_id {
+  left: 140px;
+  min-width: 88px;
+}
+.elig-sheet .elig-sticky-dos {
+  left: 228px;
+  min-width: 96px;
+}
+.elig-sheet-work {
+  table-layout: fixed;
+  width: max-content;
+}
+.elig-sheet-work th,
+.elig-sheet-work td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.elig-sheet-work .elig-sticky-patient_name {
+  left: 0;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
+}
+.elig-sheet-work .elig-sticky-emr_patient_id {
+  left: 220px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+}
+.elig-sheet-work .elig-sticky-dos {
+  left: 304px;
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+}
+.elig-sheet-work .elig-money {
+  text-align: right;
+}
+.elig-sheet th.elig-sticky {
+  z-index: 12;
+}
+.elig-sheet td.elig-sticky {
+  position: sticky;
+  z-index: 2;
+  background: #fff;
+}
+.elig-sheet tbody tr:nth-child(even) td.elig-sticky {
+  background: #fafafa;
+}
+.elig-sheet tbody tr:hover td.elig-sticky {
+  background: #eef6ff;
+}
+.dark .elig-sheet td.elig-sticky {
+  background: #111827;
+}
+.dark .elig-sheet tbody tr:nth-child(even) td.elig-sticky {
+  background: rgb(17 24 39 / 0.95);
+}
+.dark .elig-sheet tbody tr:hover td.elig-sticky {
+  background: rgb(30 58 138 / 0.55);
+}
+.elig-sheet tbody tr {
+  cursor: pointer;
+}
+.elig-sheet tbody tr:nth-child(even) td:not([class*='elig-status']) {
+  background: #fafafa;
+}
+.elig-sheet tbody tr:hover td:not([class*='elig-status']) {
+  background: #eef6ff;
+}
+.elig-sheet .elig-status-pending {
+  background: #f2f4f7;
+  color: #344054;
+}
+.elig-sheet .elig-status-paid {
+  background: #ecfdf3;
+  color: #027a48;
+}
+.elig-sheet .elig-status-partial {
+  background: #ecfdf3;
+  color: #027a48;
+}
+.elig-sheet .elig-status-denied {
+  background: #fef3f2;
+  color: #b42318;
+}
+.elig-sheet .elig-status-deduct {
+  background: #fffaeb;
+  color: #b54708;
+}
+.elig-sheet .elig-status-collection,
+.elig-sheet .elig-status-patient_responsibility {
+  background: #fffaeb;
+  color: #b54708;
+}
+.elig-sheet .elig-status-checking {
+  background: #d9ebff;
+  color: #175cd3;
+}
+.elig-sheet .elig-status-waiting_patient,
+.elig-sheet .elig-status-waiting_insurance {
+  background: #fffaeb;
+  color: #b54708;
+}
+.elig-sheet .elig-status-completed {
+  background: #ecfdf3;
+  color: #027a48;
+}
+.elig-sheet .elig-status-rejected {
+  background: #fef3f2;
+  color: #b42318;
+}
+.dark .elig-sheet th {
+  background: #111827;
+  color: #98a2b3;
+  border-color: #1f2937;
+}
+.dark .elig-sheet th,
+.dark .elig-sheet td {
+  border-color: #1f2937;
+}
+.dark .elig-sheet tbody tr:nth-child(even) td:not([class*='elig-status']) {
+  background: rgb(17 24 39 / 0.55);
+}
+.dark .elig-sheet tbody tr:hover td:not([class*='elig-status']) {
+  background: rgb(30 58 138 / 0.25);
 }

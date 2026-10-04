@@ -343,6 +343,40 @@ function displayCell(row: WorkItem, col: SheetCol) {
   return String(raw)
 }
 
+const SHEET_COL_WIDTH: Record<string, number> = {
+  patient_name: 220,
+  emr_patient_id: 84,
+  dos: 96,
+  insurance_name: 150,
+  insurance_payment: 124,
+  source_visit_status: 136,
+  collection_status: 168,
+  updated_payment: 116,
+  coinsurance_payment: 100,
+  rtm: 80,
+  reduction: 92,
+  details: 140,
+  total_amount: 104,
+  insurance_check_number: 120,
+  insurance_check_date: 108,
+  insurance_check_amount: 104,
+  secondary_check_number: 110,
+  secondary_check_date: 108,
+  secondary_check_amount: 100,
+  collector_1: 96,
+  posting_date_1: 100,
+  collector_2: 96,
+  posting_date_2: 100,
+  collector_3: 96,
+  posting_date_3: 100,
+  facility_name: 120,
+  tracker_date: 108,
+  added_amount: 84,
+  deducted_amount: 88,
+  notes: 160,
+  assigned_to: 96,
+}
+
 const SHEET_COLUMNS: SheetCol[] = [
   { key: 'patient_name', label: 'Patient', sticky: true },
   { key: 'emr_patient_id', label: 'EMR', sticky: true },
@@ -562,15 +596,9 @@ export function EligibilityQueuePage({
     }
   }, [filterParams])
 
-  const loadMeta = useCallback(async (initMonth = false) => {
+  const loadMeta = useCallback(async () => {
     const m = await api<Meta>('/api/eligibility/meta')
     setMeta(m)
-    if (initMonth) {
-      const months = m.filters.month || []
-      const y2026 = months.filter((x) => x.startsWith('2026-'))
-      const pick = y2026[0] || months[0]
-      if (pick) setMonth([pick])
-    }
     return m
   }, [])
 
@@ -586,7 +614,7 @@ export function EligibilityQueuePage({
   }, [])
 
   useEffect(() => {
-    void loadMeta(true)
+    void loadMeta()
       .then(() => setFiltersReady(true))
       .catch((e) => {
         setToast({ message: String(e.message || e), tone: 'error' })
@@ -820,7 +848,7 @@ export function EligibilityQueuePage({
       }
       const result = await pollGenerateStatus()
       setToast(generateToast(result))
-      await loadMeta(false)
+      await loadMeta()
       await loadList()
     } catch (e) {
       setToast({ message: String((e as Error).message || e), tone: 'error' })
@@ -1050,30 +1078,38 @@ export function EligibilityQueuePage({
 
         {items.length ? (
           <div className={`table-scroll min-h-0 flex-1 overflow-auto ${listLoading ? 'opacity-60' : ''}`}>
-            <table className="elig-sheet min-w-full text-left">
+            <table className={`elig-sheet text-left ${queue === 'sheet' ? 'elig-sheet-work' : 'min-w-full'}`}>
               <thead>
                 <tr>
-                  {visibleColumns.map((col) => (
+                  {visibleColumns.map((col) => {
+                    const width = queue === 'sheet' ? SHEET_COL_WIDTH[col.key] : undefined
+                    const money = col.kind === 'money'
+                    return (
                     <th
                       key={col.key}
-                      className={col.sticky ? `elig-sticky elig-sticky-${col.key}` : undefined}
+                      className={[
+                        col.sticky ? `elig-sticky elig-sticky-${col.key}` : '',
+                        money ? 'elig-money' : '',
+                      ].filter(Boolean).join(' ') || undefined}
+                      style={width ? { width, minWidth: width, maxWidth: width } : undefined}
                     >
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 text-left font-semibold"
+                        className={`inline-flex w-full items-center gap-1 font-semibold ${money ? 'justify-end' : 'text-left'}`}
                         onClick={() => toggleSort(col.key)}
                       >
-                        <span>{col.label}</span>
+                        <span className="truncate">{col.label}</span>
                         {sortBy === col.key ? (
                           sortDir === 'desc' ? (
-                            <ArrowDown className="h-3 w-3" />
+                            <ArrowDown className="h-3 w-3 shrink-0" />
                           ) : (
-                            <ArrowUp className="h-3 w-3" />
+                            <ArrowUp className="h-3 w-3 shrink-0" />
                           )
                         ) : null}
                       </button>
                     </th>
-                  ))}
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -1084,16 +1120,18 @@ export function EligibilityQueuePage({
                     >
                       {visibleColumns.map((col) => {
                         const value = displayCell(row, col)
+                        const width = queue === 'sheet' ? SHEET_COL_WIDTH[col.key] : undefined
                         const sticky = col.sticky ? `elig-sticky elig-sticky-${col.key}` : ''
                         const statusClass =
                           col.kind === 'status'
                             ? `elig-status elig-status-${row.source_visit_status || 'pending'}`
                             : ''
-                        const moneyClass = col.kind === 'money' ? 'tabular-nums' : ''
+                        const moneyClass = col.kind === 'money' ? 'elig-money tabular-nums' : ''
                         return (
                           <td
                             key={col.key}
                             className={`${sticky} ${statusClass} ${moneyClass}`.trim()}
+                            style={width ? { width, minWidth: width, maxWidth: width } : undefined}
                             title={
                               col.kind === 'status'
                                 ? visitStatusTitle(row)
@@ -1109,7 +1147,7 @@ export function EligibilityQueuePage({
                                 <SearchableSelect
                                   value={row.collection_status || ''}
                                   disabled={statusSavingId === row.work_item_id}
-                                  className="w-40"
+                                  className="w-full"
                                   placeholder={row.collection_tab || '—'}
                                   onChange={(v) => void patchCollectionStatus(row, v)}
                                   options={collectionStatusOptions(
