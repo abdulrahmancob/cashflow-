@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client'
 import { CompletedTodayBadge, TODAY_REFRESH } from '../components/CompletedTodayBadge'
 import { useAuth } from '../auth/AuthContext'
 import { EmrPatientLink } from '../components/EmrPatientLink'
+import { WaystarAccountLink } from '../components/WaystarAccountLink'
 import { EmptyState, Pagination } from '../components/table'
 import {
   Alert,
@@ -22,6 +23,7 @@ type WorkItem = {
   work_item_id: string
   patient_name?: string
   emr_patient_id: string
+  account_number?: string | null
   dos: string
   dob?: string
   facility_name: string
@@ -347,6 +349,7 @@ const SHEET_COL_WIDTH: Record<string, number> = {
   patient_name: 220,
   emr_patient_id: 84,
   dos: 96,
+  account_number: 120,
   insurance_name: 150,
   insurance_payment: 124,
   source_visit_status: 136,
@@ -381,6 +384,7 @@ const SHEET_COLUMNS: SheetCol[] = [
   { key: 'patient_name', label: 'Patient', sticky: true },
   { key: 'emr_patient_id', label: 'EMR', sticky: true },
   { key: 'dos', label: 'DOS', kind: 'date', sticky: true },
+  { key: 'account_number', label: 'Account #' },
   { key: 'insurance_name', label: 'Insurance' },
   { key: 'insurance_payment', label: 'Insurance Payment', kind: 'money' },
   { key: 'source_visit_status', label: 'Status', kind: 'status' },
@@ -438,7 +442,7 @@ const ADJUST_COLUMNS = [
 const DRAWER_GROUPS_SHEET: Array<{ title: string; keys: string[] }> = [
   {
     title: 'Identity',
-    keys: ['patient_name', 'emr_patient_id', 'dos', 'insurance_name', 'facility_name'],
+    keys: ['patient_name', 'emr_patient_id', 'dos', 'account_number', 'insurance_name', 'facility_name'],
   },
   {
     title: 'Payments',
@@ -1142,6 +1146,11 @@ export function EligibilityQueuePage({
                           >
                             {col.key === 'emr_patient_id' ? (
                               <EmrPatientLink id={row.emr_patient_id} facilityName={row.facility_name} />
+                            ) : col.key === 'account_number' ? (
+                              <WaystarAccountLink
+                                accountNumber={row.account_number}
+                                patientName={row.patient_name}
+                              />
                             ) : col.key === 'collection_status' ? (
                               <span onClick={(e) => e.stopPropagation()}>
                                 <SearchableSelect

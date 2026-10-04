@@ -4,6 +4,7 @@ import { api, ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import { TODAY_REFRESH } from '../components/CompletedTodayBadge'
 import { EmrPatientLink } from '../components/EmrPatientLink'
+import { WaystarAccountLink } from '../components/WaystarAccountLink'
 import { EmptyState, Pagination } from '../components/table'
 import { Button, Input, MultiSelect, SearchableSelect, Toast } from '../components/ui'
 
@@ -924,7 +925,12 @@ export function CollectionQueueTab() {
                         <EmrPatientLink id={row.emr_patient_id} facilityName={row.facility_name} />
                       </td>
                       <td className="elig-sticky elig-sticky-dos w-[96px] max-w-[96px]">{fmtDate(row.dos)}</td>
-                      <td className="text-gray-500">{row.account_number || '—'}</td>
+                      <td className="text-gray-500">
+                        <WaystarAccountLink
+                          accountNumber={row.account_number}
+                          patientName={row.patient_name}
+                        />
+                      </td>
                       <td className="max-w-[160px] truncate" title={row.insurance_name || ''}>
                         {row.insurance_name || '—'}
                       </td>
