@@ -23,7 +23,9 @@ def test_nightly_step_order() -> None:
         "waystar_denials",
     )
     assert "snowflake_kpi" not in NIGHTLY_STEPS
-    assert "refresh_billing_collect_visit" in inspect.getsource(run_load_nightly)
+    nightly_src = inspect.getsource(run_load_nightly)
+    assert "refresh_billing_collect_visit" in nightly_src
+    assert "refresh_eligibility_sheet_facet" in nightly_src
     assert "schedule" not in NIGHTLY_STEPS
     assert "webpt" not in NIGHTLY_STEPS
 

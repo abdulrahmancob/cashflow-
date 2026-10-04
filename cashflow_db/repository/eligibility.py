@@ -2484,6 +2484,29 @@ def _or_clauses(parts: list[str]) -> str:
     return "(" + " OR ".join(parts) + ")"
 
 
+_FACET_JOIN = """
+LEFT JOIN analytics.eligibility_sheet_facet facet
+  ON facet.work_item_id = wi.work_item_id
+"""
+
+
+def _facet_join(where: str) -> str:
+    """Join the sheet facet only when the filter reads it."""
+    if "facet." not in where:
+        return ""
+    return _FACET_JOIN
+
+
+def refresh_eligibility_sheet_facet() -> None:
+    """Rebuild sheet filter columns. Cannot run inside a transaction."""
+    from cashflow_db.config import DATABASE_URL
+
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        conn.execute(
+            "REFRESH MATERIALIZED VIEW CONCURRENTLY analytics.eligibility_sheet_facet"
+        )
+
+
 def _build_filters(
     *,
     q: str | None,
@@ -2649,44 +2672,20 @@ def _build_filters(
         if names:
             folded = [name.lower() for name in names]
             parts.append(
-                """(
-                    lower(btrim(COALESCE(
-                        NULLIF(btrim(wi.manual_overrides->>'collection_status'), ''),
-                        NULLIF(btrim(wi.context->>'collection_status'), ''),
-                        ''
-                    ))) = ANY(%s)
-                    OR EXISTS (
-                        SELECT 1 FROM analytics.snowflake_visit_kpi sf
-                        WHERE sf.emr_id = wi.emr_patient_id
-                          AND sf.date_of_service = wi.dos
-                          AND lower(btrim(COALESCE(
-                            NULLIF(btrim(sf.payload->>'COLLECTION_STATUS'), ''),
-                            NULLIF(btrim(sf.payload->>'collection_status'), ''),
-                            ''
-                          ))) = ANY(%s)
-                    )
-                )"""
+                f"""lower(btrim(COALESCE(
+                    NULLIF(btrim(wi.manual_overrides->>'collection_status'), ''),
+                    NULLIF(btrim(facet.collection_status), ''),
+                    ''
+                ))) = ANY(%s)"""
             )
-            params.extend([folded, folded])
+            params.append(folded)
         if want_blank:
             parts.append(
-                """(
-                    lower(btrim(COALESCE(
-                        NULLIF(btrim(wi.manual_overrides->>'collection_status'), ''),
-                        NULLIF(btrim(wi.context->>'collection_status'), ''),
-                        ''
-                    ))) = ''
-                    AND NOT EXISTS (
-                        SELECT 1 FROM analytics.snowflake_visit_kpi sf
-                        WHERE sf.emr_id = wi.emr_patient_id
-                          AND sf.date_of_service = wi.dos
-                          AND lower(btrim(COALESCE(
-                            NULLIF(btrim(sf.payload->>'COLLECTION_STATUS'), ''),
-                            NULLIF(btrim(sf.payload->>'collection_status'), ''),
-                            ''
-                          ))) <> ''
-                    )
-                )"""
+                """lower(btrim(COALESCE(
+                    NULLIF(btrim(wi.manual_overrides->>'collection_status'), ''),
+                    NULLIF(btrim(facet.collection_status), ''),
+                    ''
+                ))) = ''"""
             )
         if parts:
             clauses.append(_or_clauses(parts))
@@ -2757,21 +2756,7 @@ def _build_filters(
     if check_date:
         dates = _parse_check_dates(check_date)
         if dates:
-            clauses.append(
-                """EXISTS (
-                    SELECT 1 FROM billing.reconciliation_visit_agg rv
-                    WHERE rv.reconciliation_run_id = (
-                        SELECT reconciliation_run_id
-                        FROM billing.reconciliation_run
-                        WHERE status = 'success'
-                        ORDER BY created_at DESC
-                        LIMIT 1
-                    )
-                      AND rv.webpt_patient_id = wi.emr_patient_id
-                      AND rv.date_of_service = wi.dos
-                      AND rv.primary_check_date = ANY(%s::date[])
-                )"""
-            )
+            clauses.append("facet.primary_check_date = ANY(%s::date[])")
             params.append(dates)
         else:
             clauses.append("FALSE")
@@ -3014,9 +2999,10 @@ def list_work_items(
             ) trk ON true
         """
 
+    facet_join = _facet_join(where)
     count_row = client.fetchone(
         conn,
-        f"SELECT count(*)::int AS n FROM ops.eligibility_work_item wi WHERE {where}",
+        f"SELECT count(*)::int AS n FROM ops.eligibility_work_item wi {facet_join} WHERE {where}",
         params,
     )
     total = int(count_row["n"]) if count_row else 0
@@ -3027,6 +3013,7 @@ def list_work_items(
         SELECT
             {_WORK_ITEM_SELECT}
         FROM ops.eligibility_work_item wi
+        {facet_join}
         LEFT JOIN ref.facility f ON f.webpt_facility_id = wi.facility_name
         LEFT JOIN auth.app_user au ON au.user_id = wi.assigned_to
         LEFT JOIN auth.app_user uu ON uu.user_id = wi.updated_by
@@ -3088,6 +3075,7 @@ def iter_export_work_items(
         root_cause=root_cause,
     )
     batch_size = min(max(1, batch_size), _EXPORT_BATCH)
+    facet_join = _facet_join(where)
     tracker_dates = load_export_tracker_dates(conn)
     eft_totals = load_export_eft_totals(conn)
     after_id: Any = None
@@ -3098,6 +3086,7 @@ def iter_export_work_items(
             SELECT
                 {_WORK_ITEM_SELECT}
             FROM ops.eligibility_work_item wi
+            {facet_join}
             LEFT JOIN ref.facility f ON f.webpt_facility_id = wi.facility_name
             LEFT JOIN auth.app_user au ON au.user_id = wi.assigned_to
             LEFT JOIN auth.app_user uu ON uu.user_id = wi.updated_by
@@ -5962,6 +5951,7 @@ def assign_filter_statement(
         WITH targets AS (
             SELECT wi.work_item_id, wi.assigned_to::text AS old_assignee
             FROM ops.eligibility_work_item wi
+            {_facet_join(where)}
             WHERE {where}
               AND wi.assigned_to IS DISTINCT FROM %s::uuid
         ),
@@ -6270,26 +6260,7 @@ def filter_options(conn: psycopg.Connection) -> dict[str, list[Any]]:
                 )
             ]
         ),
-        "check_date": [
-            r["v"].isoformat() if hasattr(r["v"], "isoformat") else str(r["v"])[:10]
-            for r in client.fetchall(
-                conn,
-                """
-                SELECT DISTINCT rv.primary_check_date AS v
-                FROM billing.reconciliation_visit_agg rv
-                WHERE rv.reconciliation_run_id = (
-                    SELECT reconciliation_run_id
-                    FROM billing.reconciliation_run
-                    WHERE status = 'success'
-                    ORDER BY created_at DESC
-                    LIMIT 1
-                )
-                  AND rv.primary_check_date IS NOT NULL
-                ORDER BY 1 DESC
-                """,
-            )
-            if r.get("v")
-        ],
+        "check_date": [],
     }
 
 

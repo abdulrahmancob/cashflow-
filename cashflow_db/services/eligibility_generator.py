@@ -169,6 +169,11 @@ def generate_eligibility_work_items(
                 notes=f"source={source}; created~{created}; attached={attached}",
             )
 
+    try:
+        eligibility.refresh_eligibility_sheet_facet()
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"sheet_facet refresh: {str(exc)[:180]}")
+
     return {
         "ok": len(errors) == 0,
         "source": source,

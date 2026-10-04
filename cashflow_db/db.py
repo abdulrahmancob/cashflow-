@@ -39,6 +39,7 @@ MIGRATIONS = [
     "071_collection_dead_bucket.sql",
     "072_billing_collect_visit.sql",
     "073_collection_exit_indexes.sql",
+    "074_eligibility_sheet_facet.sql",
 ]
 
 

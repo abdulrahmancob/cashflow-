@@ -175,8 +175,8 @@ def test_check_date_filter_uses_live_recon_primary_check_date():
         assigned_to=None,
         check_date=["2026-08-11"],
     )
-    assert "primary_check_date" in sql
-    assert "reconciliation_visit_agg" in sql
+    assert "facet.primary_check_date" in sql
+    assert "reconciliation_visit_agg" not in sql
     assert params[-1] == [date(2026, 8, 11)]
 
 

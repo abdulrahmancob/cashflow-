@@ -11,6 +11,7 @@ import {
   Drawer,
   Field,
   Input,
+  MultiSelect,
   SearchableSelect,
   Select,
   TextArea,
@@ -148,6 +149,83 @@ function qs(params: Record<string, string | string[] | number | boolean | undefi
   }
   const s = p.toString()
   return s ? `?${s}` : ''
+}
+
+const BLANK = '__blank__'
+
+function withBlank(options: { value: string; label: string }[]) {
+  if (options.some((option) => option.value === BLANK)) return options
+  return [{ value: BLANK, label: '(Blank)' }, ...options]
+}
+
+function tokenPrefix(short: string, long: string) {
+  const head = short.trim().toLowerCase()
+  const tail = long.trim().toLowerCase()
+  if (!head || head === tail || !tail.startsWith(head)) return false
+  const next = tail[head.length]
+  return next === ' ' || next === '-' || next === '/' || next === '('
+}
+
+function preferInsuranceLabel(current: string, next: string) {
+  const currentCaps = current === current.toUpperCase()
+  const nextCaps = next === next.toUpperCase()
+  if (currentCaps && !nextCaps) return next
+  if (nextCaps && !currentCaps) return current
+  return current.length <= next.length ? current : next
+}
+
+function groupInsurance(names: string[]) {
+  const byFold = new Map<string, string>()
+  for (const raw of names) {
+    const text = raw.trim()
+    if (!text || text === BLANK) continue
+    const key = text.toLowerCase()
+    const current = byFold.get(key)
+    byFold.set(key, current ? preferInsuranceLabel(current, text) : text)
+  }
+  const unique = [...byFold.values()].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' }),
+  )
+  const parentOf = new Map<string, string>()
+  for (const name of unique) {
+    let best: string | null = null
+    for (const candidate of unique) {
+      if (!tokenPrefix(candidate, name)) continue
+      if (!best || candidate.length < best.length) best = candidate
+    }
+    if (best) parentOf.set(name.toLowerCase(), best)
+  }
+  const grouped = new Map<string, { label: string; value: string; children: { label: string; value: string }[] }>()
+  for (const name of unique) {
+    const parent = parentOf.get(name.toLowerCase())
+    if (!parent) continue
+    const key = parent.toLowerCase()
+    let group = grouped.get(key)
+    if (!group) {
+      group = { label: parent, value: `group:${key}`, children: [{ label: parent, value: parent }] }
+      grouped.set(key, group)
+    }
+    group.children.push({ label: name, value: name })
+  }
+  const options: { label: string; value: string; children?: { label: string; value: string }[] }[] = [
+    { value: BLANK, label: '(Blank)' },
+  ]
+  const nested = new Set<string>()
+  for (const group of grouped.values()) {
+    nested.add(group.label.toLowerCase())
+    for (const child of group.children) nested.add(child.value.toLowerCase())
+  }
+  for (const name of unique) {
+    const key = name.toLowerCase()
+    const group = grouped.get(key)
+    if (group) {
+      options.push(group)
+      continue
+    }
+    if (nested.has(key)) continue
+    options.push({ label: name, value: name })
+  }
+  return options
 }
 
 function monthLabel(ym: string) {
@@ -402,7 +480,9 @@ export function EligibilityQueuePage({
   const [pageSize, setPageSize] = useState(100)
   const [sortBy, setSortBy] = useState('dos')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+  const [qInput, setQInput] = useState('')
   const [q, setQ] = useState('')
+  const [listLoading, setListLoading] = useState(false)
   const [facility, setFacility] = useState<string[]>([])
   const [month, setMonth] = useState<string[]>([])
   const [filtersReady, setFiltersReady] = useState(false)
@@ -442,6 +522,11 @@ export function EligibilityQueuePage({
   const [generating, setGenerating] = useState(false)
   const [exporting, setExporting] = useState(false)
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => setQ(qInput), 300)
+    return () => window.clearTimeout(handle)
+  }, [qInput])
+
   const filterParams = useMemo(() => {
     const assigned = mine && user ? [user.user_id] : assignedTo
     return {
@@ -462,14 +547,19 @@ export function EligibilityQueuePage({
   }, [q, facility, month, visitStatus, collectionStatus, checkDate, insurance, assignedTo, mine, user, queue, page, pageSize, sortBy, sortDir])
 
   const loadList = useCallback(async () => {
-    const data = await api<{
-      items: WorkItem[]
-      total: number
-      pages: number
-    }>(`/api/eligibility/items${qs(filterParams)}`)
-    setItems(data.items)
-    setTotal(data.total)
-    setPages(data.pages || 1)
+    setListLoading(true)
+    try {
+      const data = await api<{
+        items: WorkItem[]
+        total: number
+        pages: number
+      }>(`/api/eligibility/items${qs(filterParams)}`)
+      setItems(data.items)
+      setTotal(data.total)
+      setPages(data.pages || 1)
+    } finally {
+      setListLoading(false)
+    }
   }, [filterParams])
 
   const loadMeta = useCallback(async (initMonth = false) => {
@@ -791,8 +881,20 @@ export function EligibilityQueuePage({
     }
   }
 
+  function clearFilters() {
+    setPage(1)
+    setQInput('')
+    setQ('')
+    setFacility([])
+    setMonth([])
+    setInsurance([])
+    setVisitStatus([])
+    setCollectionStatus([])
+    setCheckDate([])
+    setMine(false)
+  }
+
   const reasonNeedsText = meta?.reasons.find((r) => r.reason_key === reasonKey)?.requires_text
-  const visitStatusTab = visitStatus[0] || 'all'
   const visibleColumns = queue === 'collection' ? COLLECTION_COLUMNS : SHEET_COLUMNS
   const drawerGroups = queue === 'collection' ? DRAWER_GROUPS_COLLECTION : DRAWER_GROUPS_SHEET
   const allVisitStatuses = useMemo(() => {
@@ -801,12 +903,6 @@ export function EligibilityQueuePage({
       ? fromMeta
       : ['pending', 'paid', 'partial', 'denied', 'deduct', 'collection', 'patient_responsibility']
   }, [meta])
-    const visitStatusOptions = useMemo(() => {
-    if (edits.source_visit_status && !allVisitStatuses.includes(edits.source_visit_status)) {
-      return [...allVisitStatuses, edits.source_visit_status]
-    }
-    return allVisitStatuses
-  }, [allVisitStatuses, edits.source_visit_status])
   const drawerStatusOptions = useMemo(() => {
     if (edits.source_visit_status && !allVisitStatuses.includes(edits.source_visit_status)) {
       return [...allVisitStatuses, edits.source_visit_status]
@@ -856,126 +952,104 @@ export function EligibilityQueuePage({
       <div
         className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
       >
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
-          <Select
-            value={month[0] || ''}
-            onChange={(e) => {
-              setPage(1)
-              setMonth(e.target.value ? [e.target.value] : [])
-            }}
-            className="w-44"
-          >
-            <option value="">All months</option>
-            {(meta?.filters.month || []).map((m) => (
-              <option key={m} value={m}>
-                {monthLabel(m)}
-              </option>
-            ))}
-          </Select>
-          <Input
-            icon={<Search className="h-4 w-4" />}
-            value={q}
-            placeholder="Search patient, EMR, EFT, notes…"
-            onChange={(e) => {
-              setPage(1)
-              setQ(e.target.value)
-            }}
-            className="w-56 shrink-0"
-          />
-          <Select
-            value={facility[0] || ''}
-            onChange={(e) => {
-              setPage(1)
-              setFacility(e.target.value ? [e.target.value] : [])
-            }}
-            className="w-44"
-          >
-            <option value="">All facilities</option>
-            {(meta?.filters.facility || []).map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={insurance[0] || ''}
-            onChange={(e) => {
-              setPage(1)
-              setInsurance(e.target.value ? [e.target.value] : [])
-            }}
-            className="w-44"
-          >
-            <option value="">All insurance</option>
-            {(meta?.filters.insurance || []).map((i) => (
-              <option key={i} value={i}>
-                {i}
-              </option>
-            ))}
-          </Select>
-          {queue === 'sheet' && (
-          <Select
-            value={visitStatusTab}
-            onChange={(e) => {
-              setPage(1)
-              setVisitStatus(e.target.value === 'all' || !e.target.value ? [] : [e.target.value])
-            }}
-            className="w-44"
-          >
-            <option value="all">All statuses</option>
-            {visitStatusOptions.map((s) => (
-              <option key={s} value={s}>
-                {visitLabel(s)}
-              </option>
-            ))}
-          </Select>
-          )}
-          <Select
-            value={collectionStatus[0] || ''}
-            onChange={(e) => {
-              setPage(1)
-              setCollectionStatus(e.target.value ? [e.target.value] : [])
-            }}
-            className="w-44"
-          >
-            <option value="">All collection status</option>
-            <option value="__blank__">(Blank)</option>
-            {collectionStatuses.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={checkDate[0] || ''}
-            onChange={(e) => {
-              setPage(1)
-              setCheckDate(e.target.value ? [e.target.value] : [])
-            }}
-            className="w-44"
-          >
-            <option value="">All check dates</option>
-            {(meta?.filters.check_date || []).map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </Select>
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <input
-              type="checkbox"
-              className="rounded border-gray-300 text-brand-600"
-              checked={mine}
+        <div className="flex shrink-0 flex-col gap-2 border-b border-gray-200 px-3 py-2 dark:border-gray-800">
+          <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-2">
+            <Input
+              icon={<Search className="h-4 w-4" />}
+              value={qInput}
+              placeholder="Search patient, EMR, EFT, notes…"
               onChange={(e) => {
                 setPage(1)
-                setMine(e.target.checked)
+                setQInput(e.target.value)
               }}
+              className="w-full min-w-0"
             />
-            Assigned to me
-          </label>
+            <MultiSelect
+              value={month}
+              onChange={(v) => {
+                setPage(1)
+                setMonth(v)
+              }}
+              options={(meta?.filters.month || []).map((m) => ({ value: m, label: monthLabel(m) }))}
+              placeholder="All months"
+              className="w-full min-w-0"
+            />
+            <MultiSelect
+              value={facility}
+              onChange={(v) => {
+                setPage(1)
+                setFacility(v)
+              }}
+              options={withBlank((meta?.filters.facility || []).map((f) => ({ value: f, label: f })))}
+              placeholder="All facilities"
+              className="w-full min-w-0"
+            />
+            <MultiSelect
+              value={insurance}
+              onChange={(v) => {
+                setPage(1)
+                setInsurance(v)
+              }}
+              options={groupInsurance(meta?.filters.insurance || [])}
+              placeholder="All insurance"
+              className="w-full min-w-0"
+            />
+            {queue === 'sheet' && (
+              <MultiSelect
+                value={visitStatus}
+                onChange={(v) => {
+                  setPage(1)
+                  setVisitStatus(v)
+                }}
+                options={withBlank(allVisitStatuses.map((s) => ({ value: s, label: visitLabel(s) })))}
+                placeholder="All statuses"
+                className="w-full min-w-0"
+              />
+            )}
+            <MultiSelect
+              value={collectionStatus}
+              onChange={(v) => {
+                setPage(1)
+                setCollectionStatus(v)
+              }}
+              options={withBlank(collectionStatuses.map((s) => ({ value: s, label: s })))}
+              placeholder="All collection status"
+              className="w-full min-w-0"
+            />
+            <Input
+              type="date"
+              aria-label="Check date"
+              title="Check date"
+              value={checkDate[0] || ''}
+              onChange={(e) => {
+                setPage(1)
+                setCheckDate(e.target.value ? [e.target.value] : [])
+              }}
+              className="w-full min-w-0"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                className="rounded border-gray-300 text-brand-600"
+                checked={mine}
+                onChange={(e) => {
+                  setPage(1)
+                  setMine(e.target.checked)
+                }}
+              />
+              Assigned to me
+            </label>
+            <Button type="button" variant="secondary" onClick={clearFilters}>
+              Clear
+            </Button>
+            {listLoading ? <span className="text-sm text-gray-500">Loading…</span> : null}
+          </div>
         </div>
 
         {items.length ? (
-          <div className="table-scroll min-h-0 flex-1 overflow-auto">
+          <div className={`table-scroll min-h-0 flex-1 overflow-auto ${listLoading ? 'opacity-60' : ''}`}>
             <table className="elig-sheet min-w-full text-left">
               <thead>
                 <tr>
@@ -1056,22 +1130,27 @@ export function EligibilityQueuePage({
               </tbody>
             </table>
           </div>
+        ) : listLoading || !filtersReady ? (
+          <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-gray-500">
+            Loading visits…
+          </div>
         ) : (
           <div className="min-h-0 flex-1">
             <EmptyState
               title="No rows found"
               description={
-                q
-                  ? `Your search “${q}” did not match any visits.`
+                qInput
+                  ? `Your search “${qInput}” did not match any visits.`
                   : 'No visits yet. Super Admin can generate from reconciliation.'
               }
               icon={<Search className="h-6 w-6" />}
               action={
-                q ? (
+                qInput ? (
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={() => {
+                      setQInput('')
                       setQ('')
                       setPage(1)
                     }}

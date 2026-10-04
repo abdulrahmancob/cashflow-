@@ -225,6 +225,10 @@ def test_collection_status_routes_to_tabs():
     assert "069_paid_patient_responsibility.sql" in MIGRATIONS
     assert "071_collection_dead_bucket.sql" in MIGRATIONS
     assert "073_collection_exit_indexes.sql" in MIGRATIONS
+    assert "074_eligibility_sheet_facet.sql" in MIGRATIONS
+    assert MIGRATIONS.index("074_eligibility_sheet_facet.sql") > MIGRATIONS.index(
+        "073_collection_exit_indexes.sql"
+    )
     assert MIGRATIONS.index("073_collection_exit_indexes.sql") > MIGRATIONS.index(
         "072_billing_collect_visit.sql"
     )
@@ -703,8 +707,8 @@ def test_collection_status_and_root_cause_filters():
         root_cause=["Auth delay"],
     )
     assert "manual_overrides->>'collection_status'" in sql
+    assert "facet.collection_status" in sql
     assert "manual_overrides->>'root_cause'" in sql
-    assert "COLLECTION_STATUS" in sql
     assert "ROOTCAUSE" in sql
     assert ["pending"] in params
     assert ["auth delay"] in params
@@ -878,3 +882,20 @@ def test_waystar_payment_returns_denied_and_overdue_to_eligibility_paid():
     assert generate_fn.find("upsert_from_visit") < generate_fn.find(
         "refresh_collection_queue"
     )
+    assert "refresh_eligibility_sheet_facet" in generate_fn
+
+
+def test_eligibility_sheet_facet_view_has_unique_status_key():
+    from cashflow_db.repository.eligibility import _facet_join
+
+    sql = (ROOT / "cashflow_db" / "sql" / "074_eligibility_sheet_facet.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "analytics.eligibility_sheet_facet" in sql
+    assert "CREATE UNIQUE INDEX" in sql
+    assert "uq_eligibility_sheet_facet" in sql
+    assert "(work_item_id)" in sql
+    assert "AS collection_status" in sql
+    assert "primary_check_date" in sql
+    assert "LEFT JOIN" in _facet_join("facet.collection_status = %s")
+    assert _facet_join("wi.dos = %s") == ""

@@ -75,9 +75,12 @@ def run_load_nightly(*, limit: int | None = None) -> dict[str, Any]:
             continue
         results[name] = fn()
     from cashflow_db.repository.billing_analysis import refresh_billing_collect_visit
+    from cashflow_db.repository.eligibility import refresh_eligibility_sheet_facet
 
     refresh_billing_collect_visit()
     results["billing_collect_visit"] = "refreshed"
+    refresh_eligibility_sheet_facet()
+    results["eligibility_sheet_facet"] = "refreshed"
     results["ok"] = True
     results["steps"] = list(NIGHTLY_STEPS)
     return results
