@@ -34,6 +34,7 @@ ROLE_SECOND_SUBMISSION = "second_submission"
 ROLE_SECOND_SUBMISSION_LEAD = "second_submission_lead"
 ROLE_ANALYTICS_VIEWER = "analytics_viewer"
 ROLE_MEDICAL_AUDIT = "medical_audit"
+ROLE_DESK = "desk"
 
 
 from cashflow_db.services.bootstrap_admin import (  # noqa: E402
