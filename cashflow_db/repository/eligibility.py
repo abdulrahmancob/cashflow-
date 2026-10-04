@@ -3463,12 +3463,9 @@ def _collection_denied_where(
     facilities: list[str] | None = None,
     insurers: list[str] | None = None,
 ) -> tuple[str, list[Any]]:
-    """Same membership as Collection → Denied, including unpaid PR-3."""
-    clauses = [
-        f"(({DENIED_VISIT_SQL}) OR ({PR3_UNPAID_SQL}))",
-        f"NOT ({PR3_PAID_COLLECTION_SQL})",
-    ]
-    params: list[Any] = []
+    """Exactly the rows Collection → Denied lists, by stored queue membership."""
+    clauses = [COLLECTION_QUEUE_MEMBER_SQL]
+    params: list[Any] = ["denied"]
     if d0:
         clauses.append("wi.dos >= %s")
         params.append(d0)

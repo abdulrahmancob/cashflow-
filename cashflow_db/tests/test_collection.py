@@ -501,18 +501,22 @@ def test_collection_denied_exposure_sql_membership_and_charged(monkeypatch):
     from cashflow_db.repository import eligibility
     from cashflow_db.repository.eligibility import (
         COLLECTION_DENIED_CHARGED_SQL,
+        DENIED_VISIT_SQL,
         PR3_UNPAID_SQL,
         collection_denied_exposure,
     )
 
     captured: list[str] = []
+    captured_params: list[list] = []
 
     def fake_fetchone(_conn, sql, params=None):
         captured.append(sql)
+        captured_params.append(list(params or []))
         return {"exposure_amount": 120.0, "visit_count": 3}
 
     def fake_fetchall(_conn, sql, params=None):
         captured.append(sql)
+        captured_params.append(list(params or []))
         return [{"ins_name": "Aetna", "exposure_amount": 120.0, "visit_count": 3}]
 
     monkeypatch.setattr(eligibility.client, "fetchone", fake_fetchone)
@@ -525,10 +529,10 @@ def test_collection_denied_exposure_sql_membership_and_charged(monkeypatch):
         insurers=["1199"],
     )
     blob = "\n".join(captured)
-    assert DENIED_VISIT_SQL in blob
-    assert PR3_UNPAID_SQL in blob
-    assert f"NOT {PR3_UNPAID_SQL}" not in blob
-    assert " = 'paid'" in blob
+    assert "analytics.collection_queue_member" in blob
+    assert "m.bucket = %s" in blob
+    assert DENIED_VISIT_SQL not in blob
+    assert PR3_UNPAID_SQL not in blob
     assert "sf.charged_amount" in blob
     assert "analytics.snowflake_visit_kpi" in blob
     assert "wi.context->>'charged_amount'" in blob
@@ -538,6 +542,12 @@ def test_collection_denied_exposure_sql_membership_and_charged(monkeypatch):
     assert "wi.insurance_name = ANY(%s)" in blob
     assert " = 'dead'" not in blob
     assert "canceled" not in blob.lower()
+    assert captured_params
+    assert all(p[0] == "denied" for p in captured_params)
+    assert date(2026, 8, 1) in captured_params[0]
+    assert date(2026, 8, 31) in captured_params[0]
+    assert ["Bedstuy"] in captured_params[0]
+    assert ["1199"] in captured_params[0]
     assert abs(float(payload["exposure_amount"]) - 120.0) < 0.01
     assert payload["visit_count"] == 3
 
