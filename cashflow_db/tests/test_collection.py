@@ -540,6 +540,8 @@ def test_collection_denied_exposure_sql_membership_and_charged(monkeypatch):
     assert "wi.dos >= %s" in blob
     assert "wi.facility_name = ANY(%s)" in blob
     assert "wi.insurance_name = ANY(%s)" in blob
+    assert "BTRIM(insurance_name::text)" in blob
+    assert "BTRIM(wi.insurance_name::text)" not in blob
     assert " = 'dead'" not in blob
     assert "canceled" not in blob.lower()
     assert captured_params

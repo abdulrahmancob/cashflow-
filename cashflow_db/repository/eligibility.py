@@ -3504,7 +3504,7 @@ def collection_denied_exposure(
     where, params = _collection_denied_where(
         d0=d0, d1=d1, facilities=facilities, insurers=insurers
     )
-    ins_sql = usable_sql("wi.insurance_name")
+    ins_sql = usable_sql("insurance_name")
     totals = client.fetchone(
         conn,
         f"""
