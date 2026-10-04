@@ -1,5 +1,6 @@
 -- Checks & Deposits portal ledger (Deposit Date on or after 2026-01-01).
 -- Idempotent: migrate() re-runs every SQL file.
+-- Listed in MIGRATIONS after 074_eligibility_sheet_facet.sql.
 
 CREATE TABLE IF NOT EXISTS billing.checks_deposits_row (
     row_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
