@@ -1247,8 +1247,14 @@ def list_overdue_claims(
     q: str | None = None,
     run_id: str | None = None,
     limit: int = 500,
+    rank: str = "days",
 ) -> list[dict[str, Any]]:
-    """Overdue forecast lines past Insurance-behavior land date."""
+    """Overdue forecast lines past Insurance-behavior land date.
+
+    ``rank='recovery'`` orders by expected dollars times the age-to-collect
+    step (same bounds as deposit_capacity.age_factor) so the chase list is
+    the calls worth making first.
+    """
     if not run_id:
         run_id = _latest_success_run_id(conn)
     if not run_id:
@@ -1324,7 +1330,22 @@ def list_overdue_claims(
           )
         """
         params.extend([like, like, like])
-    sql += """
+    if rank == "recovery":
+        sql += """
+        ORDER BY COALESCE(fp.expected_amount, 0) * (
+            CASE
+                WHEN COALESCE(fp.overdue_days, 0) <= 14 THEN 1.00
+                WHEN COALESCE(fp.overdue_days, 0) <= 30 THEN 0.85
+                WHEN COALESCE(fp.overdue_days, 0) <= 60 THEN 0.60
+                WHEN COALESCE(fp.overdue_days, 0) <= 90 THEN 0.35
+                WHEN COALESCE(fp.overdue_days, 0) <= 180 THEN 0.15
+                ELSE 0.05
+            END
+        ) DESC
+        LIMIT %s
+    """
+    else:
+        sql += """
         ORDER BY COALESCE(fp.overdue_days, 0) DESC, COALESCE(fp.expected_amount, 0) DESC
         LIMIT %s
     """
@@ -1544,6 +1565,338 @@ def sum_projected_by_name(
     key = "facility_name" if col == "facility_name" else "ins_name"
     return [
         {key: str(row.get("name") or ""), "amount": round(float(row.get("amount") or 0), 2)}
+        for row in rows
+    ]
+
+
+_AGE_BUCKET_SQL = """
+CASE
+    WHEN COALESCE(fp.overdue_days, 0) <= 14 THEN '0_14'
+    WHEN COALESCE(fp.overdue_days, 0) <= 30 THEN '15_30'
+    WHEN COALESCE(fp.overdue_days, 0) <= 60 THEN '31_60'
+    WHEN COALESCE(fp.overdue_days, 0) <= 90 THEN '61_90'
+    WHEN COALESCE(fp.overdue_days, 0) <= 180 THEN '91_180'
+    ELSE '180_plus'
+END
+"""
+
+_DOS_MONTH_SQL = """
+to_char(
+    COALESCE(
+        fp.date_of_service,
+        CASE
+            WHEN fp.payload->>'date_of_service' ~ '^\\d{4}-\\d{2}-\\d{2}'
+                THEN substring(fp.payload->>'date_of_service' from 1 for 10)::date
+            ELSE NULL
+        END
+    ),
+    'YYYY-MM'
+)
+"""
+
+
+def _fp_name_filters(
+    sql: str,
+    params: list[Any],
+    *,
+    facilities: list[str] | None,
+    insurers: list[str] | None,
+) -> tuple[str, list[Any]]:
+    """Clinic / insurance filters qualified to forecast_prediction fp."""
+    if facilities:
+        sql += " AND NULLIF(BTRIM(fp.payload->>'facility_name'), '') = ANY(%s)"
+        params.append(list(facilities))
+    if insurers:
+        sql += " AND NULLIF(BTRIM(fp.payload->>'ins_name'), '') = ANY(%s)"
+        params.append(list(insurers))
+    return sql, params
+
+
+def overdue_grid(
+    conn: psycopg.Connection,
+    *,
+    d0: date | None = None,
+    d1: date | None = None,
+    facilities: list[str] | None = None,
+    insurers: list[str] | None = None,
+    run_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Overdue dollars by insurer, clinic, service month, land month, and age bucket.
+
+    Date window matches sum_ar_stages_in_range: overdue is filtered on the
+    pre-pack land date, so the summed amount ties to the Overdue KPI.
+    """
+    if not run_id:
+        run_id = _latest_success_run_id(conn)
+    if not run_id:
+        return []
+    params: list[Any] = [run_id]
+    sql = f"""
+        SELECT COALESCE({_prediction_ins_sql()}, '(blank)') AS ins_name,
+               COALESCE(NULLIF(BTRIM(fp.payload->>'facility_name'), ''), '(blank)') AS facility_name,
+               {_DOS_MONTH_SQL} AS dos_month,
+               to_char(({_LAND_DATE_SQL}), 'YYYY-MM') AS land_month,
+               {_AGE_BUCKET_SQL} AS age_bucket,
+               ROUND(SUM(COALESCE(fp.expected_amount, 0))::numeric, 2) AS amount,
+               COUNT(*)::int AS line_count,
+               COALESCE(SUM(fp.overdue_days), 0) AS overdue_days_sum,
+               COALESCE(SUM(fp.sla_lag_days), 0) AS sla_lag_sum,
+               COUNT(fp.sla_lag_days)::int AS sla_lag_n
+        FROM analytics.forecast_prediction fp
+        {_prediction_elig_join()}
+        WHERE fp.forecast_run_id = %s::uuid
+          AND fp.outcome_stage = 'overdue'
+    """
+    if d0 is not None:
+        sql += f" AND {_LAND_DATE_SQL} >= %s"
+        params.append(d0)
+    if d1 is not None:
+        sql += f" AND {_LAND_DATE_SQL} <= %s"
+        params.append(d1)
+    sql, params = _fp_name_filters(
+        sql, params, facilities=facilities, insurers=insurers
+    )
+    sql += " GROUP BY 1, 2, 3, 4, 5"
+    rows = client.fetchall(conn, sql, params)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        out.append(
+            {
+                "ins_name": str(row.get("ins_name") or "(blank)"),
+                "facility_name": str(row.get("facility_name") or "(blank)"),
+                "dos_month": str(row.get("dos_month") or ""),
+                "land_month": str(row.get("land_month") or ""),
+                "age_bucket": str(row.get("age_bucket") or ""),
+                "amount": round(float(row.get("amount") or 0), 2),
+                "line_count": int(row.get("line_count") or 0),
+                "overdue_days_sum": float(row.get("overdue_days_sum") or 0),
+                "sla_lag_sum": float(row.get("sla_lag_sum") or 0),
+                "sla_lag_n": int(row.get("sla_lag_n") or 0),
+            }
+        )
+    return out
+
+
+def ar_trend(
+    conn: psycopg.Connection,
+    *,
+    facilities: list[str] | None = None,
+    insurers: list[str] | None = None,
+    weeks: int = 12,
+) -> list[dict[str, Any]]:
+    """One forecast snapshot per ISO week: overdue, on track, and 90+ overdue.
+
+    The date filter does not apply. Each point is the run for that week.
+    """
+    params: list[Any] = [max(1, min(int(weeks or 12), 52))]
+    extra, params = _fp_name_filters(
+        "", params, facilities=facilities, insurers=insurers
+    )
+    sql = f"""
+        WITH weeks AS (
+            SELECT forecast_run_id, as_of_date
+            FROM (
+                SELECT DISTINCT ON (date_trunc('week', fr.as_of_date::timestamp))
+                       fr.forecast_run_id,
+                       fr.as_of_date
+                FROM analytics.forecast_run fr
+                WHERE fr.status = 'success'
+                  AND fr.as_of_date IS NOT NULL
+                ORDER BY date_trunc('week', fr.as_of_date::timestamp) DESC,
+                         fr.as_of_date DESC,
+                         fr.created_at DESC
+            ) picked
+            ORDER BY as_of_date DESC
+            LIMIT %s
+        )
+        SELECT w.as_of_date AS as_of,
+               COALESCE(SUM(fp.expected_amount) FILTER (
+                   WHERE fp.outcome_stage = 'overdue'
+               ), 0) AS overdue,
+               COALESCE(SUM(fp.expected_amount) FILTER (
+                   WHERE fp.outcome_stage = 'on_track'
+               ), 0) AS on_track,
+               COALESCE(SUM(fp.expected_amount) FILTER (
+                   WHERE fp.outcome_stage = 'overdue'
+                     AND COALESCE(fp.overdue_days, 0) > 90
+               ), 0) AS overdue_90_plus
+        FROM weeks w
+        LEFT JOIN analytics.forecast_prediction fp
+          ON fp.forecast_run_id = w.forecast_run_id
+         AND fp.outcome_stage IN ('on_track', 'overdue')
+         {extra}
+        GROUP BY w.as_of_date
+        ORDER BY w.as_of_date
+    """
+    rows = client.fetchall(conn, sql, params)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        as_of = row.get("as_of")
+        out.append(
+            {
+                "as_of": as_of.isoformat() if hasattr(as_of, "isoformat") else str(as_of or ""),
+                "overdue": round(float(row.get("overdue") or 0), 2),
+                "on_track": round(float(row.get("on_track") or 0), 2),
+                "overdue_90_plus": round(float(row.get("overdue_90_plus") or 0), 2),
+            }
+        )
+    return out
+
+
+def forward_expected_by_week(
+    conn: psycopg.Connection,
+    *,
+    start: date,
+    end: date,
+    facilities: list[str] | None = None,
+    insurers: list[str] | None = None,
+    run_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """On-track and overdue dollars whose land date falls in [start, end)."""
+    if not run_id:
+        run_id = _latest_success_run_id(conn)
+    if not run_id:
+        return []
+    params: list[Any] = [run_id]
+    sql = f"""
+        SELECT date_trunc('week', land::timestamp)::date AS week,
+               outcome_stage,
+               age_bucket,
+               ROUND(SUM(amount)::numeric, 2) AS amount
+        FROM (
+            SELECT fp.outcome_stage,
+                   COALESCE(fp.expected_amount, 0) AS amount,
+                   ({_LAND_DATE_SQL}) AS land,
+                   {_AGE_BUCKET_SQL} AS age_bucket
+            FROM analytics.forecast_prediction fp
+            WHERE fp.forecast_run_id = %s::uuid
+              AND fp.outcome_stage IN ('on_track', 'overdue')
+    """
+    sql, params = _fp_name_filters(
+        sql, params, facilities=facilities, insurers=insurers
+    )
+    sql += """
+        ) src
+        WHERE land IS NOT NULL
+          AND land >= %s
+          AND land < %s
+        GROUP BY 1, 2, 3
+        ORDER BY 1
+    """
+    params.extend([start, end])
+    rows = client.fetchall(conn, sql, params)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        week = row.get("week")
+        out.append(
+            {
+                "week": week.isoformat() if hasattr(week, "isoformat") else str(week or ""),
+                "outcome_stage": str(row.get("outcome_stage") or ""),
+                "age_bucket": str(row.get("age_bucket") or ""),
+                "amount": round(float(row.get("amount") or 0), 2),
+            }
+        )
+    return out
+
+
+def collection_rate_by_month(
+    conn: psycopg.Connection,
+    *,
+    d0: date | None = None,
+    d1: date | None = None,
+    facilities: list[str] | None = None,
+    insurers: list[str] | None = None,
+    run_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Expected dollars by service month and outcome stage (paid share = collection)."""
+    if not run_id:
+        run_id = _latest_success_run_id(conn)
+    if not run_id:
+        return []
+    params: list[Any] = [run_id]
+    sql = """
+        SELECT to_char(dos, 'YYYY-MM') AS period,
+               outcome_stage,
+               ROUND(SUM(expected_amount)::numeric, 2) AS amount
+        FROM (
+            SELECT fp.outcome_stage,
+                   COALESCE(fp.expected_amount, 0) AS expected_amount,
+                   COALESCE(
+                       fp.date_of_service,
+                       CASE
+                           WHEN fp.payload->>'date_of_service' ~ '^\\d{4}-\\d{2}-\\d{2}'
+                               THEN substring(fp.payload->>'date_of_service' from 1 for 10)::date
+                           ELSE NULL
+                       END
+                   ) AS dos
+            FROM analytics.forecast_prediction fp
+            WHERE fp.forecast_run_id = %s::uuid
+    """
+    sql, params = _fp_name_filters(
+        sql, params, facilities=facilities, insurers=insurers
+    )
+    sql += """
+        ) src
+        WHERE dos IS NOT NULL
+    """
+    if d0 is not None:
+        sql += " AND dos >= %s"
+        params.append(d0)
+    if d1 is not None:
+        sql += " AND dos <= %s"
+        params.append(d1)
+    sql += " GROUP BY 1, 2 ORDER BY 1, 2"
+    rows = client.fetchall(conn, sql, params)
+    return [
+        {
+            "period": str(row.get("period") or ""),
+            "outcome_stage": str(row.get("outcome_stage") or ""),
+            "amount": round(float(row.get("amount") or 0), 2),
+        }
+        for row in rows
+    ]
+
+
+def summarize_stages_by_insurance(
+    conn: psycopg.Connection,
+    *,
+    d0: date | None = None,
+    d1: date | None = None,
+    facilities: list[str] | None = None,
+    insurers: list[str] | None = None,
+    run_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """Expected dollars by insurer and outcome stage."""
+    if not run_id:
+        run_id = _latest_success_run_id(conn)
+    if not run_id:
+        return []
+    params: list[Any] = [run_id]
+    date_sql, params = _prediction_stage_date_sql(d0=d0, d1=d1, params=params)
+    sql = f"""
+        SELECT COALESCE({_prediction_ins_sql()}, '(blank)') AS ins_name,
+               fp.outcome_stage,
+               ROUND(SUM(COALESCE(fp.expected_amount, 0))::numeric, 2) AS amount,
+               ROUND(SUM(COALESCE(fp.denied_amount, 0))::numeric, 2) AS denied_amount,
+               COUNT(*)::int AS line_count
+        FROM analytics.forecast_prediction fp
+        {_prediction_elig_join()}
+        WHERE fp.forecast_run_id = %s::uuid
+          AND {date_sql}
+    """
+    sql, params = _fp_name_filters(
+        sql, params, facilities=facilities, insurers=insurers
+    )
+    sql += " GROUP BY 1, 2"
+    rows = client.fetchall(conn, sql, params)
+    return [
+        {
+            "ins_name": str(row.get("ins_name") or "(blank)"),
+            "outcome_stage": str(row.get("outcome_stage") or ""),
+            "amount": round(float(row.get("amount") or 0), 2),
+            "denied_amount": round(float(row.get("denied_amount") or 0), 2),
+            "line_count": int(row.get("line_count") or 0),
+        }
         for row in rows
     ]
 

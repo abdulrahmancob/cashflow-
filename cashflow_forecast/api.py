@@ -2178,6 +2178,71 @@ def _outcomes_summary_payload(
     }
 
 
+def _day_ahead_history(limit: int = 60) -> list[dict[str, Any]]:
+    """Newest bank days first. Empty when the score table is missing."""
+    if not _use_db():
+        return []
+    try:
+        from cashflow_db.repository import connection
+
+        with connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT bank_date, forecast_total, actual_total, error_pct
+                FROM analytics.day_ahead_score
+                ORDER BY bank_date DESC
+                LIMIT %s
+                """,
+                (max(1, int(limit)),),
+            ).fetchall()
+    except Exception:
+        return []
+    return [
+        {
+            "bank_date": str(row["bank_date"]),
+            "forecast_total": float(row["forecast_total"] or 0),
+            "actual_total": float(row["actual_total"] or 0),
+            "error_pct": None if row["error_pct"] is None else float(row["error_pct"]),
+        }
+        for row in rows
+    ]
+
+
+def _overdue_analysis_payload(
+    *,
+    fac: list[str],
+    insurers: list[str],
+    d0: date | None,
+    d1: date | None,
+) -> dict[str, Any]:
+    from cashflow_forecast.finance_views import build_overdue_analysis, empty_overdue_analysis
+
+    if not _use_db():
+        return empty_overdue_analysis()
+    try:
+        from cashflow_db.repository import connection, forecast as forecast_repo
+
+        with connection() as conn:
+            grid = forecast_repo.overdue_grid(
+                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            trend = forecast_repo.ar_trend(
+                conn, facilities=fac or None, insurers=insurers or None, weeks=12
+            )
+            claims = forecast_repo.list_overdue_claims(
+                conn,
+                d0=d0,
+                d1=d1,
+                facilities=fac or None,
+                insurers=insurers or None,
+                rank="recovery",
+                limit=15,
+            )
+        return build_overdue_analysis(grid, trend, claims)
+    except Exception:
+        return empty_overdue_analysis()
+
+
 @app.get("/api/mission")
 def mission_dashboard(
     facility: str | None = None,
@@ -2212,9 +2277,13 @@ def mission_dashboard(
         queued = _queue_open_risk(fac=fac, insurers=insurers, d0=d0, d1=d1)
         return queued if queued is not None else _empty_queue_risk()
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    def _load_overdue() -> dict[str, Any]:
+        return _overdue_analysis_payload(fac=fac, insurers=insurers, d0=d0, d1=d1)
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
         fut_behavior = pool.submit(_load_behavior)
         fut_risk = pool.submit(_load_risk)
+        fut_overdue = pool.submit(_load_overdue)
         queued = fut_risk.result()
         fut_kpi = pool.submit(
             _kpi_payload,
@@ -2239,6 +2308,7 @@ def mission_dashboard(
         behavior = fut_behavior.result()
         kpi_data = fut_kpi.result()
         outcomes = fut_outcomes.result()
+        overdue_analysis = fut_overdue.result()
     return {
         "kpi": kpi_data,
         "monthly": [],
@@ -2247,7 +2317,245 @@ def mission_dashboard(
         "outcomes": outcomes,
         "behavior": behavior,
         "day_ahead": _day_ahead_recent(),
+        "overdue_analysis": overdue_analysis,
     }
+
+
+def _cash_overview_payload(
+    *,
+    facility: str | None,
+    ins: str | None,
+    month: str | None,
+    date_from: str | None,
+    date_to: str | None,
+) -> dict[str, Any]:
+    from cashflow_forecast.finance_views import (
+        accuracy_days,
+        build_burnup,
+        build_cash_kpis,
+        build_forward_weeks,
+        month_bounds,
+    )
+
+    hist = projected_history(month=month, date_from=date_from, date_to=date_to)
+    actual = actual_daily(
+        facility=facility, ins=ins, month=month, date_from=date_from, date_to=date_to
+    )
+    settled = _settled_as_of()
+    today = date.today()
+    start, end = month_bounds(today)
+    month_hist = projected_history(date_from=start.isoformat(), date_to=end.isoformat())
+    month_actual = actual_daily(date_from=start.isoformat(), date_to=end.isoformat())
+    forward_daily = projected_history()
+    fac, insurers = _split_multi(facility), _split_multi(ins)
+    forward_rows: list[dict[str, Any]] = []
+    payer_months: list[dict[str, Any]] = []
+    if _use_db():
+        try:
+            from cashflow_db.repository import connection
+            from cashflow_db.repository import forecast as forecast_repo
+            from cashflow_db.repository import insurance as ins_repo
+
+            d0, d1 = _resolve_date_bounds(date_from, date_to, _split_multi(month))
+            if d0 is None and d1 is None:
+                d0 = date(today.year - 1, today.month, 1)
+            with connection() as conn:
+                forward_rows = forecast_repo.forward_expected_by_week(
+                    conn,
+                    start=today,
+                    end=today + timedelta(days=30),
+                    facilities=fac or None,
+                    insurers=insurers or None,
+                )
+                payer_months = ins_repo.summarize_tracker_paid_trend(
+                    conn,
+                    grain="month",
+                    insurers=insurers or None,
+                    d0=d0,
+                    d1=d1,
+                    limit_insurers=6,
+                )
+        except Exception:
+            forward_rows = []
+            payer_months = []
+    weeks = build_forward_weeks(forward_rows)
+    scored = _day_ahead_history(30)
+    kpi = build_cash_kpis(
+        month_daily=list(month_hist.get("daily") or []),
+        month_actual=list(month_actual or []),
+        forward_daily=list(forward_daily.get("daily") or []),
+        settled=settled,
+        today=today,
+        accuracy_rows=scored,
+        forward_weeks=weeks,
+    )
+    recent = [
+        {
+            "bank_date": row["bank_date"],
+            "forecast_total": row["forecast_total"],
+            "actual_total": row["actual_total"],
+            "error_pct": row["error_pct"],
+        }
+        for row in scored[:5]
+    ]
+    return {
+        "daily": list(hist.get("daily") or []),
+        "monthly": list(hist.get("monthly") or []),
+        "actual": list(actual or []),
+        "last_settled_date": settled.isoformat(),
+        "kpi": kpi,
+        "burnup": build_burnup(
+            list(month_hist.get("daily") or []),
+            list(month_actual or []),
+            start=start,
+            end=end,
+            settled=settled,
+        ),
+        "forward_weeks": weeks,
+        "accuracy": {
+            "mae_30d": kpi.get("mae_30d"),
+            "days": accuracy_days(scored, 30),
+            "yesterday": recent[0] if recent else None,
+            "recent": recent,
+        },
+        "payer_months": payer_months,
+    }
+
+
+@app.get("/api/cash/overview")
+def cash_overview(
+    facility: str | None = None,
+    ins: str | None = None,
+    month: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict[str, Any]:
+    """Cash Trajectory bundle: existing series plus pace, burn-up, and forward weeks."""
+    return _cash_overview_payload(
+        facility=facility,
+        ins=ins,
+        month=month,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
+def _exec_scorecard_payload(
+    *,
+    facility: str | None,
+    ins: str | None,
+    month: str | None,
+    date_from: str | None,
+    date_to: str | None,
+) -> dict[str, Any]:
+    from cashflow_forecast.finance_views import build_exec_scorecard
+
+    today = date.today()
+    fac, insurers = _split_multi(facility), _split_multi(ins)
+    d0, d1 = _resolve_date_bounds(date_from, date_to, _split_multi(month))
+    blank = dict(
+        today=today,
+        stages=[],
+        doc_risk=0.0,
+        collection_rows=[],
+        grid=[],
+        trend=[],
+        stage_by_ins=[],
+        tracker_by_ins=[],
+        open_ar={},
+        cash_last_month=0.0,
+        cash_prior_month=0.0,
+        cash_90=0.0,
+        cash_prior_90=0.0,
+        accuracy_rows=[],
+    )
+    if not _use_db():
+        return build_exec_scorecard(**blank)
+    try:
+        from cashflow_db.repository import connection, cpt_audit
+        from cashflow_db.repository import forecast as forecast_repo
+        from cashflow_db.repository import insurance as ins_repo
+        from cashflow_forecast.finance_views import previous_month
+
+        last_start, last_end = previous_month(today)
+        prior_start, prior_end = previous_month(last_start)
+        prior_as_of = today - timedelta(days=28)
+        coll_d0 = d0 if d0 is not None else today - timedelta(days=430)
+        with connection() as conn:
+            stages = forecast_repo.summarize_outcome_stages(
+                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            collection_rows = forecast_repo.collection_rate_by_month(
+                conn, d0=coll_d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            stage_by_ins = forecast_repo.summarize_stages_by_insurance(
+                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            grid = forecast_repo.overdue_grid(
+                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            trend = forecast_repo.ar_trend(
+                conn, facilities=fac or None, insurers=insurers or None, weeks=12
+            )
+            open_ar = forecast_repo.sum_ar_stages_in_range(
+                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            queued = cpt_audit.open_risk_exposure(
+                conn, d0=d0, d1=d1, facilities=fac or None, insurers=insurers or None
+            )
+            doc_risk = float((queued or {}).get("exposure_amount") or 0)
+            names = insurers or None
+            cash_last = ins_repo.sum_tracker_cash(
+                conn, d0=last_start, d1=last_end, insurers=names
+            )
+            cash_prior = ins_repo.sum_tracker_cash(
+                conn, d0=prior_start, d1=prior_end, insurers=names
+            )
+            cash_90 = ins_repo.sum_tracker_cash(
+                conn, d0=today - timedelta(days=90), d1=today, insurers=names
+            )
+            cash_prior_90 = ins_repo.sum_tracker_cash(
+                conn, d0=prior_as_of - timedelta(days=90), d1=prior_as_of, insurers=names
+            )
+            tracker_by_ins = ins_repo.tracker_cash_by_insurer(
+                conn, d0=today - timedelta(days=90), d1=today, insurers=names, limit=30
+            )
+        return build_exec_scorecard(
+            today=today,
+            stages=stages,
+            doc_risk=doc_risk,
+            collection_rows=collection_rows,
+            grid=grid,
+            trend=trend,
+            stage_by_ins=stage_by_ins,
+            tracker_by_ins=tracker_by_ins,
+            open_ar=open_ar,
+            cash_last_month=cash_last,
+            cash_prior_month=cash_prior,
+            cash_90=cash_90,
+            cash_prior_90=cash_prior_90,
+            accuracy_rows=_day_ahead_history(60),
+        )
+    except Exception:
+        return build_exec_scorecard(**blank)
+
+
+@app.get("/api/exec/scorecard")
+def exec_scorecard(
+    facility: str | None = None,
+    ins: str | None = None,
+    month: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict[str, Any]:
+    """Business Insights bundle: scorecard, leakage, collection rate, payer grades."""
+    return _exec_scorecard_payload(
+        facility=facility,
+        ins=ins,
+        month=month,
+        date_from=date_from,
+        date_to=date_to,
+    )
 
 
 def _behavior_grain(grain: str | None) -> str:
