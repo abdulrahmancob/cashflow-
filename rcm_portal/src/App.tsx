@@ -48,6 +48,7 @@ function Protected({
 
 const ADMIN_HOME: Role[] = ['super_admin', 'sub_admin', 'ops_admin']
 
+// Admins open the away board. Every other role opens My day.
 function HomeRedirect() {
   const { user } = useAuth()
   const roles = user?.roles ?? []

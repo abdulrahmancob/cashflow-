@@ -87,8 +87,14 @@ app.add_middleware(
 from cashflow_ops.auth_api import router as _auth_router  # noqa: E402
 from cashflow_ops.security import seed_portal_users  # noqa: E402
 
+# Set only after both prefixes are mounted. /ready trusts this rather than
+# route.path strings: those strings are not a stable list across the FastAPI
+# versions that have shipped in the API image, and a false miss makes the
+# process look down while login still answers.
+_AUTH_MOUNTED = False
 app.include_router(_auth_router, prefix="/api/v1")
 app.include_router(_auth_router, prefix="/api")
+_AUTH_MOUNTED = True
 
 
 def _register_router(name: str, module_path: str) -> None:
@@ -229,11 +235,13 @@ def alive() -> dict[str, str]:
     return {"status": "alive"}
 
 
-def missing_auth_routes(paths: set[str] | None = None) -> list[str]:
+def missing_auth_routes(mounted: bool | None = None) -> list[str]:
     """Login paths that were not mounted. Empty means sign-in can be served."""
-    if paths is None:
-        paths = {getattr(route, "path", "") for route in app.routes}
-    return [path for path in _AUTH_ROUTES if path not in paths]
+    if mounted is None:
+        mounted = _AUTH_MOUNTED
+    if mounted:
+        return []
+    return list(_AUTH_ROUTES)
 
 
 @app.get("/ready")
