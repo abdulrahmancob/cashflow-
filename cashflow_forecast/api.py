@@ -6,7 +6,9 @@ Run from repo root:
 
 from __future__ import annotations
 
+import importlib
 import json
+import logging
 import os
 import re
 import sys
@@ -64,6 +66,13 @@ except Exception:  # noqa: BLE001 — forecast API still works without ops
 DEFAULT_FORECAST = _REPO / "webpt_edco_scraper/output/jun_jul_2026/forecast"
 DEFAULT_AUDIT = _REPO / "webpt_edco_scraper/output/jun_jul_2026/audit"
 
+_log = logging.getLogger(__name__)
+
+# Optional routers that failed to import. Reported by /ready; they do not
+# by themselves make the process unready. Missing auth routes do.
+_ROUTER_FAILURES: list[dict[str, str]] = []
+_AUTH_ROUTES = ("/api/auth/login", "/api/v1/auth/login")
+
 app = FastAPI(title="RCM Platform API", version="0.3.0")
 app.add_middleware(
     CORSMiddleware,
@@ -73,62 +82,54 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Platform ops + auth + eligibility under /api/v1 and /api (alias)
-try:
-    from cashflow_ops.activity_api import router as _activity_router
-    from cashflow_ops.admin_db_api import router as _admin_db_router
-    from cashflow_ops.api import router as _ops_router
-    from cashflow_ops.auth_api import router as _auth_router
-    from cashflow_ops.cpt_audit_api import router as _cpt_audit_router
-    from cashflow_ops.cpt_guide_api import router as _cpt_guide_router
-    from cashflow_ops.eligibility_api import router as _eligibility_router
-    from cashflow_ops.security import seed_portal_users
-    from cashflow_ops.tracker_api import router as _tracker_router
-    from cashflow_ops.checks_deposits_api import router as _checks_deposits_router
-    from cashflow_ops.billing_analysis_api import router as _billing_analysis_router
-    from cashflow_ops.chat.api import router as _chat_router
-    from cashflow_ops.collection_api import router as _collection_router
-    from cashflow_ops.away_api import router as _away_router
-    from cashflow_ops.work_analytics_api import router as _analytics_router
+# Auth is not optional. If it cannot import, the process must fail to start
+# instead of serving /ready while /api/auth/login 404s.
+from cashflow_ops.auth_api import router as _auth_router  # noqa: E402
+from cashflow_ops.security import seed_portal_users  # noqa: E402
 
-    app.include_router(_ops_router, prefix="/api/v1")
-    app.include_router(_ops_router, prefix="/api")
-    app.include_router(_auth_router, prefix="/api/v1")
-    app.include_router(_auth_router, prefix="/api")
-    app.include_router(_eligibility_router, prefix="/api/v1")
-    app.include_router(_eligibility_router, prefix="/api")
-    app.include_router(_tracker_router, prefix="/api/v1")
-    app.include_router(_tracker_router, prefix="/api")
-    app.include_router(_checks_deposits_router, prefix="/api/v1")
-    app.include_router(_checks_deposits_router, prefix="/api")
-    app.include_router(_cpt_guide_router, prefix="/api/v1")
-    app.include_router(_cpt_guide_router, prefix="/api")
-    app.include_router(_cpt_audit_router, prefix="/api/v1")
-    app.include_router(_cpt_audit_router, prefix="/api")
-    app.include_router(_admin_db_router, prefix="/api/v1")
-    app.include_router(_admin_db_router, prefix="/api")
-    app.include_router(_analytics_router, prefix="/api/v1")
-    app.include_router(_analytics_router, prefix="/api")
-    app.include_router(_away_router, prefix="/api/v1")
-    app.include_router(_away_router, prefix="/api")
-    app.include_router(_billing_analysis_router, prefix="/api/v1")
-    app.include_router(_billing_analysis_router, prefix="/api")
-    app.include_router(_activity_router, prefix="/api/v1")
-    app.include_router(_activity_router, prefix="/api")
-    app.include_router(_collection_router, prefix="/api/v1")
-    app.include_router(_collection_router, prefix="/api")
-    app.include_router(_chat_router, prefix="/api/v1")
-    app.include_router(_chat_router, prefix="/api")
+app.include_router(_auth_router, prefix="/api/v1")
+app.include_router(_auth_router, prefix="/api")
 
-    @app.on_event("startup")
-    def _portal_startup() -> None:
-        try:
-            seed_portal_users()
-        except Exception:  # noqa: BLE001
-            pass
 
-except Exception:  # noqa: BLE001 — forecast API still works without ops
-    pass
+def _register_router(name: str, module_path: str) -> None:
+    """Mount one router under /api and /api/v1. A failure stays local."""
+    try:
+        module = importlib.import_module(module_path)
+        router = module.router
+    except Exception as exc:  # noqa: BLE001
+        _log.exception("failed to register %s router", name)
+        _ROUTER_FAILURES.append({"router": name, "error": f"{type(exc).__name__}: {exc}"})
+        return
+    app.include_router(router, prefix="/api/v1")
+    app.include_router(router, prefix="/api")
+
+
+# Platform ops, eligibility, and the rest. Each one is isolated so a broken
+# import cannot unregister login.
+for _name, _module in (
+    ("ops", "cashflow_ops.api"),
+    ("eligibility", "cashflow_ops.eligibility_api"),
+    ("tracker", "cashflow_ops.tracker_api"),
+    ("checks_deposits", "cashflow_ops.checks_deposits_api"),
+    ("cpt_guide", "cashflow_ops.cpt_guide_api"),
+    ("cpt_audit", "cashflow_ops.cpt_audit_api"),
+    ("admin_db", "cashflow_ops.admin_db_api"),
+    ("analytics", "cashflow_ops.work_analytics_api"),
+    ("away", "cashflow_ops.away_api"),
+    ("billing_analysis", "cashflow_ops.billing_analysis_api"),
+    ("activity", "cashflow_ops.activity_api"),
+    ("collection", "cashflow_ops.collection_api"),
+    ("chat", "cashflow_ops.chat.api"),
+):
+    _register_router(_name, _module)
+
+
+@app.on_event("startup")
+def _portal_startup() -> None:
+    try:
+        seed_portal_users()
+    except Exception:  # noqa: BLE001
+        _log.exception("portal user seed failed")
 
 
 @app.on_event("startup")
@@ -228,10 +229,29 @@ def alive() -> dict[str, str]:
     return {"status": "alive"}
 
 
+def missing_auth_routes(paths: set[str] | None = None) -> list[str]:
+    """Login paths that were not mounted. Empty means sign-in can be served."""
+    if paths is None:
+        paths = {getattr(route, "path", "") for route in app.routes}
+    return [path for path in _AUTH_ROUTES if path not in paths]
+
+
 @app.get("/ready")
 def ready() -> dict[str, Any]:
-    """Readiness: PostgreSQL + repository reachable. Returns 503 when not ready."""
+    """Readiness: auth routes plus PostgreSQL. Returns 503 when not ready."""
     from fastapi import HTTPException
+
+    missing = missing_auth_routes()
+    if missing:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "not_ready",
+                "reason": "auth_routes_missing",
+                "missing": missing,
+                "errors": _ROUTER_FAILURES,
+            },
+        )
 
     try:
         from cashflow_db.repository import connection
@@ -248,7 +268,10 @@ def ready() -> dict[str, Any]:
                 conn.execute("SELECT 1 FROM ops.pipeline_run LIMIT 1")
             except Exception:
                 pass
-        return {"status": "ready"}
+        body: dict[str, Any] = {"status": "ready"}
+        if _ROUTER_FAILURES:
+            body["router_failures"] = _ROUTER_FAILURES
+        return body
     except HTTPException:
         raise
     except Exception as exc:  # noqa: BLE001

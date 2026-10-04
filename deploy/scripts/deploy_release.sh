@@ -158,6 +158,12 @@ if [[ "${api}" -eq 1 ]]; then
   echo
   curl -fsS http://127.0.0.1/ready
   echo
+  code="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1/api/auth/login)"
+  echo "auth login status=${code}"
+  if [[ "${code}" == "404" ]]; then
+    echo "auth router is not registered (login would 404)" >&2
+    exit 1
+  fi
 fi
 
 if [[ "${portal}" -eq 1 ]]; then
