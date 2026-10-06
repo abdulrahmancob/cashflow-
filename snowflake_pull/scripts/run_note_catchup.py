@@ -217,6 +217,16 @@ def _is_daily(note: Any) -> bool:
     return "daily" in t or "dailynote" in uri or "dn" in uri
 
 
+def unmatched_daily_dates(wanted_dos: set[str], notes: list[Any]) -> list[str]:
+    """Visit dates in this case that the chart listing did not return as a daily note."""
+    found = {
+        str(getattr(note, "note_date", "") or "")[:10]
+        for note in notes
+        if _is_daily(note)
+    }
+    return sorted(dos for dos in wanted_dos if dos and dos not in found)
+
+
 def _extract_one(payload: tuple[str, str, str, str]) -> dict[str, Any]:
     pdf_s, patient_id, facility_id, case_id = payload
     from case_extract import CASE_CPT_CODES_FIELDNAMES, CASE_DAILY_NOTES_FIELDNAMES  # noqa: F401
@@ -300,6 +310,7 @@ async def _download_cases(
     downloaded: list[str] = []
     skipped = 0
     skipped_clinic = 0
+    no_daily_note = 0
     errors: list[str] = []
     logged_errors = 0
     fetch_params = inspect.signature(fetch_patient_chart_notes).parameters
@@ -406,6 +417,15 @@ async def _download_cases(
                 for n in notes
                 if _is_daily(n) and str(getattr(n, "note_date", "") or "")[:10] in wanted_dos
             ]
+            for dos in unmatched_daily_dates(wanted_dos, notes):
+                no_daily_note += 1
+                log.info(
+                    "no daily note facility=%s patient=%s case=%s dos=%s",
+                    fid,
+                    pid,
+                    cid,
+                    dos,
+                )
             dest = ensure_case_layout(base_dir, fid, cid) / "daily_notes"
 
             async def _one(note: Any = None, dest_dir: Path = dest) -> dict[str, Any]:
@@ -442,11 +462,12 @@ async def _download_cases(
             _ = note_subdir_for_type
         await save_storage_state(context)
         log.info(
-            "download done pdfs=%s skipped=%s errors=%s skipped_clinic_cases=%s cases=%s",
+            "download done pdfs=%s skipped=%s errors=%s skipped_clinic_cases=%s no_daily_note=%s cases=%s",
             len(downloaded),
             skipped,
             len(errors),
             skipped_clinic,
+            no_daily_note,
             len(cases),
         )
     finally:
@@ -463,6 +484,7 @@ async def _download_cases(
         "errors": errors[:50],
         "error_count": len(errors),
         "skipped_clinic_cases": skipped_clinic,
+        "no_daily_note": no_daily_note,
         "cases": len(cases),
     }
 
@@ -722,6 +744,7 @@ def run(
                 "errors": dl.get("error_count") or len(dl.get("errors") or []),
                 "error_samples": (dl.get("errors") or [])[:_LOGGED_ERRORS],
                 "skipped_clinic_cases": dl.get("skipped_clinic_cases") or 0,
+                "no_daily_note": dl.get("no_daily_note") or 0,
             }
             if dry_run:
                 summary["status"] = "dry_run"

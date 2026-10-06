@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Host-triggered 15:00 Africa/Cairo daily-note catch-up.
-# Download + OCR missing last-7-day notes so CPT/ICD audit is ready for submission.
+# Host-triggered 15:00 and 17:00 Africa/Cairo daily-note catch-up.
+# The 17:00 run waits if 15:00 is still going, refreshes last-7-day visits, then downloads notes.
 #
 # Example crontab (host TZ must be Africa/Cairo):
 #   0 15 * * * /opt/cashflow/deploy/scripts/note_catchup.sh >> /data/logs/note_catchup.log 2>&1
+#   0 17 * * * /opt/cashflow/deploy/scripts/note_catchup.sh >> /data/logs/note_catchup.log 2>&1
 #
 # Does not stop postgres / nginx / case_ocr / case_drain / api / intake census.
 # Three WebPT accounts each take whole clinics. Sessions stay under /data/webpt/sessions.
@@ -26,6 +27,51 @@ if [[ "${NOTE_CATCHUP_SKIP_SCRAPE:-}" == "1" ]]; then
   exit 0
 fi
 
+echo "[note-catchup] wait for a running catch-up to finish"
+while docker ps --format '{{.Names}}' | grep -Eq '^note_catchup_hamdy[123]$'; do
+  echo "[note-catchup] $(date -Is) still running"
+  sleep 60
+done
+
+DAYS="${NOTE_CATCHUP_DAYS:-7}"
+END="$(date +%F)"
+START="$(date -d "${DAYS} days ago" +%F)"
+CSV_DIR="/data/exports/snowflake/pt_city"
+CSV="${CSV_DIR}/visit_catchup_${START}_${END}.csv"
+SQL="/tmp/pt_city_catchup_${START}_${END}.sql"
+mkdir -p "${CSV_DIR}"
+chmod a+rwx "${CSV_DIR}" 2>/dev/null || true
+cat > "${SQL}" <<SQL
+SELECT * FROM PT_CITY.PUBLIC.VISIT
+WHERE TRY_TO_DATE(TO_VARCHAR(VISIT_DATE)) >= '${START}'
+  AND TRY_TO_DATE(TO_VARCHAR(VISIT_DATE)) <= '${END}'
+SQL
+
+echo "[note-catchup] pull visits ${START}..${END}"
+docker rm -f note_visit_pull note_visit_load >/dev/null 2>&1 || true
+docker compose --env-file "${ROOT}/.env" --profile tools run --rm --name note_visit_pull \
+  -e PYTHONPATH=/tmp/sfpy:/app \
+  -e PIP_DISABLE_PIP_VERSION_CHECK=1 \
+  -e "CATCHUP_VISIT_CSV=${CSV}" \
+  -v /opt/cashflow/snowflake_pull:/app/snowflake_pull \
+  -v "${SQL}:/tmp/pt_city_catchup.sql:ro" \
+  -w /app \
+  scraper bash -c 'pip install --target /tmp/sfpy "snowflake-connector-python>=3.12.0" >/tmp/sf_pip.log && python -m snowflake_pull --sql-file /tmp/pt_city_catchup.sql -o "$CATCHUP_VISIT_CSV"'
+
+if [[ ! -f "${CSV}" ]]; then
+  echo "[note-catchup] missing ${CSV}" >&2
+  exit 1
+fi
+echo "[note-catchup] visit csv $(wc -c < "${CSV}") bytes"
+
+echo "[note-catchup] load visits"
+docker compose --env-file "${ROOT}/.env" --profile tools run --rm --name note_visit_load \
+  -e "PT_CITY_VISIT_CSV=${CSV}" \
+  -v /opt/cashflow/cashflow_db:/app/cashflow_db \
+  -v /opt/cashflow/snowflake_pull:/app/snowflake_pull \
+  -w /app \
+  worker python -m cashflow_db load-pt-city-visit --path "${CSV}"
+
 echo "[note-catchup] stop leftover note catch-up containers"
 docker ps -a --format '{{.Names}}' | grep -E '^week_note_stream$|^note_catchup_hamdy[123]$' | while read -r n; do
   echo "[note-catchup] removing ${n}"
@@ -38,8 +84,6 @@ BIND_MOUNTS=(
   -v /opt/cashflow/webpt_edco_scraper:/app/webpt_edco_scraper
   -v /opt/cashflow/snowflake_pull:/app/snowflake_pull
 )
-
-DAYS="${NOTE_CATCHUP_DAYS:-7}"
 
 start_one() {
   local folder="$1"

@@ -33,6 +33,22 @@ def test_chart_list_extra_skips_blank_cutoff() -> None:
     assert module.chart_list_extra({"not_before"}, "") == {}
 
 
+def test_unmatched_daily_dates_keeps_visits_without_a_daily_note() -> None:
+    module = _load()
+
+    class _Note:
+        def __init__(self, note_type: str, note_date: str) -> None:
+            self.note_type = note_type
+            self.note_date = note_date
+            self.uri = ""
+
+    missing = module.unmatched_daily_dates(
+        {"2026-10-01", "2026-10-02"},
+        [_Note("Daily Note", "2026-10-01"), _Note("Initial Exam", "2026-10-02")],
+    )
+    assert missing == ["2026-10-02"]
+
+
 def test_select_cases_keeps_only_named_clinics() -> None:
     module = _load()
     cases = [
