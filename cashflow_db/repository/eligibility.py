@@ -6701,3 +6701,27 @@ def sheet_paid_by_insurance(
         }
         for row in rows
     ]
+
+
+_FORECAST_SHEET_FIELDS = (
+    "emr_patient_id",
+    "dos",
+    "source_visit_status",
+    "total_amount",
+    "insurance_check_date",
+    "tracker_date",
+    "posting_date_1",
+    "insurance_name",
+)
+
+
+def list_forecast_sheet_visits(conn: psycopg.Connection) -> list[dict[str, Any]]:
+    """Effective sheet rows for the forecast: status, total, and check dates.
+
+    Walks the same export path as the sheet page (recon, Snowflake, ledger,
+    then manual overrides), so a hand-posted check is included.
+    """
+    out: list[dict[str, Any]] = []
+    for row in iter_export_work_items(conn):
+        out.append({key: row.get(key) for key in _FORECAST_SHEET_FIELDS})
+    return out

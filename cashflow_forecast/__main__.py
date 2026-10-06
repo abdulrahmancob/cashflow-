@@ -61,8 +61,14 @@ from cashflow_forecast.payer_payment_model import (
 from cashflow_forecast.sf_visit_overrides import (
     apply_sf_visit_overrides,
     load_sf_override_keys,
-    load_sf_override_keys_from_db,
     resolve_override_path,
+)
+from cashflow_forecast.sheet_visit_overrides import (
+    apply_sheet_visit_overrides,
+    load_sheet_visit_overrides,
+    sheet_override_counts,
+    sheet_overrides_enabled,
+    sheet_paid_visit_keys,
 )
 from cashflow_forecast.land_accuracy import (
     build_land_accuracy_frame,
@@ -130,6 +136,8 @@ def _exclude_recon_covered_ar(
     ar: pd.DataFrame,
     recon_lines: pd.DataFrame,
     visit_aggs: pd.DataFrame,
+    *,
+    sheet_paid_visits: set[tuple[str, date]] | None = None,
 ) -> pd.DataFrame:
     """Drop clinical-AR rows already represented in reconciliation output.
 
@@ -169,6 +177,10 @@ def _exclude_recon_covered_ar(
             closed_keys = set(zip(_norm(closed["webpt_patient_id"]), closed_dos))
             vkeys = list(zip(_norm(out["webpt_patient_id"]), out["date_of_service"]))
             out = out[[k not in closed_keys for k in vkeys]]
+
+    if sheet_paid_visits and not out.empty and {"webpt_patient_id", "date_of_service"} <= set(out.columns):
+        vkeys = list(zip(_norm(out["webpt_patient_id"]), out["date_of_service"]))
+        out = out[[k not in sheet_paid_visits for k in vkeys]].reset_index(drop=True)
 
     if len(out) != n0:
         log.info("Clinical AR lines: %d -> %d after reconciliation dedupe", n0, len(out))
@@ -232,17 +244,25 @@ def cmd_build(args: argparse.Namespace) -> int:
             log.error("No reconciliation_line rows — run: python -m cashflow_reconcile --from-db")
             return 1
         log.info("  %d recon lines", len(recon_lines))
-        # SF paid/denied visit overrides (same EOB gate as CSV path)
-        sf_overrides = load_sf_override_keys_from_db(recon_lines)
-        if sf_overrides:
-            recon_lines = apply_sf_visit_overrides(
-                recon_lines,
-                sf_overrides,
-                require_line_eob_for_paid=True,
+        # Sheet paid/denied. Waystar paid lines stay as they are. Snowflake
+        # copies already sit on the sheet, so this path does not apply a
+        # second Snowflake override (that path could flip a Waystar paid visit).
+        sheet_n = 0
+        sheet_paid = 0
+        sheet_denied = 0
+        if not sheet_overrides_enabled():
+            sheet_overrides = {}
+            log.info(
+                "Eligibility sheet overrides disabled (CASHFLOW_FORECAST_DISABLE_SHEET_OVERRIDES)"
             )
-            recon_lines = _ensure_recon_columns(recon_lines)
         else:
-            log.info("No SF paid/denied overrides from snowflake_visit_kpi")
+            sheet_overrides = load_sheet_visit_overrides(as_of=as_of, backtest=False)
+            sheet_n, sheet_paid, sheet_denied = sheet_override_counts(sheet_overrides)
+            if sheet_overrides:
+                recon_lines = apply_sheet_visit_overrides(recon_lines, sheet_overrides)
+                recon_lines = _ensure_recon_columns(recon_lines)
+            else:
+                log.info("No eligibility sheet paid/denied overrides")
         visits_df = dbs.load_reconciliation_visits_df()
         if not visits_df.empty and "visit_paid_total" in visits_df.columns:
             visits_df["visit_paid_total"] = pd.to_numeric(
@@ -252,7 +272,12 @@ def cmd_build(args: argparse.Namespace) -> int:
             service_from=date(2026, 1, 1),
             service_to=date(2026, 5, 31),
         )
-        may_lines = _exclude_recon_covered_ar(may_lines, recon_lines, visits_df)
+        may_lines = _exclude_recon_covered_ar(
+            may_lines,
+            recon_lines,
+            visits_df,
+            sheet_paid_visits=sheet_paid_visit_keys(sheet_overrides),
+        )
         may_lines = _ensure_recon_columns(may_lines) if not may_lines.empty else may_lines
         patients = dbs.load_patients_df()
         log.info("Patients: %d", len(patients))
@@ -827,7 +852,12 @@ def cmd_build(args: argparse.Namespace) -> int:
             outcome_df=outcomes,
             feature_tables=feature_tables,
             rules_version="business_rules",
-            params={"as_of": as_of.isoformat()},
+            params={
+                "as_of": as_of.isoformat(),
+                "sheet_n": sheet_n,
+                "sheet_paid": sheet_paid,
+                "sheet_denied": sheet_denied,
+            },
         )
         log.info("Wrote forecast_run %s to DB", run_id)
     if emit_csv:
