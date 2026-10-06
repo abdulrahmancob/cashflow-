@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import logging
 import os
 import sys
@@ -434,11 +435,27 @@ def cmd_sla(args: argparse.Namespace) -> int:
 def _holiday_shifts_from_schedules(schedules: dict | None) -> dict[str, int]:
     if not schedules:
         return {}
-    return {
-        str(key).strip().lower(): int(sch.holiday_shift)
-        for key, sch in schedules.items()
-        if sch is not None
-    }
+    out: dict[str, int] = {}
+    for key, sch in schedules.items():
+        if sch is None:
+            continue
+        shift = getattr(sch, "holiday_shift", None)
+        if shift is None:
+            continue
+        out[str(key).strip().lower()] = int(shift)
+    return out
+
+
+def _supported_kwargs(fn, kwargs: dict) -> dict:
+    """Drop keyword arguments the deployed function does not accept."""
+    params = inspect.signature(fn).parameters
+    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()):
+        return kwargs
+    kept = {key: value for key, value in kwargs.items() if key in params}
+    dropped = sorted(set(kwargs) - set(kept))
+    if dropped:
+        log.info("%s ignored unsupported args: %s", getattr(fn, "__name__", fn), ", ".join(dropped))
+    return kept
 
 
 def _persist_cash_matches(matches: list, events: list) -> None:
@@ -1410,19 +1427,24 @@ def cmd_build(args: argparse.Namespace) -> int:
     )
     outcomes, reschedule_audit, slot_audit, capacity_df = pack_pastdue_ffd(
         outcomes,
-        as_of=as_of,
-        deposit_events=deposit_events,
-        deposit_schedules=deposit_schedules or None,
-        risk_patient_dos=risk_keys,
-        actual_cash_daily=actual.get("daily"),
-        day_total_mult=1.00,
-        horizon_days=horizon_days,
-        batch_slots=batch_slots or None,
-        scheduled_by_slot=sched_by_slot,
-        packing_grain_mode=packing_mode,
-        eligible_orgs=eligible_orgs,
-        stream_by_slot=_stream_by_slot(nynm_stream),
-        **pierce_kw,
+        **_supported_kwargs(
+            pack_pastdue_ffd,
+            {
+                "as_of": as_of,
+                "deposit_events": deposit_events,
+                "deposit_schedules": deposit_schedules or None,
+                "risk_patient_dos": risk_keys,
+                "actual_cash_daily": actual.get("daily"),
+                "day_total_mult": 1.00,
+                "horizon_days": horizon_days,
+                "batch_slots": batch_slots or None,
+                "scheduled_by_slot": sched_by_slot,
+                "packing_grain_mode": packing_mode,
+                "eligible_orgs": eligible_orgs,
+                "stream_by_slot": _stream_by_slot(nynm_stream),
+                **pierce_kw,
+            },
+        ),
     )
     log.info("  rescheduled %d past-due rows", len(reschedule_audit))
     timer.mark("pack")

@@ -239,6 +239,28 @@ def test_kill_switch(monkeypatch):
     assert load_sheet_visit_overrides(as_of=date(2026, 7, 1), backtest=False) == {}
 
 
+def test_pack_call_drops_kwargs_the_deployed_function_lacks():
+    from cashflow_forecast.__main__ import _holiday_shifts_from_schedules, _supported_kwargs
+
+    def pack(outcomes, *, as_of, deposit_events):
+        return outcomes, as_of, deposit_events
+
+    kept = _supported_kwargs(
+        pack,
+        {"as_of": date(2026, 10, 6), "deposit_events": [], "stream_by_slot": {"x": 1}},
+    )
+    assert kept == {"as_of": date(2026, 10, 6), "deposit_events": []}
+
+    class _Sch:
+        holiday_shift = -1
+
+    class _Bare:
+        pass
+
+    shifts = _holiday_shifts_from_schedules({"Aetna": _Sch(), "Other": _Bare(), "Skip": None})
+    assert shifts == {"aetna": -1}
+
+
 def test_list_forecast_sheet_visits_is_slim(monkeypatch):
     from cashflow_db.repository import eligibility
 
