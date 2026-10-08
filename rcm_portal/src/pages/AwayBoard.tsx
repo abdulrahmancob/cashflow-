@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import {
   fetchAwayBoard,
   formatClock,
@@ -13,7 +13,7 @@ import {
 } from '../api/away'
 import { ApiError } from '../api/client'
 import { Avatar } from '../components/table'
-import { Badge, PageHeader } from '../components/ui'
+import { Badge, Button, PageHeader } from '../components/ui'
 
 const POLL_MS = 20_000
 
@@ -346,6 +346,7 @@ export function AwayBoardPage() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<BoardStatus>('all')
   const [sort, setSort] = useState<BoardSort>('status')
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     const tick = window.setInterval(() => setNow(Date.now()), 1000)
@@ -393,6 +394,26 @@ export function AwayBoardPage() {
       return
     }
     setDay(next)
+  }
+
+  function downloadExcel() {
+    setExporting(true)
+    setError(null)
+    void fetch('/api/away/board/export', { credentials: 'include' })
+      .then(async (response) => {
+        if (!response.ok) throw new Error('export failed')
+        return response.blob()
+      })
+      .then((blob) => {
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'away_board.xlsx'
+        link.click()
+        URL.revokeObjectURL(url)
+      })
+      .catch(() => setError('Could not download the sheet.'))
+      .finally(() => setExporting(false))
   }
 
   const selected = board?.work_day || cairoToday || ''
@@ -489,6 +510,16 @@ export function AwayBoardPage() {
           onChange={(event) => choose(event.target.value || null)}
           className="h-9 rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         />
+        <Button
+          variant="secondary"
+          size="sm"
+          type="button"
+          disabled={exporting}
+          onClick={downloadExcel}
+        >
+          <Download className="h-4 w-4" />
+          {exporting ? 'Downloading…' : 'Download Excel'}
+        </Button>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <input

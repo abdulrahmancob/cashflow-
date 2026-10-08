@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import calendar
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
@@ -634,4 +635,485 @@ def away_board(
         activity=activity,
         last_pings=last_pings,
         logins=logins,
+    )
+
+
+PAGE_LABELS = {
+    "/eligibility": "Eligibility",
+    "/second-submission": "Second submission",
+    "/patient-responsibility": "Patient responsibility",
+    "/collection": "Collection",
+    "/analytics": "Analytics",
+    "/billing-analysis": "Billing analysis",
+    "/cpt-guide": "CPT guide",
+    "/cpt-audit": "CPT audit",
+    "/tracker": "Tracker",
+    "/checks-deposits": "Checks and deposits",
+    "/my-day": "My day",
+    "/away": "Away board",
+    "/activity": "Activity",
+    "/users": "Users",
+    "/database": "Database",
+    "/platform": "Platform",
+    "/login": "Login",
+}
+
+AREA_LABELS = {
+    "eligibility": "Eligibility",
+    "collection": "Collection",
+    "second_submission": "Second submission",
+    "tfl": "TFL",
+    "cpt_guide": "CPT guide",
+    "cpt_audit": "CPT audit",
+    "tracker": "Tracker",
+    "users": "Users",
+}
+
+KIND_LABELS = {
+    KIND_BREAK: "Break",
+    KIND_PRAYER: "Prayer",
+    KIND_MEETING: "Meeting",
+}
+
+_DAY_COLUMNS = (
+    ("date", "Date"),
+    ("name", "Name"),
+    ("username", "Username"),
+    ("roles", "Roles"),
+    ("first_login", "First login"),
+    ("last_login", "Last login"),
+    ("logins", "Logins"),
+    ("hours_desk", "At computer (hours)"),
+    ("hours_idle", "Idle (hours)"),
+    ("hours_portal", "On portal (hours)"),
+    ("break_minutes", "Break (minutes)"),
+    ("break_budget_minutes", "Break budget (minutes)"),
+    ("over_break", "Over break"),
+    ("prayers", "Prayers"),
+    ("meetings", "Meetings"),
+    ("meeting_minutes", "Meeting (minutes)"),
+    ("pages", "Pages"),
+)
+_SESSION_COLUMNS = (
+    ("date", "Date"),
+    ("name", "Name"),
+    ("username", "Username"),
+    ("kind", "Kind"),
+    ("started", "Started"),
+    ("ended", "Ended"),
+    ("minutes", "Minutes"),
+    ("planned_minutes", "Planned (minutes)"),
+    ("with_whom", "With whom"),
+    ("still_open", "Still open"),
+)
+_WORK_COLUMNS = (
+    ("date", "Date"),
+    ("name", "Name"),
+    ("username", "Username"),
+    ("page", "Page"),
+    ("started", "From"),
+    ("ended", "To"),
+    ("hours_desk", "At computer (hours)"),
+    ("hours_idle", "Idle (hours)"),
+    ("hours_portal", "On portal (hours)"),
+)
+_CHANGE_COLUMNS = (
+    ("date", "Date"),
+    ("time", "Time"),
+    ("name", "Name"),
+    ("username", "Username"),
+    ("area", "Area"),
+    ("action", "Action"),
+    ("item", "Item"),
+    ("summary", "Summary"),
+)
+_MONTH_COLUMNS = (
+    ("month", "Month"),
+    ("period_from", "From"),
+    ("period_to", "To"),
+    ("name", "Name"),
+    ("username", "Username"),
+    ("roles", "Roles"),
+    ("days_in_period", "Days in period"),
+    ("days_present", "Days present"),
+    ("days_absent", "Days absent"),
+    ("hours_desk", "At computer (hours)"),
+    ("hours_idle", "Idle (hours)"),
+    ("hours_portal", "On portal (hours)"),
+    ("hours_desk_average", "Average at computer (hours)"),
+    ("break_minutes", "Break (minutes)"),
+    ("days_over_break", "Days over break"),
+    ("prayers", "Prayers"),
+    ("meetings", "Meetings"),
+    ("meeting_minutes", "Meeting (minutes)"),
+    ("top_page", "Top page"),
+    ("top_page_hours", "Top page (hours)"),
+)
+
+
+def page_label(path: str | None) -> str:
+    raw = (path or "").split("?", 1)[0].strip()
+    if len(raw) > 1:
+        raw = raw.rstrip("/")
+    if not raw:
+        return "Unknown"
+    if raw.startswith("/finance"):
+        return "Finance"
+    return PAGE_LABELS.get(raw, raw)
+
+
+def _area_label(area: str | None) -> str:
+    key = (area or "").strip()
+    if not key:
+        return ""
+    if key in AREA_LABELS:
+        return AREA_LABELS[key]
+    return " ".join(part.capitalize() for part in key.replace("-", " ").replace("_", " ").split())
+
+
+def _hours(seconds: int) -> float:
+    return round(int(seconds) / 3600, 2)
+
+
+def _minutes(seconds: int) -> float:
+    return round(int(seconds) / 60, 1)
+
+
+def _cairo_stamp(moment: datetime) -> str:
+    return _as_aware(moment).astimezone(CAIRO_TZ).strftime("%Y-%m-%d %H:%M")
+
+
+def _cairo_clock(moment: datetime) -> str:
+    return _as_aware(moment).astimezone(CAIRO_TZ).strftime("%H:%M")
+
+
+def _cairo_day(moment: datetime) -> date:
+    return _as_aware(moment).astimezone(CAIRO_TZ).date()
+
+
+def _yes(flag: bool) -> str:
+    return "Yes" if flag else "No"
+
+
+def _people_index(users: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    indexed: dict[str, dict[str, Any]] = {}
+    for user in users:
+        fields = _user_fields(user)
+        indexed[fields["user_id"]] = {
+            "user_id": fields["user_id"],
+            "name": fields["display_name"],
+            "username": fields["username"],
+            "roles": ", ".join(fields["roles"]),
+        }
+    return indexed
+
+
+def _month_period(year: int, month: int, today: date) -> tuple[date, date]:
+    start = date(year, month, 1)
+    last = date(year, month, calendar.monthrange(year, month)[1])
+    end = min(last, today) if (year, month) == (today.year, today.month) else last
+    if end < start:
+        end = start
+    return start, end
+
+
+def _pages_line(rows: list[dict[str, Any]]) -> str:
+    totals: dict[str, float] = {}
+    for row in rows:
+        hours = float(row.get("hours_desk") or 0)
+        if hours <= 0:
+            continue
+        label = str(row.get("page") or "Unknown")
+        totals[label] = round(totals.get(label, 0) + hours, 2)
+    ranked = sorted(totals.items(), key=lambda item: (-item[1], item[0]))
+    return ", ".join(f"{label} {hours:.2f}h" for label, hours in ranked)
+
+
+def _top_page(rows: list[dict[str, Any]]) -> tuple[str, float]:
+    desk: dict[str, float] = {}
+    portal: dict[str, float] = {}
+    for row in rows:
+        label = str(row.get("page") or "Unknown")
+        desk[label] = round(desk.get(label, 0) + float(row.get("hours_desk") or 0), 2)
+        portal[label] = round(portal.get(label, 0) + float(row.get("hours_portal") or 0), 2)
+    totals = desk if any(value > 0 for value in desk.values()) else portal
+    if not totals:
+        return "", 0
+    label, hours = min(totals.items(), key=lambda item: (-item[1], item[0]))
+    return label, hours
+
+
+def assemble_board_export(
+    users: list[dict[str, Any]],
+    *,
+    sessions: list[dict[str, Any]],
+    slices: list[dict[str, Any]],
+    logins: list[dict[str, Any]],
+    changes: list[dict[str, Any]],
+    now: datetime | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """One row set for every Cairo day, plus a month rollup of those rows."""
+    moment = _as_aware(now or datetime.now(timezone.utc))
+    today = cairo_today(moment)
+    people = _people_index(users)
+    work: list[dict[str, Any]] = []
+    for row in slices:
+        person = people.get(str(row.get("user_id")))
+        started = row.get("started_at")
+        if person is None or not isinstance(started, datetime):
+            continue
+        desk = int(row.get("seconds_desk") or 0)
+        idle = int(row.get("seconds_idle") or 0)
+        portal = int(row.get("seconds_active") or 0)
+        if desk == 0 and idle == 0 and portal == 0:
+            continue
+        ended = row.get("last_ping_at")
+        work.append(
+            {
+                **person,
+                "date": _cairo_day(started).isoformat(),
+                "page": page_label(row.get("page_path")),
+                "started": _cairo_stamp(started),
+                "ended": _cairo_stamp(ended) if isinstance(ended, datetime) else "",
+                "hours_desk": _hours(desk),
+                "hours_idle": _hours(idle),
+                "hours_portal": _hours(portal),
+            }
+        )
+
+    logins_by_day: dict[tuple[str, str], list[datetime]] = {}
+    for row in logins:
+        person_id = str(row.get("user_id") or "")
+        stamp = row.get("logged_in_at")
+        if person_id not in people or not isinstance(stamp, datetime):
+            continue
+        logins_by_day.setdefault((person_id, _cairo_day(stamp).isoformat()), []).append(stamp)
+
+    sessions_by_day: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    session_rows: list[dict[str, Any]] = []
+    for row in sessions:
+        person = people.get(str(row.get("user_id")))
+        day = _as_date(row.get("work_day"))
+        started = row.get("started_at")
+        if person is None or day is None or not isinstance(started, datetime):
+            continue
+        day_key = day.isoformat()
+        sessions_by_day.setdefault((person["user_id"], day_key), []).append(row)
+        ended = row.get("ended_at")
+        still_open = not isinstance(ended, datetime)
+        planned = row.get("planned_seconds")
+        session_rows.append(
+            {
+                **person,
+                "date": day_key,
+                "kind": KIND_LABELS.get(str(row.get("kind")), str(row.get("kind") or "")),
+                "started": _cairo_stamp(started),
+                "ended": "" if still_open else _cairo_stamp(ended),
+                "minutes": _minutes(_row_seconds(row, moment)),
+                "planned_minutes": "" if planned in (None, "") else _minutes(int(planned)),
+                "with_whom": row.get("with_whom") or "",
+                "still_open": _yes(still_open),
+            }
+        )
+
+    day_keys = set(logins_by_day) | set(sessions_by_day)
+    day_keys.update((row["user_id"], row["date"]) for row in work)
+    days: list[dict[str, Any]] = []
+    for person_id, day_key in day_keys:
+        person = people[person_id]
+        stamps = logins_by_day.get((person_id, day_key), [])
+        summary = summarize_day(sessions_by_day.get((person_id, day_key), []), now=moment)
+        day_work = [
+            row for row in work if row["user_id"] == person_id and row["date"] == day_key
+        ]
+        meetings = summary["meetings"]
+        days.append(
+            {
+                **person,
+                "date": day_key,
+                "first_login": _cairo_clock(min(stamps)) if stamps else "",
+                "last_login": _cairo_clock(max(stamps)) if stamps else "",
+                "logins": len(stamps),
+                "hours_desk": round(sum(row["hours_desk"] for row in day_work), 2),
+                "hours_idle": round(sum(row["hours_idle"] for row in day_work), 2),
+                "hours_portal": round(sum(row["hours_portal"] for row in day_work), 2),
+                "break_minutes": _minutes(int(summary["break_seconds"])),
+                "break_budget_minutes": _minutes(BREAK_BUDGET_SECONDS),
+                "over_break": _yes(int(summary["break_seconds"]) > BREAK_BUDGET_SECONDS),
+                "prayers": int(summary["prayer_count"]),
+                "meetings": len(meetings),
+                "meeting_minutes": round(
+                    sum(_minutes(int(item["elapsed_seconds"])) for item in meetings),
+                    1,
+                ),
+                "pages": _pages_line(day_work),
+            }
+        )
+
+    change_rows: list[dict[str, Any]] = []
+    for row in changes:
+        person = people.get(str(row.get("user_id") or row.get("actor_user_id") or ""))
+        stamp = row.get("occurred_at")
+        if person is None or not isinstance(stamp, datetime):
+            continue
+        local = _as_aware(stamp).astimezone(CAIRO_TZ)
+        action = str(row.get("action") or "")
+        change_rows.append(
+            {
+                **person,
+                "date": local.date().isoformat(),
+                "time": local.strftime("%H:%M"),
+                "area": _area_label(row.get("area")),
+                "action": action.replace("_", " ").capitalize(),
+                "item": row.get("entity_label") or "",
+                "summary": row.get("summary") or "",
+            }
+        )
+
+    monthly: list[dict[str, Any]] = []
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in days:
+        grouped.setdefault((row["user_id"], row["date"][:7]), []).append(row)
+    for (person_id, month), rows in grouped.items():
+        person = people[person_id]
+        year_text, month_text = month.split("-", 1)
+        start, end = _month_period(int(year_text), int(month_text), today)
+        in_period = [row for row in rows if start.isoformat() <= row["date"] <= end.isoformat()]
+        if not in_period:
+            continue
+        present = len(in_period)
+        period_days = (end - start).days + 1
+        desk = round(sum(row["hours_desk"] for row in in_period), 2)
+        month_work = [
+            row
+            for row in work
+            if row["user_id"] == person_id and start.isoformat() <= row["date"] <= end.isoformat()
+        ]
+        top_page, top_hours = _top_page(month_work)
+        monthly.append(
+            {
+                **person,
+                "month": month,
+                "period_from": start.isoformat(),
+                "period_to": end.isoformat(),
+                "days_in_period": period_days,
+                "days_present": present,
+                "days_absent": max(0, period_days - present),
+                "hours_desk": desk,
+                "hours_idle": round(sum(row["hours_idle"] for row in in_period), 2),
+                "hours_portal": round(sum(row["hours_portal"] for row in in_period), 2),
+                "hours_desk_average": round(desk / present, 2) if present else 0,
+                "break_minutes": round(sum(row["break_minutes"] for row in in_period), 1),
+                "days_over_break": sum(1 for row in in_period if row["over_break"] == "Yes"),
+                "prayers": sum(int(row["prayers"]) for row in in_period),
+                "meetings": sum(int(row["meetings"]) for row in in_period),
+                "meeting_minutes": round(sum(row["meeting_minutes"] for row in in_period), 1),
+                "top_page": top_page,
+                "top_page_hours": top_hours,
+            }
+        )
+
+    days.sort(key=lambda row: str(row["name"]).casefold())
+    days.sort(key=lambda row: row["date"], reverse=True)
+    session_rows.sort(key=lambda row: (row["date"], row["started"]), reverse=True)
+    work.sort(key=lambda row: (row["name"].casefold(), row["started"]))
+    work.sort(key=lambda row: row["date"], reverse=True)
+    change_rows.sort(key=lambda row: (row["date"], row["time"]), reverse=True)
+    monthly.sort(key=lambda row: str(row["name"]).casefold())
+    monthly.sort(key=lambda row: row["month"], reverse=True)
+    return {
+        "days": days,
+        "sessions": session_rows,
+        "work": work,
+        "changes": change_rows,
+        "monthly": monthly,
+    }
+
+
+def export_tables(
+    payload: dict[str, list[dict[str, Any]]],
+) -> list[tuple[str, list[str], list[list[Any]]]]:
+    specs = (
+        ("Days", _DAY_COLUMNS, payload.get("days") or []),
+        ("Sessions", _SESSION_COLUMNS, payload.get("sessions") or []),
+        ("Work", _WORK_COLUMNS, payload.get("work") or []),
+        ("Changes", _CHANGE_COLUMNS, payload.get("changes") or []),
+        ("Monthly", _MONTH_COLUMNS, payload.get("monthly") or []),
+    )
+    tables: list[tuple[str, list[str], list[list[Any]]]] = []
+    for title, columns, rows in specs:
+        headers = [label for _, label in columns]
+        body = [[row.get(key, "") for key, _ in columns] for row in rows]
+        tables.append((title, headers, body))
+    return tables
+
+
+def away_board_export(
+    conn: psycopg.Connection,
+    *,
+    now: datetime | None = None,
+    role_keys: tuple[str, ...] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    from cashflow_db.repository.auth_users import list_users
+
+    moment = _as_aware(now or datetime.now(timezone.utc))
+    users = users_in_board_scope(list_users(conn), role_keys)
+    ids = [str(row["user_id"]) for row in users]
+    if not ids:
+        return assemble_board_export(
+            users,
+            sessions=[],
+            slices=[],
+            logins=[],
+            changes=[],
+            now=moment,
+        )
+    sessions = client.fetchall(
+        conn,
+        """
+        SELECT away_id, user_id, kind, started_at, ended_at,
+               planned_seconds, with_whom, work_day
+        FROM ops.user_away
+        WHERE user_id = ANY(%s::uuid[])
+        ORDER BY started_at
+        """,
+        (ids,),
+    )
+    slices = client.fetchall(
+        conn,
+        """
+        SELECT user_id, started_at, last_ping_at, seconds_desk, seconds_idle,
+               seconds_active, page_path
+        FROM ops.user_activity_slice
+        WHERE user_id = ANY(%s::uuid[])
+        """,
+        (ids,),
+    )
+    logins = client.fetchall(
+        conn,
+        """
+        SELECT user_id, logged_in_at
+        FROM auth.login_event
+        WHERE user_id = ANY(%s::uuid[])
+        """,
+        (ids,),
+    )
+    changes = client.fetchall(
+        conn,
+        """
+        SELECT actor_user_id AS user_id, occurred_at, action, area,
+               entity_label, summary
+        FROM ops.portal_activity
+        WHERE actor_user_id = ANY(%s::uuid[])
+        ORDER BY occurred_at
+        """,
+        (ids,),
+    )
+    return assemble_board_export(
+        users,
+        sessions=sessions,
+        slices=slices,
+        logins=logins,
+        changes=changes,
+        now=moment,
     )

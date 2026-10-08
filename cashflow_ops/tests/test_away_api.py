@@ -96,6 +96,38 @@ def test_lead_board_is_team_scoped_and_admin_is_not(monkeypatch):
     assert captured["role_keys"] is None
 
 
+def test_export_is_board_roles_and_streams_the_workbook(monkeypatch):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    empty = {"days": [], "sessions": [], "work": [], "changes": [], "monthly": []}
+    captured: dict = {}
+
+    def _export(*_a, **kwargs):
+        captured.update(kwargs)
+        return empty
+
+    for role in ("posting_team", "collector", "second_submission", "finance", "desk"):
+        client = TestClient(_app(_user(role), monkeypatch))
+        assert client.get("/api/away/board/export").status_code == 403, role
+
+    monkeypatch.setattr("cashflow_db.repository.user_away.away_board_export", _export)
+    lead = TestClient(_app(_user("second_submission_lead"), monkeypatch))
+    res = lead.get("/api/away/board/export")
+    assert res.status_code == 200
+    assert "spreadsheetml" in res.headers["content-type"]
+    assert "away_board.xlsx" in res.headers["content-disposition"]
+    assert captured["role_keys"] == ("second_submission", "second_submission_lead")
+    book = load_workbook(BytesIO(res.content))
+    assert book.sheetnames == ["Days", "Sessions", "Work", "Changes", "Monthly"]
+
+    captured.clear()
+    admin = TestClient(_app(_user("ops_admin"), monkeypatch))
+    assert admin.get("/api/away/board/export").status_code == 200
+    assert captured["role_keys"] is None
+
+
 def test_start_maps_rejection_to_400(monkeypatch):
     client = TestClient(_app(_user("posting_team"), monkeypatch))
 
@@ -168,3 +200,5 @@ def test_ui_away_board_roles_and_header_control():
     assert "deskPermissionReport" in heartbeat
     assert "desk_permission" in heartbeat
     assert "board.live" in page or "live.map" in page
+    assert "Download Excel" in page
+    assert "/api/away/board/export" in page
