@@ -46,9 +46,9 @@ function Protected({
   return <>{children}</>
 }
 
-const ADMIN_HOME: Role[] = ['super_admin', 'sub_admin', 'ops_admin']
+const ADMIN_HOME: Role[] = ['super_admin', 'sub_admin', 'ops_admin', 'redteam_leader' as Role]
 
-// Admins open the away board. Every other role opens My day.
+// Admins and the Red team leader open the away board. Every other role opens My day.
 function HomeRedirect() {
   const { user } = useAuth()
   const roles = user?.roles ?? []
@@ -185,7 +185,7 @@ export default function App() {
         <Route
           path="/away"
           element={
-            <Protected roles={['super_admin', 'sub_admin', 'ops_admin', 'second_submission_lead']}>
+            <Protected roles={['super_admin', 'sub_admin', 'ops_admin', 'second_submission_lead', 'redteam_leader' as Role]}>
               <AwayBoardPage />
             </Protected>
           }

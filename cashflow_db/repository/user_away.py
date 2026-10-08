@@ -28,6 +28,7 @@ PRAYER_WARN_WITHIN_SECONDS = 2 * 60
 MEETING_MAX_SECONDS = 24 * 60 * 60
 ADMIN_BOARD_ROLES = frozenset({"super_admin", "sub_admin", "ops_admin"})
 SS_BOARD_ROLES = ("second_submission", "second_submission_lead")
+RED_BOARD_ROLES = ("red_agent",)
 
 
 def cairo_today(moment: datetime | None = None) -> date:
@@ -500,6 +501,8 @@ def board_scope_roles(viewer_roles: list[str] | None) -> tuple[str, ...] | None:
         return None
     if "second_submission_lead" in keys:
         return SS_BOARD_ROLES
+    if "redteam_leader" in keys:
+        return RED_BOARD_ROLES
     raise PermissionError("insufficient away board scope")
 
 

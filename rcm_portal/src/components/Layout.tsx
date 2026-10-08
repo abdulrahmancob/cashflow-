@@ -47,6 +47,7 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
         icon: Timer,
         roles: [
           'desk',
+          'red_agent' as Role,
           'collector',
           'posting_team',
           'second_submission',
@@ -116,7 +117,7 @@ const GROUPS: Array<{ label: string; items: NavItem[] }> = [
         to: '/away',
         label: 'Away board',
         icon: Timer,
-        roles: ['super_admin', 'sub_admin', 'ops_admin', 'second_submission_lead'],
+        roles: ['super_admin', 'sub_admin', 'ops_admin', 'second_submission_lead', 'redteam_leader' as Role],
       },
     ],
   },

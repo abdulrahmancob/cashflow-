@@ -66,12 +66,13 @@ def test_board_is_admin_ops_and_second_submission_lead(monkeypatch):
         "sub_admin",
         "ops_admin",
         "second_submission_lead",
+        "redteam_leader",
     }
-    for role in ("posting_team", "collector", "second_submission", "finance", "analytics_viewer", "desk"):
+    for role in ("posting_team", "collector", "second_submission", "finance", "analytics_viewer", "desk", "red_agent"):
         client = TestClient(_app(_user(role), monkeypatch))
         res = client.get("/api/away/board")
         assert res.status_code == 403, role
-    for role in ("super_admin", "sub_admin", "ops_admin", "second_submission_lead"):
+    for role in ("super_admin", "sub_admin", "ops_admin", "second_submission_lead", "redteam_leader"):
         client = TestClient(_app(_user(role), monkeypatch))
         res = client.get("/api/away/board")
         assert res.status_code == 200, role
@@ -94,6 +95,28 @@ def test_lead_board_is_team_scoped_and_admin_is_not(monkeypatch):
     monkeypatch.setattr("cashflow_db.repository.user_away.away_board", _board)
     assert admin.get("/api/away/board").status_code == 200
     assert captured["role_keys"] is None
+
+
+def test_red_team_leader_board_is_red_agents_only(monkeypatch):
+    captured: dict = {}
+
+    def _board(*_a, **kwargs):
+        captured.update(kwargs)
+        return {"people": [], "live": [], "days": []}
+
+    def _export(*_a, **kwargs):
+        captured.update(kwargs)
+        return {"days": [], "sessions": [], "work": [], "changes": [], "monthly": []}
+
+    leader = TestClient(_app(_user("redteam_leader"), monkeypatch))
+    monkeypatch.setattr("cashflow_db.repository.user_away.away_board", _board)
+    monkeypatch.setattr("cashflow_db.repository.user_away.away_board_export", _export)
+    assert leader.get("/api/away/board").status_code == 200
+    assert captured["role_keys"] == ("red_agent",)
+
+    captured.clear()
+    assert leader.get("/api/away/board/export").status_code == 200
+    assert captured["role_keys"] == ("red_agent",)
 
 
 def test_export_is_board_roles_and_streams_the_workbook(monkeypatch):

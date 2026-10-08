@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from cashflow_ops.security import (
     ROLE_OPS_ADMIN,
+    ROLE_REDTEAM_LEADER,
     ROLE_SECOND_SUBMISSION_LEAD,
     ROLE_SUB_ADMIN,
     ROLE_SUPER,
@@ -29,6 +30,7 @@ BOARD_ROLES = (
     ROLE_SUB_ADMIN,
     ROLE_OPS_ADMIN,
     ROLE_SECOND_SUBMISSION_LEAD,
+    ROLE_REDTEAM_LEADER,
 )
 
 
