@@ -280,7 +280,15 @@ export const analyticsApi = {
   },
 }
 
+const EXPORT_FILENAMES: Record<AnalyticsTeamKey, string> = {
+  second_submission: 'ss-team-analytics.xlsx',
+  eligibility: 'eligibility-team-analytics.xlsx',
+  collection: 'collection-team-analytics.xlsx',
+  submission: 'submission-team-analytics.xlsx',
+}
+
 export async function downloadAnalyticsSheet(opts: {
+  team: AnalyticsTeamKey
   preset: AnalyticsPreset
   dateFrom?: string
   dateTo?: string
@@ -290,6 +298,7 @@ export async function downloadAnalyticsSheet(opts: {
   userId?: string
 }) {
   const p = new URLSearchParams()
+  p.set('team', opts.team)
   p.set('preset', opts.preset)
   if (opts.preset === 'custom') {
     if (opts.dateFrom) p.set('date_from', opts.dateFrom)
@@ -315,7 +324,7 @@ export async function downloadAnalyticsSheet(opts: {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'team-analytics.xlsx'
+  a.download = EXPORT_FILENAMES[opts.team]
   a.click()
   URL.revokeObjectURL(url)
 }

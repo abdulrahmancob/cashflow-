@@ -223,10 +223,11 @@ def analytics_export(
     grain: str | None = Query("month"),
     month: str | None = Query(None),
     user_id: str | None = Query(None),
+    team: str | None = Query(None),
     user: AuthUser = Depends(require_roles(*VIEW_ROLES)),
 ) -> StreamingResponse:
     from cashflow_db.repository import connection, work_analytics
-    from cashflow_ops.analytics_export import export_tables
+    from cashflow_ops.analytics_export import EXPORT_FILENAMES, export_tables
 
     try:
         from openpyxl import Workbook
@@ -240,19 +241,17 @@ def analytics_export(
     start, end = _period_bounds(preset, date_from, date_to)
     try:
         with connection() as conn:
-            teams = work_analytics.visible_teams(user.roles)
+            team_key = work_analytics.resolve_team(user.roles, team)
             summaries = {
-                item["key"]: work_analytics.team_summary(
+                team_key: work_analytics.team_summary(
                     conn,
                     user.roles,
                     start=start,
                     end=end,
-                    team=item["key"],
+                    team=team_key,
                     viewer_id=user.user_id,
                 )
-                for item in teams
             }
-            keys = set(summaries)
             breakdown = (
                 work_analytics.ss_breakdown(
                     conn,
@@ -262,19 +261,19 @@ def analytics_export(
                     month=month,
                     user_id=user_id,
                 )
-                if work_analytics.TEAM_SS in keys
+                if team_key == work_analytics.TEAM_SS
                 else None
             )
             causes = (
                 work_analytics.collection_root_cause_breakdown(
                     conn, user.roles, year=year
                 )
-                if work_analytics.TEAM_COLLECTION in keys
+                if team_key == work_analytics.TEAM_COLLECTION
                 else None
             )
             dead = (
                 work_analytics.collection_dead_root_causes(conn, user.roles)
-                if work_analytics.TEAM_COLLECTION in keys
+                if team_key == work_analytics.TEAM_COLLECTION
                 else None
             )
     except (PermissionError, ValueError) as exc:
@@ -293,7 +292,9 @@ def analytics_export(
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=team-analytics.xlsx"},
+        headers={
+            "Content-Disposition": f"attachment; filename={EXPORT_FILENAMES[team_key]}"
+        },
     )
 
 

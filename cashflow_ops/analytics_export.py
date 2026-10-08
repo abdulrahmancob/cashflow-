@@ -64,6 +64,13 @@ TEAM_COPY: dict[str, dict[str, str]] = {
     },
 }
 
+EXPORT_FILENAMES = {
+    TEAM_SS: "ss-team-analytics.xlsx",
+    TEAM_ELIGIBILITY: "eligibility-team-analytics.xlsx",
+    TEAM_COLLECTION: "collection-team-analytics.xlsx",
+    TEAM_SUBMISSION: "submission-team-analytics.xlsx",
+}
+
 CLAIM_COLUMNS: tuple[tuple[str, str, bool], ...] = (
     ("payment", "Payment", True),
     ("claims", "Claims", False),

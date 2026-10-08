@@ -598,6 +598,7 @@ export function TeamAnalyticsPage() {
           setExporting(true)
           setError('')
           void downloadAnalyticsSheet({
+            team,
             preset,
             dateFrom,
             dateTo,

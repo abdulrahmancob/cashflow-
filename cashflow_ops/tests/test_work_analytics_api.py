@@ -302,9 +302,11 @@ def test_export_streams_workbook_for_view_roles_only(monkeypatch):
         Path(__file__).resolve().parents[2] / "rcm_portal" / "src" / "pages" / "TeamAnalytics.tsx"
     ).read_text(encoding="utf-8")
     assert "Download sheet" in page
-    assert "team-analytics.xlsx" in (
+    analytics_ts = (
         Path(__file__).resolve().parents[2] / "rcm_portal" / "src" / "api" / "analytics.ts"
     ).read_text(encoding="utf-8")
+    assert "ss-team-analytics.xlsx" in analytics_ts
+    assert "p.set('team', opts.team)" in analytics_ts
     assert "exportCsv" not in page
 
     for role in ("posting_team", "finance", "second_submission", "collector"):
@@ -313,21 +315,34 @@ def test_export_streams_workbook_for_view_roles_only(monkeypatch):
         assert res.status_code == 403, role
 
     client = TestClient(_app(_user("ops_admin"), monkeypatch))
-    res = client.get("/api/analytics/export?preset=month&year=2026&grain=month")
+    res = client.get("/api/analytics/export?team=second_submission&preset=month&year=2026&grain=month")
     assert res.status_code == 200
     assert "spreadsheetml" in res.headers["content-type"]
-    assert "team-analytics.xlsx" in res.headers["content-disposition"]
+    assert "ss-team-analytics.xlsx" in res.headers["content-disposition"]
     book = load_workbook(BytesIO(res.content))
-    assert "SS Summary" in book.sheetnames
-    assert "Collection Dead" in book.sheetnames
-    assert "Eligibility People" in book.sheetnames
+    assert book.sheetnames == [
+        "SS Summary",
+        "SS Hours",
+        "SS Outcomes",
+        "SS People",
+        "SS Claim analysis",
+    ]
+
+    coll = client.get("/api/analytics/export?team=collection")
+    assert coll.status_code == 200
+    assert "collection-team-analytics.xlsx" in coll.headers["content-disposition"]
+    coll_book = load_workbook(BytesIO(coll.content))
+    assert "Collection Dead" in coll_book.sheetnames
+    assert "Collection Root causes" in coll_book.sheetnames
+    assert "SS Summary" not in coll_book.sheetnames
 
     lead = TestClient(_app(_user("second_submission_lead"), monkeypatch))
-    lead_res = lead.get("/api/analytics/export")
+    lead_res = lead.get("/api/analytics/export?team=second_submission")
     assert lead_res.status_code == 200
     lead_book = load_workbook(BytesIO(lead_res.content))
     assert "SS People" in lead_book.sheetnames
     assert "Collection Summary" not in lead_book.sheetnames
+    assert lead.get("/api/analytics/export?team=collection").status_code == 403
 
     bad = client.get("/api/analytics/export?user_id=not-a-uuid")
     assert bad.status_code == 400

@@ -23,6 +23,42 @@ def test_formats_match_the_dashboard():
     assert format_money(-20) == "-$20"
 
 
+def test_export_tables_keeps_one_team():
+    ss = {
+        "period": {"start": "2026-10-01", "end": "2026-10-08"},
+        "kpis": {"ss_claims_today": 1},
+        "people": [{"display_name": "Ada", "roles": [], "seconds_today": 0, "seconds_week": 0, "seconds_month": 0}],
+        "charts": {"hours": [], "outcomes": []},
+    }
+    collection = {
+        "period": {"start": "2026-10-01", "end": "2026-10-08"},
+        "kpis": {},
+        "people": [],
+        "charts": {"hours": [], "outcomes": []},
+    }
+    causes = {"year": 2026, "labels": ["Auth delay"], "rows": [], "people": []}
+    dead = {"total": 4, "rows": [{"label": "Auth delay", "count": 3, "percent": 75.0}]}
+
+    ss_names = [title for title, _h, _r in export_tables({"second_submission": ss}, breakdown={"rows": [], "totals": None})]
+    assert ss_names == ["SS Summary", "SS Hours", "SS Outcomes", "SS People", "SS Claim analysis"]
+    assert not any(name.startswith("Collection") or name.startswith("Eligibility") for name in ss_names)
+
+    coll_names = [
+        title
+        for title, _h, _r in export_tables(
+            {"collection": collection}, causes=causes, dead=dead
+        )
+    ]
+    assert coll_names == [
+        "Collection Summary",
+        "Collection Hours",
+        "Collection People",
+        "Collection Root causes",
+        "Collection Root people",
+        "Collection Dead",
+    ]
+
+
 def test_workbook_includes_every_dashboard_section():
     summaries = {
         "second_submission": {
