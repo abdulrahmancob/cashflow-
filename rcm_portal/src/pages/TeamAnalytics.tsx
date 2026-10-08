@@ -11,8 +11,10 @@ import {
   YAxis,
 } from 'recharts'
 import { Download } from 'lucide-react'
+import { ApiError } from '../api/client'
 import {
   analyticsApi,
+  downloadAnalyticsSheet,
   type AnalyticsGrain,
   type AnalyticsPreset,
   type AnalyticsTeamKey,
@@ -43,35 +45,31 @@ const TEAM_SUBMISSION = 'submission' as const
 
 const TEAM_COPY: Record<
   AnalyticsTeamKey,
-  { title: string; subtitle: string; people: string; csv: string }
+  { title: string; subtitle: string; people: string }
 > = {
   second_submission: {
     title: 'Second Submission',
     subtitle: 'Claims counted when the person sets themselves as Submitter. Hours are active time on the system.',
     people:
       'Claims are Submitter = this person. Today / week / month use submission date, not Date of Service. Click a row for daily hours and recent claims.',
-    csv: 'ss-team-analytics.csv',
   },
   eligibility: {
     title: 'Eligibility',
     subtitle: 'Sheet work for the posting team. Collection denied visits are counted on the Collection tab.',
     people:
       'Touched is distinct sheet items this person edited. Completed is terminal sheet status. Click a row for recent edits.',
-    csv: 'eligibility-team-analytics.csv',
   },
   collection: {
     title: 'Collection',
     subtitle: 'Denied-visit collection queue. Counts are today and this month. Sheet eligibility is on the Eligibility tab.',
     people:
       'Edited is distinct claims this person changed. Assigned is claims you assigned them; Finished is how many of those they set a Collection Status on afterwards. Click a row for recent edits.',
-    csv: 'collection-team-analytics.csv',
   },
   submission: {
     title: 'Submission',
     subtitle: 'CPT and ICD audit work. Demo findings are excluded. Resolved includes ignored.',
     people:
       'Touched is distinct audit items this person edited. Resolved is resolved or ignored. Click a row for recent edits.',
-    csv: 'submission-team-analytics.csv',
   },
 }
 
@@ -100,12 +98,6 @@ function formatWhen(iso?: string | null) {
   return d.toLocaleString()
 }
 
-function csvCell(value: string | number) {
-  const text = String(value ?? '')
-  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`
-  return text
-}
-
 function n(value: number | undefined) {
   return Number(value) || 0
 }
@@ -121,125 +113,6 @@ function submissionTouched(p: TeamPerson, suffix: '' | '_today' | '_week' | '_mo
 
 function submissionResolved(p: TeamPerson, suffix: '' | '_today' | '_week' | '_month') {
   return n(p[`cpt_resolved${suffix}` as keyof TeamPerson] as number) + n(p[`icd_resolved${suffix}` as keyof TeamPerson] as number)
-}
-
-function exportCsv(people: TeamPerson[], team: AnalyticsTeamKey, statuses: string[] = []) {
-  const hours = ['Hours today', 'Hours week', 'Hours month']
-  const statusHeaders = [
-    ...statuses.map((label) => `${label} today`),
-    ...statuses.map((label) => `${label} month`),
-  ]
-  const headers =
-    team === TEAM_ELIGIBILITY
-      ? ['Name', 'Roles', ...hours, 'Touched today', 'Touched week', 'Touched month', 'Completed today', 'Completed week', 'Completed month', 'Sheet money']
-      : team === TEAM_COLLECTION
-        ? [
-            'Name',
-            'Roles',
-            'Hours today',
-            'Hours month',
-            'Edited today',
-            'Edited month',
-            'Assigned',
-            'Finished',
-            ...statusHeaders,
-            'Recovered today',
-            'Recovered month',
-            'Money today',
-            'Money month',
-          ]
-        : team === TEAM_SUBMISSION
-          ? ['Name', 'Roles', ...hours, 'Touched today', 'Touched week', 'Touched month', 'Resolved today', 'Resolved week', 'Resolved month', 'CPT resolved', 'ICD resolved']
-          : [
-              'Name',
-              'Roles',
-              ...hours,
-              'Claims today',
-              'Claims week',
-              'Claims month',
-              'Payment',
-              'Paid',
-              'Denied',
-              'Timely Filing',
-              'Pending',
-              'Submitted',
-              'Corrected',
-            ]
-  const lines = [
-    headers.join(','),
-    ...people.map((p) => {
-      const common =
-        team === TEAM_COLLECTION
-          ? [
-              p.display_name,
-              (p.roles || []).join('|'),
-              formatHours(p.seconds_today),
-              formatHours(p.seconds_month),
-            ]
-          : [
-              p.display_name,
-              (p.roles || []).join('|'),
-              formatHours(p.seconds_today),
-              formatHours(p.seconds_week),
-              formatHours(p.seconds_month),
-            ]
-      const rest =
-        team === TEAM_ELIGIBILITY
-          ? [
-              p.elig_touched_today,
-              p.elig_touched_week,
-              p.elig_touched_month,
-              p.elig_completed_today,
-              p.elig_completed_week,
-              p.elig_completed_month,
-              p.elig_money,
-            ]
-          : team === TEAM_COLLECTION
-            ? [
-                p.coll_touched_today,
-                p.coll_touched_month,
-                p.coll_assigned,
-                p.coll_finished,
-                ...statuses.map((label) => statusCount(p, 'today', label)),
-                ...statuses.map((label) => statusCount(p, 'month', label)),
-                p.coll_recovered_today,
-                p.coll_recovered_month,
-                p.coll_money_today,
-                p.coll_money_month,
-              ]
-            : team === TEAM_SUBMISSION
-              ? [
-                  submissionTouched(p, '_today'),
-                  submissionTouched(p, '_week'),
-                  submissionTouched(p, '_month'),
-                  submissionResolved(p, '_today'),
-                  submissionResolved(p, '_week'),
-                  submissionResolved(p, '_month'),
-                  p.cpt_resolved_month,
-                  p.icd_resolved_month,
-                ]
-              : [
-                  p.ss_claims_today,
-                  p.ss_claims_week,
-                  p.ss_claims_month,
-                  p.ss_money,
-                  p.ss_paid,
-                  p.ss_denied,
-                  p.ss_timely_filing,
-                  p.ss_pending,
-                  p.ss_submitted,
-                  p.ss_corrected,
-                ]
-      return [...common, ...rest].map(csvCell).join(',')
-    }),
-  ]
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = TEAM_COPY[team].csv
-  a.click()
-  URL.revokeObjectURL(url)
 }
 
 const PRESETS: Array<{ id: AnalyticsPreset; label: string }> = [
@@ -542,6 +415,7 @@ export function TeamAnalyticsPage() {
   const [data, setData] = useState<TeamSummary | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<TeamUserDetail | null>(null)
   const [detailError, setDetailError] = useState('')
@@ -719,8 +593,25 @@ export function TeamAnalyticsPage() {
       <PageChrome
         title={copy.title}
         subtitle={copy.subtitle}
-        onExport={() => people.length && exportCsv(people, team, statuses)}
-        canExport={people.length > 0}
+        onExport={() => {
+          if (exporting) return
+          setExporting(true)
+          setError('')
+          void downloadAnalyticsSheet({
+            preset,
+            dateFrom,
+            dateTo,
+            year,
+            grain,
+            month: grain === 'day' ? month : undefined,
+            userId: memberId || undefined,
+          })
+            .catch((e) =>
+              setError(e instanceof ApiError ? e.message : 'Could not download the sheet.'),
+            )
+            .finally(() => setExporting(false))
+        }}
+        canExport={!loading && Boolean(data) && !exporting}
       />
 
       <div className="flex flex-wrap gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
@@ -1297,7 +1188,7 @@ function PageChrome({
         disabled={!canExport}
       >
         <Download className="mr-1.5 h-4 w-4" />
-        Export CSV
+        Download sheet
       </Button>
     </div>
   )

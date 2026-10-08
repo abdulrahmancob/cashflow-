@@ -1,4 +1,4 @@
-import { api } from './client'
+import { ApiError, api } from './client'
 
 export type AnalyticsPreset = 'today' | 'week' | 'month' | 'custom'
 export type AnalyticsGrain = 'month' | 'week' | 'day'
@@ -278,4 +278,44 @@ export const analyticsApi = {
     if (opts.userId) p.set('user_id', opts.userId)
     return api<SsBreakdown>(`/api/analytics/ss/breakdown?${p.toString()}`)
   },
+}
+
+export async function downloadAnalyticsSheet(opts: {
+  preset: AnalyticsPreset
+  dateFrom?: string
+  dateTo?: string
+  year?: number
+  grain?: AnalyticsGrain
+  month?: string
+  userId?: string
+}) {
+  const p = new URLSearchParams()
+  p.set('preset', opts.preset)
+  if (opts.preset === 'custom') {
+    if (opts.dateFrom) p.set('date_from', opts.dateFrom)
+    if (opts.dateTo) p.set('date_to', opts.dateTo)
+  }
+  if (opts.year) p.set('year', String(opts.year))
+  p.set('grain', opts.grain || 'month')
+  if (opts.month) p.set('month', opts.month)
+  if (opts.userId) p.set('user_id', opts.userId)
+  const res = await fetch(`/api/analytics/export?${p.toString()}`, {
+    credentials: 'include',
+  })
+  if (!res.ok) {
+    let detail: unknown = res.statusText
+    try {
+      detail = (await res.json()).detail
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(res.status, detail)
+  }
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'team-analytics.xlsx'
+  a.click()
+  URL.revokeObjectURL(url)
 }

@@ -280,6 +280,59 @@ def test_ss_breakdown_bad_grain(monkeypatch):
     assert res.status_code == 400
 
 
+def test_export_streams_workbook_for_view_roles_only(monkeypatch):
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    monkeypatch.setattr(
+        "cashflow_db.repository.work_analytics.collection_root_cause_breakdown",
+        lambda conn, roles, **k: {
+            "year": 2026,
+            "labels": ["Auth delay"],
+            "rows": [],
+            "people": [],
+        },
+    )
+    monkeypatch.setattr(
+        "cashflow_db.repository.work_analytics.collection_dead_root_causes",
+        lambda conn, roles: {"total": 0, "rows": []},
+    )
+    page = (
+        Path(__file__).resolve().parents[2] / "rcm_portal" / "src" / "pages" / "TeamAnalytics.tsx"
+    ).read_text(encoding="utf-8")
+    assert "Download sheet" in page
+    assert "team-analytics.xlsx" in (
+        Path(__file__).resolve().parents[2] / "rcm_portal" / "src" / "api" / "analytics.ts"
+    ).read_text(encoding="utf-8")
+    assert "exportCsv" not in page
+
+    for role in ("posting_team", "finance", "second_submission", "collector"):
+        client = TestClient(_app(_user(role), monkeypatch))
+        res = client.get("/api/analytics/export")
+        assert res.status_code == 403, role
+
+    client = TestClient(_app(_user("ops_admin"), monkeypatch))
+    res = client.get("/api/analytics/export?preset=month&year=2026&grain=month")
+    assert res.status_code == 200
+    assert "spreadsheetml" in res.headers["content-type"]
+    assert "team-analytics.xlsx" in res.headers["content-disposition"]
+    book = load_workbook(BytesIO(res.content))
+    assert "SS Summary" in book.sheetnames
+    assert "Collection Dead" in book.sheetnames
+    assert "Eligibility People" in book.sheetnames
+
+    lead = TestClient(_app(_user("second_submission_lead"), monkeypatch))
+    lead_res = lead.get("/api/analytics/export")
+    assert lead_res.status_code == 200
+    lead_book = load_workbook(BytesIO(lead_res.content))
+    assert "SS People" in lead_book.sheetnames
+    assert "Collection Summary" not in lead_book.sheetnames
+
+    bad = client.get("/api/analytics/export?user_id=not-a-uuid")
+    assert bad.status_code == 400
+
+
 def test_team_user_404_when_out_of_scope(monkeypatch):
     client = TestClient(_app(_user("ops_admin"), monkeypatch, detail=None))
     res = client.get(f"/api/analytics/team/{OTHER_ID}")

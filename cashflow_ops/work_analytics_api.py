@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import io
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from cashflow_ops.security import (
@@ -210,6 +212,89 @@ def collection_root_causes(
             )
     except (PermissionError, ValueError) as exc:
         raise _analytics_error(exc) from exc
+
+
+@router.get("/export")
+def analytics_export(
+    preset: str | None = Query("month"),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    year: int | None = Query(None),
+    grain: str | None = Query("month"),
+    month: str | None = Query(None),
+    user_id: str | None = Query(None),
+    user: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+) -> StreamingResponse:
+    from cashflow_db.repository import connection, work_analytics
+    from cashflow_ops.analytics_export import export_tables
+
+    try:
+        from openpyxl import Workbook
+    except ImportError as exc:
+        raise HTTPException(status_code=500, detail="openpyxl required") from exc
+    if user_id:
+        try:
+            UUID(user_id)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail="invalid user_id") from exc
+    start, end = _period_bounds(preset, date_from, date_to)
+    try:
+        with connection() as conn:
+            teams = work_analytics.visible_teams(user.roles)
+            summaries = {
+                item["key"]: work_analytics.team_summary(
+                    conn,
+                    user.roles,
+                    start=start,
+                    end=end,
+                    team=item["key"],
+                    viewer_id=user.user_id,
+                )
+                for item in teams
+            }
+            keys = set(summaries)
+            breakdown = (
+                work_analytics.ss_breakdown(
+                    conn,
+                    user.roles,
+                    grain=grain,
+                    year=year,
+                    month=month,
+                    user_id=user_id,
+                )
+                if work_analytics.TEAM_SS in keys
+                else None
+            )
+            causes = (
+                work_analytics.collection_root_cause_breakdown(
+                    conn, user.roles, year=year
+                )
+                if work_analytics.TEAM_COLLECTION in keys
+                else None
+            )
+            dead = (
+                work_analytics.collection_dead_root_causes(conn, user.roles)
+                if work_analytics.TEAM_COLLECTION in keys
+                else None
+            )
+    except (PermissionError, ValueError) as exc:
+        raise _analytics_error(exc) from exc
+    workbook = Workbook(write_only=True)
+    for title, headers, rows in export_tables(
+        summaries, breakdown=breakdown, causes=causes, dead=dead
+    ):
+        sheet = workbook.create_sheet(title)
+        sheet.append(headers)
+        for row in rows:
+            sheet.append(row)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=team-analytics.xlsx"},
+    )
 
 
 @router.get("/team/{user_id}")
