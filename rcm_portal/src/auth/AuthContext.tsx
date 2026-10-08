@@ -17,6 +17,7 @@ import {
   type User,
 } from '../api/client'
 import { fetchTrackerMe, type TrackerPerms } from '../api/tracker'
+import { announceTabClosed } from './useActivityHeartbeat'
 import { fetchChecksMe, type ChecksPerms } from '../api/checksDeposits'
 
 type AuthState = {
@@ -97,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    announceTabClosed()
     await apiLogout()
     clearSession()
   }, [clearSession])

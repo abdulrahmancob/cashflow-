@@ -62,6 +62,7 @@ def create_access_token(
     roles: list[str],
     display_name: str,
     ttl_seconds: int | None = None,
+    remember: bool = False,
 ) -> str:
     now = int(time.time())
     payload = {
@@ -71,6 +72,7 @@ def create_access_token(
         "roles": roles,
         "iat": now,
         "exp": now + (ttl_seconds or JWT_TTL_SECONDS),
+        "rem": bool(remember),
     }
     header = {"alg": "HS256", "typ": "JWT"}
     h = _b64url(json.dumps(header, separators=(",", ":")).encode())
@@ -141,6 +143,36 @@ def set_session_cookie(
         path="/",
         max_age=JWT_TTL_SECONDS if remember else None,
     )
+
+
+def renew_session_if_due(request: Request, response: Response, user: "AuthUser") -> bool:
+    """Slide the cookie session forward for someone actively working.
+
+    Only cookie sessions past half their lifetime are renewed, so an unattended computer
+    still signs out once the last real activity is 12 hours old.
+    """
+    if request.headers.get("authorization"):
+        return False
+    token = (request.cookies.get(SESSION_COOKIE_NAME) or "").strip()
+    if not token:
+        return False
+    try:
+        payload = decode_access_token(token)
+    except HTTPException:
+        return False
+    remaining = int(payload.get("exp", 0)) - int(time.time())
+    if remaining > JWT_TTL_SECONDS // 2:
+        return False
+    remember = bool(payload.get("rem"))
+    fresh = create_access_token(
+        user_id=user.user_id,
+        username=user.username,
+        roles=list(user.roles),
+        display_name=user.display_name,
+        remember=remember,
+    )
+    set_session_cookie(response, request, fresh, remember=remember)
+    return True
 
 
 def clear_session_cookie(response: Response, request: Request) -> None:

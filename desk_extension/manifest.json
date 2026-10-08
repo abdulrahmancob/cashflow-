@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Remitarc Desk Tracker",
+  "version": "1.0.0",
+  "description": "Tells the Remitarc away board whether you are active, idle, or locked. It never reads sites, tabs, or what you type.",
+  "permissions": ["idle", "alarms", "storage"],
+  "host_permissions": ["https://remitarc.cobsolution.cloud/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://remitarc.cobsolution.cloud/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Remitarc Desk Tracker",
+    "default_popup": "popup.html"
+  }
+}

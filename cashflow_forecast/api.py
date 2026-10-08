@@ -122,6 +122,7 @@ for _name, _module in (
     ("admin_db", "cashflow_ops.admin_db_api"),
     ("analytics", "cashflow_ops.work_analytics_api"),
     ("away", "cashflow_ops.away_api"),
+    ("desk", "cashflow_ops.desk_api"),
     ("billing_analysis", "cashflow_ops.billing_analysis_api"),
     ("activity", "cashflow_ops.activity_api"),
     ("collection", "cashflow_ops.collection_api"),

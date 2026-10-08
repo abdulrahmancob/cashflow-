@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,7 @@ from cashflow_ops.security import (
     ROLE_SUPER,
     AuthUser,
     get_current_user,
+    renew_session_if_due,
     require_roles,
 )
 
@@ -56,6 +57,10 @@ class HeartbeatBody(BaseModel):
     presence: bool = False
     closed: bool = False
     desk_permission: str | None = Field(default=None, max_length=32)
+    state: str | None = Field(default=None, max_length=16)
+    visible: bool | None = None
+    tab_id: str | None = Field(default=None, max_length=64)
+    client_at: datetime | None = None
 
 
 def _period_bounds(
@@ -71,10 +76,14 @@ def _period_bounds(
 @router.post("/heartbeat")
 def heartbeat(
     body: HeartbeatBody,
+    request: Request,
+    response: Response,
     user: AuthUser = Depends(get_current_user),
 ) -> dict[str, Any]:
     from cashflow_db.repository import connection, work_analytics
 
+    if body.visible and body.state == "active" and not body.closed:
+        renew_session_if_due(request, response, user)
     with connection() as conn:
         return _ser(
             work_analytics.record_heartbeat(
@@ -85,6 +94,10 @@ def heartbeat(
                 presence=body.presence,
                 closed=body.closed,
                 desk_permission=body.desk_permission,
+                state=body.state,
+                visible=body.visible,
+                tab_id=body.tab_id,
+                client_at=body.client_at,
             )
         )
 

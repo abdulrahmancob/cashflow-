@@ -169,6 +169,32 @@ def test_heartbeat_forwards_closed(monkeypatch):
     assert seen["presence"] is False
 
 
+def test_heartbeat_forwards_explicit_state(monkeypatch):
+    seen: dict = {}
+
+    def fake(conn, user_id, **kwargs):
+        seen.update(kwargs)
+        return {"ok": True, "counted": True, "action": "extend", "idle_grace_seconds": 300}
+
+    client = TestClient(_app(_user("collector"), monkeypatch))
+    monkeypatch.setattr("cashflow_db.repository.work_analytics.record_heartbeat", fake)
+    res = client.post(
+        "/api/analytics/heartbeat",
+        json={
+            "state": "unknown",
+            "visible": False,
+            "tab_id": "tab-1",
+            "client_at": "2026-10-09T10:00:00+00:00",
+        },
+    )
+    assert res.status_code == 200
+    assert res.json()["idle_grace_seconds"] == 300
+    assert seen["state"] == "unknown"
+    assert seen["visible"] is False
+    assert seen["tab_id"] == "tab-1"
+    assert seen["client_at"].year == 2026
+
+
 def test_team_forbidden_for_posting_finance_ss(monkeypatch):
     for role in ("posting_team", "finance", "second_submission", "collector"):
         client = TestClient(_app(_user(role), monkeypatch))

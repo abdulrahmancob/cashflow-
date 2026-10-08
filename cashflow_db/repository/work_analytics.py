@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import psycopg
 
@@ -24,8 +25,7 @@ from cashflow_db.repository.eligibility import (
 from cashflow_db.util import parse_money
 
 SLICE_GAP_SECONDS = 120
-IDLE_CAP_SECONDS = 3 * 60 * 60
-DESK_PERMISSIONS = frozenset({"watching", "prompt", "denied", "unsupported"})
+CAIRO_TZ = ZoneInfo("Africa/Cairo")
 SCOPE_ALL = "all"
 SCOPE_OPS = "ops"
 SCOPE_SS = "second_submission"
@@ -446,7 +446,7 @@ def resolve_period(
     date_to: date | None = None,
     today: date | None = None,
 ) -> tuple[datetime, datetime]:
-    today = today or date.today()
+    today = today or datetime.now(CAIRO_TZ).date()
     kind = (preset or "month").strip().lower()
     if kind == "today":
         start_d = today
@@ -462,9 +462,13 @@ def resolve_period(
     else:
         start_d = today.replace(day=1)
         end_d = today
-    start = datetime.combine(start_d, time.min, tzinfo=timezone.utc)
-    end = datetime.combine(end_d + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    start = datetime.combine(start_d, time.min, tzinfo=CAIRO_TZ)
+    end = datetime.combine(end_d + timedelta(days=1), time.min, tzinfo=CAIRO_TZ)
     return start, end
+
+
+def _cairo_midnight(day: date) -> datetime:
+    return datetime.combine(day, time.min, tzinfo=CAIRO_TZ)
 
 
 def _as_aware(dt: datetime) -> datetime:
@@ -497,39 +501,6 @@ def plan_heartbeat(
     return {"action": "open", "add_seconds": 0}
 
 
-def idle_seconds_for_gap(delta_seconds: float, away_overlap_seconds: int = 0) -> int:
-    """A return after a short empty stretch counts as idle. A long gap does not."""
-    delta = int(delta_seconds)
-    if delta <= SLICE_GAP_SECONDS or delta >= IDLE_CAP_SECONDS:
-        return 0
-    return max(0, delta - max(0, int(away_overlap_seconds)))
-
-
-def away_overlap_seconds(
-    start: datetime,
-    end: datetime,
-    sessions: list[dict[str, Any]],
-) -> int:
-    window_start = _as_aware(start)
-    window_end = _as_aware(end)
-    if window_end <= window_start:
-        return 0
-    total = 0
-    for row in sessions:
-        began = row.get("started_at")
-        if not isinstance(began, datetime):
-            continue
-        began = _as_aware(began)
-        finished = row.get("ended_at")
-        stopped = _as_aware(finished) if isinstance(finished, datetime) else window_end
-        lo = max(window_start, began)
-        hi = min(window_end, stopped)
-        if hi > lo:
-            total += int((hi - lo).total_seconds())
-    span = int((window_end - window_start).total_seconds())
-    return min(total, span)
-
-
 def record_heartbeat(
     conn: psycopg.Connection,
     user_id: str,
@@ -539,119 +510,33 @@ def record_heartbeat(
     presence: bool = False,
     closed: bool = False,
     desk_permission: str | None = None,
+    state: str | None = None,
+    visible: bool | None = None,
+    tab_id: str | None = None,
+    client_at: datetime | None = None,
+    source: str = "tab",
+    version: str | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    moment = _as_aware(now or datetime.now(timezone.utc))
-    permission = (desk_permission or "").strip().lower()
-    if permission in DESK_PERMISSIONS:
-        client.execute(
-            conn,
-            """
-            UPDATE auth.app_user
-            SET desk_permission = %s
-            WHERE user_id = %s::uuid
-            """,
-            (permission, user_id),
-        )
-    path = None if presence or closed else ((page_path or "").strip()[:200] or None)
-    last = client.fetchone(
+    """Portal and extension pings. An open away session is read on the server, not from idle."""
+    from cashflow_db.repository import presence as live_presence
+
+    del idle
+    return live_presence.record_ping(
         conn,
-        """
-        SELECT slice_id, last_ping_at, seconds_active
-        FROM ops.user_activity_slice
-        WHERE user_id = %s::uuid
-        ORDER BY last_ping_at DESC
-        LIMIT 1
-        """,
-        (user_id,),
+        user_id,
+        source=source,
+        state=state,
+        visible=visible,
+        tab_id=tab_id,
+        page_path=page_path,
+        presence=presence,
+        closed=closed,
+        desk_permission=desk_permission,
+        client_at=client_at,
+        version=version,
+        now=now,
     )
-    if closed:
-        if not last:
-            return {"ok": True, "counted": False, "action": "skip", "add_seconds": 0, "add_desk_seconds": 0}
-        client.execute(
-            conn,
-            """
-            UPDATE ops.user_activity_slice
-            SET last_ping_at = %s
-            WHERE slice_id = %s
-            """,
-            (moment, last["slice_id"]),
-        )
-        return {
-            "ok": True,
-            "counted": True,
-            "action": "close",
-            "slice_id": str(last["slice_id"]),
-            "add_seconds": 0,
-            "add_desk_seconds": 0,
-            "add_idle_seconds": 0,
-        }
-    plan = plan_heartbeat(last, moment, idle=idle)
-    if plan["action"] == "skip":
-        return {"ok": True, "counted": False, "action": "skip"}
-    active_add = 0 if presence else plan["add_seconds"]
-    desk_add = plan["add_seconds"]
-    if plan["action"] == "extend" and last:
-        client.execute(
-            conn,
-            """
-            UPDATE ops.user_activity_slice
-            SET last_ping_at = %s,
-                seconds_active = seconds_active + %s,
-                seconds_desk = seconds_desk + %s,
-                page_path = COALESCE(%s, page_path)
-            WHERE slice_id = %s
-            """,
-            (moment, active_add, desk_add, path, last["slice_id"]),
-        )
-        return {
-            "ok": True,
-            "counted": True,
-            "action": "extend",
-            "slice_id": str(last["slice_id"]),
-            "add_seconds": active_add,
-            "add_desk_seconds": desk_add,
-            "add_idle_seconds": 0,
-        }
-    idle_add = 0
-    last_ping = last.get("last_ping_at") if last else None
-    if isinstance(last_ping, datetime):
-        last_ping = _as_aware(last_ping)
-        delta = (moment - last_ping).total_seconds()
-        if SLICE_GAP_SECONDS < delta < IDLE_CAP_SECONDS:
-            aways = client.fetchall(
-                conn,
-                """
-                SELECT started_at, ended_at
-                FROM ops.user_away
-                WHERE user_id = %s::uuid
-                  AND started_at < %s
-                  AND (ended_at IS NULL OR ended_at > %s)
-                """,
-                (user_id, moment, last_ping),
-            )
-            idle_add = idle_seconds_for_gap(delta, away_overlap_seconds(last_ping, moment, aways))
-    slice_id = uuid4()
-    client.execute(
-        conn,
-        """
-        INSERT INTO ops.user_activity_slice (
-            slice_id, user_id, started_at, last_ping_at,
-            seconds_active, seconds_desk, seconds_idle, page_path
-        )
-        VALUES (%s, %s::uuid, %s, %s, 0, 0, %s, %s)
-        """,
-        (slice_id, user_id, moment, moment, idle_add, path),
-    )
-    return {
-        "ok": True,
-        "counted": True,
-        "action": "open",
-        "slice_id": str(slice_id),
-        "add_seconds": 0,
-        "add_desk_seconds": 0,
-        "add_idle_seconds": idle_add,
-    }
 
 
 def canonical_collection_status(label: str | None) -> str:
@@ -1110,20 +995,27 @@ def _hours_rows(
                    WHERE started_at >= %s AND started_at < %s
                ), 0)::int AS seconds_period,
                COALESCE(SUM(seconds_active) FILTER (
-                   WHERE started_at >= %s::date
+                   WHERE started_at >= %s
                ), 0)::int AS seconds_today,
                COALESCE(SUM(seconds_active) FILTER (
-                   WHERE started_at >= %s::date
+                   WHERE started_at >= %s
                ), 0)::int AS seconds_week,
                COALESCE(SUM(seconds_active) FILTER (
-                   WHERE started_at >= %s::date
+                   WHERE started_at >= %s
                ), 0)::int AS seconds_month,
                MAX(last_ping_at) AS last_activity_at
         FROM ops.user_activity_slice
         WHERE user_id = ANY(%s::uuid[])
         GROUP BY user_id
         """,
-        (start, end, today, week_start, month_start, user_ids),
+        (
+            start,
+            end,
+            _cairo_midnight(today),
+            _cairo_midnight(week_start),
+            _cairo_midnight(month_start),
+            user_ids,
+        ),
     )
 
 
@@ -2248,7 +2140,8 @@ def user_detail(
     hours = client.fetchall(
         conn,
         """
-        SELECT started_at::date AS day, COALESCE(SUM(seconds_active), 0)::int AS seconds
+        SELECT (started_at AT TIME ZONE 'Africa/Cairo')::date AS day,
+               COALESCE(SUM(seconds_active), 0)::int AS seconds
         FROM ops.user_activity_slice
         WHERE user_id = %s::uuid
           AND started_at >= %s AND started_at < %s

@@ -36,6 +36,13 @@ def cairo_today(moment: datetime | None = None) -> date:
     return now.astimezone(CAIRO_TZ).date()
 
 
+def cairo_day_bounds(day: date) -> tuple[datetime, datetime]:
+    """A Cairo calendar day as a half-open timestamp range, so indexes on the column apply."""
+    start = datetime.combine(day, datetime.min.time(), tzinfo=CAIRO_TZ)
+    end = datetime.combine(day + timedelta(days=1), datetime.min.time(), tzinfo=CAIRO_TZ)
+    return start, end
+
+
 def _as_aware(moment: datetime) -> datetime:
     if moment.tzinfo is None:
         return moment.replace(tzinfo=timezone.utc)
@@ -134,6 +141,7 @@ def _public_session(row: dict[str, Any], now: datetime) -> dict[str, Any]:
         "planned_seconds": row.get("planned_seconds"),
         "with_whom": row.get("with_whom"),
         "elapsed_seconds": _row_seconds(row, now),
+        "auto_closed": bool(row.get("auto_closed")),
         "work_day": row["work_day"].isoformat()
         if isinstance(row.get("work_day"), date)
         else str(row.get("work_day") or ""),
@@ -204,7 +212,7 @@ def _day_rows(
         conn,
         """
         SELECT away_id, user_id, kind, started_at, ended_at,
-               planned_seconds, with_whom, work_day
+               planned_seconds, with_whom, work_day, auto_closed
         FROM ops.user_away
         WHERE user_id = %s::uuid
           AND (work_day = %s OR ended_at IS NULL)
@@ -221,6 +229,7 @@ def my_away(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     moment = _as_aware(now or datetime.now(timezone.utc))
+    close_stale_away(conn, user_id=user_id, now=moment)
     rows = _day_rows(conn, user_id, cairo_today(moment))
     return summarize_day(rows, now=moment)
 
@@ -236,6 +245,7 @@ def start_away(
 ) -> dict[str, Any]:
     moment = _as_aware(now or datetime.now(timezone.utc))
     day = cairo_today(moment)
+    close_stale_away(conn, user_id=user_id, now=moment)
     rows = _day_rows(conn, user_id, day)
     spec = validate_start(
         kind=kind,
@@ -301,6 +311,69 @@ def end_away(
         (moment, row["away_id"]),
     )
     return my_away(conn, user_id, now=moment)
+
+
+STALE_BREAK_GRACE_SECONDS = 30 * 60
+STALE_MEETING_GRACE_SECONDS = 60 * 60
+
+
+def stale_cap(row: dict[str, Any]) -> datetime | None:
+    """When a forgotten session is closed: past its limit, and never past its own day."""
+    started = row.get("started_at")
+    if not isinstance(started, datetime):
+        return None
+    start = _as_aware(started)
+    kind = row.get("kind")
+    if kind == KIND_BREAK:
+        cap = start + timedelta(seconds=BREAK_BUDGET_SECONDS + STALE_BREAK_GRACE_SECONDS)
+    elif kind == KIND_PRAYER:
+        cap = start + timedelta(seconds=2 * PRAYER_MAX_SECONDS)
+    else:
+        planned = int(row.get("planned_seconds") or 0)
+        cap = start + timedelta(seconds=planned + STALE_MEETING_GRACE_SECONDS)
+    day = _as_date(row.get("work_day")) or start.astimezone(CAIRO_TZ).date()
+    day_end = datetime.combine(day + timedelta(days=1), datetime.min.time(), tzinfo=CAIRO_TZ)
+    return max(start, min(cap, day_end))
+
+
+def close_stale_away(
+    conn: psycopg.Connection,
+    *,
+    user_id: str | None = None,
+    user_ids: list[str] | None = None,
+    now: datetime | None = None,
+) -> int:
+    """End forgotten sessions at their cap so nobody stays away into the next day."""
+    moment = _as_aware(now or datetime.now(timezone.utc))
+    ids = [user_id] if user_id else user_ids
+    if ids is not None and not ids:
+        return 0
+    extra, params = _id_clause(ids)
+    rows = client.fetchall(
+        conn,
+        f"""
+        SELECT away_id, kind, started_at, planned_seconds, work_day
+        FROM ops.user_away
+        WHERE ended_at IS NULL{extra}
+        """,
+        params,
+    )
+    closed = 0
+    for row in rows:
+        cap = stale_cap(row)
+        if cap is None or cap > moment:
+            continue
+        client.execute(
+            conn,
+            """
+            UPDATE ops.user_away
+            SET ended_at = %s, auto_closed = true
+            WHERE away_id = %s AND ended_at IS NULL
+            """,
+            (cap, row["away_id"]),
+        )
+        closed += 1
+    return closed
 
 
 def _as_date(value: Any) -> date | None:
@@ -393,12 +466,23 @@ def assemble_board(
     activity: list[dict[str, Any]] | None = None,
     last_pings: dict[str, datetime] | None = None,
     logins: list[dict[str, Any]] | None = None,
+    presence: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Selected-day cards stay on that day. Live is whoever is away right now."""
+    from cashflow_db.repository import presence as live_presence
+
     moment = _as_aware(now)
     is_today = selected == today
-    present = online_ids or set()
-    seen_at = last_pings or {}
+    present = set(online_ids or set())
+    seen_at = dict(last_pings or {})
+    if presence is not None:
+        for user in users:
+            key = str(user["user_id"])
+            seen = live_presence.last_seen_at(presence.get(key))
+            if seen is not None:
+                seen_at[key] = seen
+            if live_presence.live_status(presence.get(key), moment)["online"]:
+                present.add(key)
     logged_in: dict[str, str] = {}
     for row in logins or []:
         stamp = row.get("logged_in_at")
@@ -410,6 +494,7 @@ def assemble_board(
         str(row["user_id"]): {
             "seconds_desk": int(row.get("seconds_desk") or 0),
             "seconds_idle": int(row.get("seconds_idle") or 0),
+            "seconds_unverified": int(row.get("seconds_unverified") or 0),
         }
         for row in activity or []
     }
@@ -429,7 +514,10 @@ def assemble_board(
             summary["warning"] = "none"
         summary["work_day"] = selected.isoformat()
         away_now = bool(show_open)
-        portal_open = uid in present
+        portal_open = is_today and uid in present
+        live = None
+        if presence is not None and is_today:
+            live = live_presence.live_status(presence.get(uid), moment)
         people.append(
             {
                 **_user_fields(user),
@@ -444,6 +532,13 @@ def assemble_board(
                 ),
                 "seconds_desk": desk_by_user.get(uid, {}).get("seconds_desk", 0),
                 "seconds_idle": desk_by_user.get(uid, {}).get("seconds_idle", 0),
+                "seconds_unverified": desk_by_user.get(uid, {}).get("seconds_unverified", 0),
+                "live_status": live["status"] if live else None,
+                "live_since": live["since"] if live else None,
+                "live_source": live["source"] if live else None,
+                "tracker": live_presence.tracker_health(
+                    (presence or {}).get(uid), user.get("desk_permission") or None
+                ),
                 "logged_in_at": logged_in.get(uid),
                 **summary,
             }
@@ -459,13 +554,13 @@ def assemble_board(
         return (group, str(person["display_name"]).casefold())
 
     people.sort(key=_order)
-    live = []
+    live_rows = []
     for row in open_sessions:
         user = active.get(str(row.get("user_id")))
         if not user or row.get("ended_at") is not None:
             continue
         public = _public_session(row, moment)
-        live.append(
+        live_rows.append(
             {
                 "user_id": str(user["user_id"]),
                 "display_name": _user_fields(user)["display_name"],
@@ -475,7 +570,7 @@ def assemble_board(
                 "started_at": public["started_at"],
             }
         )
-    live.sort(key=lambda item: str(item["display_name"]).casefold())
+    live_rows.sort(key=lambda item: str(item["display_name"]).casefold())
     days = []
     for row in day_counts:
         day = _as_date(row.get("work_day"))
@@ -489,7 +584,7 @@ def assemble_board(
         "break_budget_seconds": BREAK_BUDGET_SECONDS,
         "prayer_limit": PRAYER_LIMIT,
         "people": people,
-        "live": live,
+        "live": live_rows,
         "days": days,
     }
 
@@ -522,6 +617,46 @@ def users_in_board_scope(
     return [row for row in active if allowed.intersection(row.get("roles") or [])]
 
 
+def person_in_board_scope(
+    conn: psycopg.Connection,
+    viewer_roles: list[str] | None,
+    target_id: str,
+) -> bool:
+    from cashflow_db.repository.auth_users import list_users
+
+    scope = board_scope_roles(viewer_roles)
+    return any(
+        str(row["user_id"]) == str(target_id)
+        for row in users_in_board_scope(list_users(conn), scope)
+    )
+
+
+def my_presence(
+    conn: psycopg.Connection,
+    user_id: str,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """What the board shows for this person right now, and which tracker feeds it."""
+    from cashflow_db.repository import presence as live_presence
+
+    moment = _as_aware(now or datetime.now(timezone.utc))
+    row = live_presence.presence_rows(conn, [user_id]).get(str(user_id))
+    permission = client.fetchone(
+        conn,
+        "SELECT desk_permission FROM auth.app_user WHERE user_id = %s::uuid",
+        (user_id,),
+    )
+    live = live_presence.live_status(row, moment)
+    return {
+        **live,
+        "tracker": live_presence.tracker_health(
+            row, (permission or {}).get("desk_permission") or None
+        ),
+        "idle_grace_seconds": live_presence.IDLE_GRACE_SECONDS,
+    }
+
+
 def _id_clause(
     user_ids: list[str] | None,
     *,
@@ -545,14 +680,18 @@ def away_board(
     moment = _as_aware(now or datetime.now(timezone.utc))
     today = cairo_today(moment)
     selected = day or today
+    from cashflow_db.repository import presence as live_presence
+
     users = users_in_board_scope(list_users(conn), role_keys)
     scoped_ids = [str(row["user_id"]) for row in users]
+    close_stale_away(conn, user_ids=scoped_ids, now=moment)
+    day_start, day_end = cairo_day_bounds(selected)
     day_extra, day_params = _id_clause(scoped_ids)
     day_sessions = client.fetchall(
         conn,
         f"""
         SELECT away_id, user_id, kind, started_at, ended_at,
-               planned_seconds, with_whom, work_day
+               planned_seconds, with_whom, work_day, auto_closed
         FROM ops.user_away
         WHERE work_day = %s{day_extra}
         ORDER BY started_at
@@ -564,7 +703,7 @@ def away_board(
         conn,
         f"""
         SELECT away_id, user_id, kind, started_at, ended_at,
-               planned_seconds, with_whom, work_day
+               planned_seconds, with_whom, work_day, auto_closed
         FROM ops.user_away
         WHERE ended_at IS NULL{open_extra}
         ORDER BY started_at
@@ -583,17 +722,16 @@ def away_board(
         """,
         count_params,
     )
-    ping_extra, ping_params = _id_clause(scoped_ids, leading_and=False)
-    ping_where = f"WHERE {ping_extra}" if ping_extra else ""
+    ping_extra, ping_params = _id_clause(scoped_ids)
     pings = client.fetchall(
         conn,
         f"""
         SELECT user_id, max(last_ping_at) AS last_ping_at
         FROM ops.user_activity_slice
-        {ping_where}
+        WHERE last_ping_at >= %s{ping_extra}
         GROUP BY user_id
         """,
-        ping_params,
+        (moment - timedelta(days=1), *ping_params),
     )
     activity_extra, activity_params = _id_clause(scoped_ids)
     activity = client.fetchall(
@@ -601,12 +739,13 @@ def away_board(
         f"""
         SELECT user_id,
                COALESCE(SUM(seconds_desk), 0)::int AS seconds_desk,
-               COALESCE(SUM(seconds_idle), 0)::int AS seconds_idle
+               COALESCE(SUM(seconds_idle), 0)::int AS seconds_idle,
+               COALESCE(SUM(seconds_unverified), 0)::int AS seconds_unverified
         FROM ops.user_activity_slice
-        WHERE (started_at AT TIME ZONE 'Africa/Cairo')::date = %s{activity_extra}
+        WHERE started_at >= %s AND started_at < %s{activity_extra}
         GROUP BY user_id
         """,
-        (selected, *activity_params),
+        (day_start, day_end, *activity_params),
     )
     login_extra, login_params = _id_clause(scoped_ids)
     logins = client.fetchall(
@@ -614,10 +753,10 @@ def away_board(
         f"""
         SELECT user_id, min(logged_in_at) AS logged_in_at
         FROM auth.login_event
-        WHERE (logged_in_at AT TIME ZONE 'Africa/Cairo')::date = %s{login_extra}
+        WHERE logged_in_at >= %s AND logged_in_at < %s{login_extra}
         GROUP BY user_id
         """,
-        (selected, *login_params),
+        (day_start, day_end, *login_params),
     )
     last_pings: dict[str, datetime] = {}
     for row in pings:
@@ -638,6 +777,7 @@ def away_board(
         activity=activity,
         last_pings=last_pings,
         logins=logins,
+        presence=live_presence.presence_rows(conn, scoped_ids),
     )
 
 
@@ -688,6 +828,7 @@ _DAY_COLUMNS = (
     ("logins", "Logins"),
     ("hours_desk", "At computer (hours)"),
     ("hours_idle", "Idle (hours)"),
+    ("hours_unverified", "Unverified (hours)"),
     ("hours_portal", "On portal (hours)"),
     ("break_minutes", "Break (minutes)"),
     ("break_budget_minutes", "Break budget (minutes)"),
@@ -708,6 +849,7 @@ _SESSION_COLUMNS = (
     ("planned_minutes", "Planned (minutes)"),
     ("with_whom", "With whom"),
     ("still_open", "Still open"),
+    ("auto_closed", "Auto-closed"),
 )
 _WORK_COLUMNS = (
     ("date", "Date"),
@@ -718,6 +860,7 @@ _WORK_COLUMNS = (
     ("ended", "To"),
     ("hours_desk", "At computer (hours)"),
     ("hours_idle", "Idle (hours)"),
+    ("hours_unverified", "Unverified (hours)"),
     ("hours_portal", "On portal (hours)"),
 )
 _CHANGE_COLUMNS = (
@@ -742,6 +885,7 @@ _MONTH_COLUMNS = (
     ("days_absent", "Days absent"),
     ("hours_desk", "At computer (hours)"),
     ("hours_idle", "Idle (hours)"),
+    ("hours_unverified", "Unverified (hours)"),
     ("hours_portal", "On portal (hours)"),
     ("hours_desk_average", "Average at computer (hours)"),
     ("break_minutes", "Break (minutes)"),
@@ -868,7 +1012,8 @@ def assemble_board_export(
         desk = int(row.get("seconds_desk") or 0)
         idle = int(row.get("seconds_idle") or 0)
         portal = int(row.get("seconds_active") or 0)
-        if desk == 0 and idle == 0 and portal == 0:
+        unverified = int(row.get("seconds_unverified") or 0)
+        if desk == 0 and idle == 0 and portal == 0 and unverified == 0:
             continue
         ended = row.get("last_ping_at")
         work.append(
@@ -880,9 +1025,15 @@ def assemble_board_export(
                 "ended": _cairo_stamp(ended) if isinstance(ended, datetime) else "",
                 "hours_desk": _hours(desk),
                 "hours_idle": _hours(idle),
+                "hours_unverified": _hours(unverified),
                 "hours_portal": _hours(portal),
             }
         )
+    work_by_day: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    work_by_month: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in work:
+        work_by_day.setdefault((row["user_id"], row["date"]), []).append(row)
+        work_by_month.setdefault((row["user_id"], row["date"][:7]), []).append(row)
 
     logins_by_day: dict[tuple[str, str], list[datetime]] = {}
     for row in logins:
@@ -916,6 +1067,7 @@ def assemble_board_export(
                 "planned_minutes": "" if planned in (None, "") else _minutes(int(planned)),
                 "with_whom": row.get("with_whom") or "",
                 "still_open": _yes(still_open),
+                "auto_closed": _yes(bool(row.get("auto_closed"))),
             }
         )
 
@@ -926,9 +1078,7 @@ def assemble_board_export(
         person = people[person_id]
         stamps = logins_by_day.get((person_id, day_key), [])
         summary = summarize_day(sessions_by_day.get((person_id, day_key), []), now=moment)
-        day_work = [
-            row for row in work if row["user_id"] == person_id and row["date"] == day_key
-        ]
+        day_work = work_by_day.get((person_id, day_key), [])
         meetings = summary["meetings"]
         days.append(
             {
@@ -939,6 +1089,7 @@ def assemble_board_export(
                 "logins": len(stamps),
                 "hours_desk": round(sum(row["hours_desk"] for row in day_work), 2),
                 "hours_idle": round(sum(row["hours_idle"] for row in day_work), 2),
+                "hours_unverified": round(sum(row["hours_unverified"] for row in day_work), 2),
                 "hours_portal": round(sum(row["hours_portal"] for row in day_work), 2),
                 "break_minutes": _minutes(int(summary["break_seconds"])),
                 "break_budget_minutes": _minutes(BREAK_BUDGET_SECONDS),
@@ -989,8 +1140,8 @@ def assemble_board_export(
         desk = round(sum(row["hours_desk"] for row in in_period), 2)
         month_work = [
             row
-            for row in work
-            if row["user_id"] == person_id and start.isoformat() <= row["date"] <= end.isoformat()
+            for row in work_by_month.get((person_id, month), [])
+            if start.isoformat() <= row["date"] <= end.isoformat()
         ]
         top_page, top_hours = _top_page(month_work)
         monthly.append(
@@ -1004,6 +1155,7 @@ def assemble_board_export(
                 "days_absent": max(0, period_days - present),
                 "hours_desk": desk,
                 "hours_idle": round(sum(row["hours_idle"] for row in in_period), 2),
+                "hours_unverified": round(sum(row["hours_unverified"] for row in in_period), 2),
                 "hours_portal": round(sum(row["hours_portal"] for row in in_period), 2),
                 "hours_desk_average": round(desk / present, 2) if present else 0,
                 "break_minutes": round(sum(row["break_minutes"] for row in in_period), 1),
@@ -1075,7 +1227,7 @@ def away_board_export(
         conn,
         """
         SELECT away_id, user_id, kind, started_at, ended_at,
-               planned_seconds, with_whom, work_day
+               planned_seconds, with_whom, work_day, auto_closed
         FROM ops.user_away
         WHERE user_id = ANY(%s::uuid[])
         ORDER BY started_at
@@ -1086,7 +1238,7 @@ def away_board_export(
         conn,
         """
         SELECT user_id, started_at, last_ping_at, seconds_desk, seconds_idle,
-               seconds_active, page_path
+               seconds_unverified, seconds_active, page_path
         FROM ops.user_activity_slice
         WHERE user_id = ANY(%s::uuid[])
         """,

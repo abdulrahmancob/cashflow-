@@ -42,6 +42,8 @@ MIGRATIONS = [
     "074_eligibility_sheet_facet.sql",
     "076_checks_deposits_tracker.sql",
     "077_red_team_roles.sql",
+    "078_user_presence.sql",
+    "079_desk_devices.sql",
 ]
 
 

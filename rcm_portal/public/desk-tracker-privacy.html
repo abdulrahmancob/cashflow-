@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Desk Tracker Privacy</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 16px/1.6 system-ui, sans-serif; max-width: 680px; margin: 0 auto; padding: 32px 16px; color: #111827; background: #ffffff; }
+      @media (prefers-color-scheme: dark) { body { color: #e5e7eb; background: #0b0f17; } }
+      h1 { font-size: 26px; margin-bottom: 4px; }
+      h2 { font-size: 18px; margin-top: 28px; }
+      code { font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <h1>Remitarc Desk Tracker: what it sends</h1>
+    <p>The desk tracker is a browser extension for Chrome and Edge. It tells the Remitarc away board whether you are at your computer, so work in other apps counts.</p>
+
+    <h2>What it sends</h2>
+    <p>Every 30 seconds, and when your state changes, it sends to <code>remitarc.cobsolution.cloud</code>:</p>
+    <ul>
+      <li>One state: <strong>active</strong>, <strong>idle</strong> (no keyboard or mouse for 5 minutes), <strong>locked</strong> (screen locked), or <strong>paused</strong>.</li>
+      <li>The time it was sent and the extension version.</li>
+      <li>A device key that links the computer to your Remitarc account. Remitarc stores only a hash of it.</li>
+    </ul>
+
+    <h2>What it never reads or sends</h2>
+    <ul>
+      <li>Which sites or tabs you open, or their contents.</li>
+      <li>What you type, screenshots, files, or your location.</li>
+    </ul>
+
+    <h2>Your control</h2>
+    <ul>
+      <li>You connect it yourself from My day, and you can pause it from the extension icon. The board then shows "Tracker paused".</li>
+      <li>Removing the extension, or disconnecting the computer, stops it.</li>
+      <li>When the browser is fully closed nothing runs, and the board shows you as offline.</li>
+    </ul>
+
+    <h2>Who sees it</h2>
+    <p>Your team lead and Remitarc admins see your current state and daily totals on the away board. Raw signals are kept for 48 hours for troubleshooting.</p>
+  </body>
+</html>

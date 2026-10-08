@@ -67,7 +67,8 @@ def away_me(user: AuthUser = Depends(get_current_user)) -> dict[str, Any]:
     from cashflow_db.repository import connection, user_away
 
     with connection() as conn:
-        return _ser(user_away.my_away(conn, user.user_id))
+        mine = user_away.my_away(conn, user.user_id)
+        return _ser({**mine, "presence": user_away.my_presence(conn, user.user_id)})
 
 
 @router.post("/start")
@@ -150,3 +151,40 @@ def away_board_view(
                 role_keys=user_away.board_scope_roles(user.roles),
             )
         )
+
+
+def _scoped_target(conn: Any, viewer: AuthUser, target_id: str) -> None:
+    from cashflow_db.repository import user_away
+
+    if not user_away.person_in_board_scope(conn, viewer.roles, target_id):
+        raise HTTPException(status_code=404, detail="person not on your board")
+
+
+@router.post("/people/{target_id}/end")
+def away_end_for(
+    target_id: UUID,
+    user: AuthUser = Depends(require_roles(*BOARD_ROLES)),
+) -> dict[str, Any]:
+    """A lead or admin ends a session someone forgot to close."""
+    from cashflow_db.repository import connection, user_away
+
+    try:
+        with connection() as conn:
+            _scoped_target(conn, user, str(target_id))
+            return _ser(user_away.end_away(conn, str(target_id)))
+    except ValueError as exc:
+        raise _away_error(exc) from exc
+
+
+@router.get("/people/{target_id}/pings")
+def away_pings_for(
+    target_id: UUID,
+    limit: int = Query(100, ge=1, le=500),
+    user: AuthUser = Depends(require_roles(*BOARD_ROLES)),
+) -> dict[str, Any]:
+    """The last pings from one person, to see why the board shows them as it does."""
+    from cashflow_db.repository import connection, presence
+
+    with connection() as conn:
+        _scoped_target(conn, user, str(target_id))
+        return _ser({"pings": presence.ping_log(conn, str(target_id), limit=limit)})

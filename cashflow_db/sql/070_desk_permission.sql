@@ -10,5 +10,8 @@ ALTER TABLE auth.app_user
     ADD CONSTRAINT app_user_desk_permission_check
     CHECK (
         desk_permission IS NULL
-        OR desk_permission IN ('watching', 'prompt', 'denied', 'unsupported')
+        OR desk_permission IN (
+            'watching', 'prompt', 'denied', 'unsupported',
+            'granted_not_watching', 'error'
+        )
     );

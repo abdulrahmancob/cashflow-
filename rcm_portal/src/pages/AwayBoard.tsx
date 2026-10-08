@@ -1,19 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import {
+  endAwayFor,
   fetchAwayBoard,
+  fetchPresencePings,
   formatClock,
   formatMinutes,
+  LIVE_LABEL,
   sessionElapsed,
+  trackerNote,
   type AwayBoard,
   type AwayKind,
   type AwayLive,
   type AwayPerson,
   type AwaySession,
+  type LiveStatus,
+  type PresencePing,
 } from '../api/away'
 import { ApiError } from '../api/client'
 import { Avatar } from '../components/table'
-import { Badge, Button, PageHeader } from '../components/ui'
+import { Badge, Button, Drawer, PageHeader } from '../components/ui'
 
 const POLL_MS = 20_000
 
@@ -82,26 +88,47 @@ function formatLoginTime(iso: string) {
   })
 }
 
-function permissionNote(value: string | null | undefined) {
-  if (value === 'prompt') return 'Idle detection off'
-  if (value === 'denied') return 'Idle detection blocked'
-  if (value === 'unsupported') return 'Not Chrome or Edge'
-  return null
+const LIVE_TONE: Record<LiveStatus, 'gray' | 'amber' | 'blue' | 'green'> = {
+  working: 'green',
+  idle: 'amber',
+  locked: 'amber',
+  unverified: 'blue',
+  paused: 'gray',
+  signed_out: 'gray',
+  offline: 'gray',
 }
 
-function personBucket(person: AwayPerson, isToday: boolean): 'away' | 'desk' | 'offline' {
-  if (isToday && person.status !== 'working') return 'away'
-  return person.online ? 'desk' : 'offline'
-}
-
-type BoardStatus = 'all' | 'away' | 'desk' | 'offline'
+type Bucket = 'away' | 'working' | 'idle' | 'unverified' | 'offline'
+type BoardStatus = 'all' | Bucket
 type BoardSort = 'status' | 'name' | 'login'
 
+const BUCKET_RANK: Record<Bucket, number> = {
+  away: 0,
+  working: 1,
+  idle: 2,
+  unverified: 3,
+  offline: 4,
+}
+
+function personBucket(person: AwayPerson, isToday: boolean): Bucket {
+  if (isToday && person.status !== 'working') return 'away'
+  const live = person.live_status
+  if (!live) return person.online ? 'working' : 'offline'
+  if (live === 'working') return 'working'
+  if (live === 'idle' || live === 'locked') return 'idle'
+  if (live === 'unverified' || live === 'paused') return 'unverified'
+  return 'offline'
+}
+
 function statusRank(person: AwayPerson, isToday: boolean) {
-  const bucket = personBucket(person, isToday)
-  if (bucket === 'away') return 0
-  if (bucket === 'desk') return 1
-  return 2
+  return BUCKET_RANK[personBucket(person, isToday)]
+}
+
+function secondsSince(iso: string | null | undefined, now: number) {
+  if (!iso) return null
+  const time = new Date(iso).getTime()
+  if (Number.isNaN(time)) return null
+  return Math.max(0, Math.floor((now - time) / 1000))
 }
 
 function loginRank(person: AwayPerson) {
@@ -131,6 +158,49 @@ function meetingLine(session: AwaySession) {
   const taken = formatMinutes(session.elapsed_seconds)
   const state = session.ended_at ? taken : `${taken} so far`
   return `${who} · ${planned} planned · ${state}`
+}
+
+function formatPingTime(iso: string) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Africa/Cairo',
+  })
+}
+
+function PingLog({ pings }: { pings: PresencePing[] }) {
+  if (pings.length === 0) {
+    return <p className="text-sm text-gray-500">No signal from this person in the last 48 hours.</p>
+  }
+  return (
+    <table className="w-full text-left text-sm">
+      <thead className="text-[11px] uppercase tracking-wider text-gray-500">
+        <tr>
+          <th className="py-1 pr-3">Time</th>
+          <th className="py-1 pr-3">From</th>
+          <th className="py-1 pr-3">State</th>
+          <th className="py-1 pr-3">Tab</th>
+          <th className="py-1">Booked</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+        {pings.map((ping, index) => (
+          <tr key={`${ping.at}-${index}`} className="text-gray-700 dark:text-gray-200">
+            <td className="py-1 pr-3 tabular-nums">{formatPingTime(ping.at)}</td>
+            <td className="py-1 pr-3">{ping.source === 'extension' ? 'Desk tracker' : 'Portal tab'}</td>
+            <td className="py-1 pr-3">{ping.state || '—'}</td>
+            <td className="py-1 pr-3">
+              {ping.source === 'tab' ? (ping.visible ? 'Visible' : 'Hidden') : '—'}
+            </td>
+            <td className="py-1 tabular-nums">{ping.booked || '—'}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
 }
 
 function AwayNowCard({ live, now }: { live: AwayLive[]; now: number }) {
@@ -226,24 +296,41 @@ function PersonCard({
   person,
   isToday,
   now,
+  onEnd,
+  onDiagnose,
 }: {
   person: AwayPerson
   isToday: boolean
   now: number
+  onEnd: (person: AwayPerson) => void
+  onDiagnose: (person: AwayPerson) => void
 }) {
   const away = isToday && person.status !== 'working'
   const kind: AwayKind | 'working' = away ? person.status : 'working'
-  const label = away ? KIND_LABEL[person.status as AwayKind] : person.online ? 'At desk' : 'Offline'
+  const live = isToday ? person.live_status ?? null : null
+  const label = away
+    ? KIND_LABEL[person.status as AwayKind]
+    : live
+      ? LIVE_LABEL[live]
+      : person.online
+        ? 'At desk'
+        : isToday
+          ? 'Offline'
+          : 'Day total'
+  const tone = away ? TONE[kind] : live ? LIVE_TONE[live] : TONE.working
   const budget = person.break_budget_seconds || 1
   const used = Math.min(100, Math.round((person.break_seconds / budget) * 100))
   const over = person.break_seconds > person.break_budget_seconds
   const clock = person.open ? formatClock(sessionElapsed(person.open, now)) : null
   const loginTime = person.logged_in_at ? formatLoginTime(person.logged_in_at) : null
-  const permission = permissionNote(person.desk_permission)
-  const offlineFor =
-    !away && !person.online && person.offline_since
-      ? Math.max(0, Math.floor((now - new Date(person.offline_since).getTime()) / 1000))
-      : null
+  const tracker = isToday ? trackerNote(person.tracker, now) : null
+  const sinceFor =
+    !away && live && live !== 'working'
+      ? secondsSince(person.live_since, now)
+      : !away && !live && !person.online
+        ? secondsSince(person.offline_since, now)
+        : null
+  const autoClosed = (person.sessions || []).some((session) => session.auto_closed)
 
   return (
     <article
@@ -262,9 +349,15 @@ function PersonCard({
             <div className="truncate text-xs text-gray-500">
               {loginTime ? `Logged in ${loginTime}` : 'No login'}
             </div>
-            {permission && (
-              <div className="truncate text-xs font-medium text-rose-600 dark:text-rose-300">
-                {permission}
+            {tracker && (
+              <div
+                className={`truncate text-xs font-medium ${
+                  tracker.ok
+                    ? 'text-emerald-700 dark:text-emerald-300'
+                    : 'text-rose-600 dark:text-rose-300'
+                }`}
+              >
+                {tracker.text}
               </div>
             )}
           </div>
@@ -275,15 +368,15 @@ function PersonCard({
               {clock}
             </span>
           )}
-          {offlineFor != null && (
+          {sinceFor != null && (
             <span className="font-display text-sm font-semibold tabular-nums text-gray-800 dark:text-gray-100">
-              {formatClock(offlineFor)}
+              {formatClock(sinceFor)}
             </span>
           )}
-          <Badge tone={TONE[kind]}>{label}</Badge>
+          <Badge tone={tone}>{label}</Badge>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+      <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">At computer</div>
           <div className="font-display text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
@@ -294,6 +387,12 @@ function PersonCard({
           <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Idle</div>
           <div className="font-display text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
             {formatDuration(person.seconds_idle)}
+          </div>
+        </div>
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Unverified</div>
+          <div className="font-display text-lg font-semibold tabular-nums text-gray-900 dark:text-white">
+            {formatDuration(person.seconds_unverified || 0)}
           </div>
         </div>
       </div>
@@ -333,6 +432,23 @@ function PersonCard({
           ))}
         </ul>
       )}
+      {autoClosed && (
+        <p className="mt-3 text-xs font-medium text-amber-700 dark:text-amber-300">
+          A forgotten break or meeting was closed automatically at its limit.
+        </p>
+      )}
+      {isToday && (
+        <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+          {person.open && (
+            <Button variant="secondary" size="sm" type="button" onClick={() => onEnd(person)}>
+              End {KIND_LABEL[person.open.kind].toLowerCase()}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" type="button" onClick={() => onDiagnose(person)}>
+            Why this status?
+          </Button>
+        </div>
+      )}
     </article>
   )
 }
@@ -347,6 +463,9 @@ export function AwayBoardPage() {
   const [status, setStatus] = useState<BoardStatus>('all')
   const [sort, setSort] = useState<BoardSort>('status')
   const [exporting, setExporting] = useState(false)
+  const [refresh, setRefresh] = useState(0)
+  const [diagnose, setDiagnose] = useState<AwayPerson | null>(null)
+  const [pings, setPings] = useState<PresencePing[] | null>(null)
 
   useEffect(() => {
     const tick = window.setInterval(() => setNow(Date.now()), 1000)
@@ -377,7 +496,31 @@ export function AwayBoardPage() {
       cancelled = true
       window.clearInterval(poll)
     }
-  }, [day])
+  }, [day, refresh])
+
+  useEffect(() => {
+    if (!diagnose) return
+    let cancelled = false
+    setPings(null)
+    fetchPresencePings(diagnose.user_id)
+      .then((row) => {
+        if (!cancelled) setPings(row.pings)
+      })
+      .catch(() => {
+        if (!cancelled) setPings([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [diagnose])
+
+  function endFor(person: AwayPerson) {
+    const what = person.open ? KIND_LABEL[person.open.kind].toLowerCase() : 'session'
+    if (!window.confirm(`End ${person.display_name}'s ${what} now?`)) return
+    endAwayFor(person.user_id)
+      .then(() => setRefresh((value) => value + 1))
+      .catch((e) => setError(e instanceof ApiError ? e.message : 'Could not end it.'))
+  }
 
   const cairoToday = today
   const chips = useMemo(() => {
@@ -423,21 +566,21 @@ export function AwayBoardPage() {
   const named = people.filter((person) =>
     person.display_name.toLowerCase().includes(needle),
   )
-  const counts = {
+  const counts: Record<BoardStatus, number> = {
     all: named.length,
-    away: named.filter((person) => personBucket(person, isToday) === 'away').length,
-    desk: named.filter((person) => personBucket(person, isToday) === 'desk').length,
-    offline: named.filter((person) => personBucket(person, isToday) === 'offline').length,
+    away: 0,
+    working: 0,
+    idle: 0,
+    unverified: 0,
+    offline: 0,
   }
+  for (const person of named) counts[personBucket(person, isToday)] += 1
   const visible = named
     .filter((person) => status === 'all' || personBucket(person, isToday) === status)
     .slice()
     .sort(comparePeople(sort, isToday))
   const live = board?.live || []
-  const liveIds = new Set(live.map((person) => person.user_id))
-  const atDesk = people.filter(
-    (person) => person.online && !liveIds.has(person.user_id),
-  ).length
+  const atDesk = people.filter((person) => personBucket(person, true) === 'working').length
 
   return (
     <div className="space-y-5">
@@ -461,7 +604,7 @@ export function AwayBoardPage() {
           <div className="mt-1 font-display text-4xl font-semibold tabular-nums text-gray-900 dark:text-white">
             {atDesk}
           </div>
-          <div className="text-sm text-gray-500">At their desk right now</div>
+          <div className="text-sm text-gray-500">Active at their computer right now</div>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -534,7 +677,9 @@ export function AwayBoardPage() {
           [
             ['all', 'All'],
             ['away', 'Away'],
-            ['desk', 'At desk'],
+            ['working', 'Working'],
+            ['idle', 'Idle'],
+            ['unverified', 'Unverified'],
             ['offline', 'Offline'],
           ] as const
         ).map(([key, label]) => {
@@ -584,9 +729,23 @@ export function AwayBoardPage() {
             person={person}
             isToday={isToday}
             now={now}
+            onEnd={endFor}
+            onDiagnose={setDiagnose}
           />
         ))}
       </div>
+      <Drawer
+        open={!!diagnose}
+        onClose={() => setDiagnose(null)}
+        title={diagnose ? `${diagnose.display_name}: last signals` : ''}
+      >
+        <p className="mb-3 text-sm text-gray-600 dark:text-gray-300">
+          Every signal the board received, newest first. A gap of more than two minutes is no
+          signal: the tab was closed or frozen, the computer slept, or the network dropped. It is
+          not counted as idle.
+        </p>
+        {pings ? <PingLog pings={pings} /> : <p className="text-sm text-gray-500">Loading…</p>}
+      </Drawer>
     </div>
   )
 }

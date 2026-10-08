@@ -54,6 +54,10 @@ def _app(user: AuthUser, monkeypatch, *, payload=None):
         "cashflow_db.repository.user_away.away_board",
         lambda *a, **k: body,
     )
+    monkeypatch.setattr(
+        "cashflow_db.repository.user_away.my_presence",
+        lambda *a, **k: {"status": "working", "online": True, "tracker": {}},
+    )
     app = FastAPI()
     app.include_router(router, prefix="/api")
     app.dependency_overrides[get_current_user] = lambda: user
@@ -190,19 +194,22 @@ def test_ui_away_board_roles_and_header_control():
     heartbeat = (ROOT / "rcm_portal" / "src" / "auth" / "useActivityHeartbeat.ts").read_text(
         encoding="utf-8"
     )
-    assert "isAwayIdle" in heartbeat
-    assert "presence: true" in heartbeat
-    assert "beforeunload" in heartbeat
+    assert "pingState" in heartbeat
+    assert "rcm-presence-leader" in heartbeat
+    assert "BroadcastChannel" in heartbeat
+    assert "pagehide" in heartbeat
+    assert "beforeunload" not in heartbeat
     assert "sendBeacon" in heartbeat
     assert "closed: true" in heartbeat
-    assert "deviceKeepsPresence" in heartbeat
+    assert "tab_id" in heartbeat
+    assert "isAwayIdle" not in heartbeat
     assert "DeskPresenceButton" in layout
     prompt = (ROOT / "rcm_portal" / "src" / "components" / "DeskPresenceButton.tsx").read_text(
         encoding="utf-8"
     )
     assert "enableDeskIdle" in prompt
     assert "Allow" in prompt
-    assert "Chrome or Edge" in prompt
+    assert "fixed inset-0" not in prompt
     page = (ROOT / "rcm_portal" / "src" / "pages" / "AwayBoard.tsx").read_text(
         encoding="utf-8"
     )
@@ -217,11 +224,46 @@ def test_ui_away_board_roles_and_header_control():
     assert "Logged in" in page
     assert "No login" in page
     assert "No one matches" in page
-    assert "Idle detection off" in page
-    assert "Idle detection blocked" in page
-    assert "Not Chrome or Edge" in page
+    away_api = (ROOT / "rcm_portal" / "src" / "api" / "away.ts").read_text(encoding="utf-8")
+    assert "trackerNote" in page
+    assert "Idle detection off" in away_api
+    assert "Idle detection blocked" in away_api
+    assert "Desk tracker on" in away_api
+    assert "Unverified" in page
+    assert "Why this status?" in page
+    assert "endAwayFor" in page
     assert "deskPermissionReport" in heartbeat
     assert "desk_permission" in heartbeat
     assert "board.live" in page or "live.map" in page
     assert "Download Excel" in page
     assert "/api/away/board/export" in page
+
+
+def test_lead_can_end_and_diagnose_only_people_on_their_board(monkeypatch):
+    target = "22222222-2222-2222-2222-222222222222"
+    ended: list = []
+    lead = TestClient(_app(_user("redteam_leader"), monkeypatch))
+    monkeypatch.setattr(
+        "cashflow_db.repository.user_away.person_in_board_scope",
+        lambda conn, roles, tid: tid == target,
+    )
+    monkeypatch.setattr(
+        "cashflow_db.repository.user_away.end_away",
+        lambda conn, uid, **k: ended.append(uid) or {"open": None},
+    )
+    monkeypatch.setattr(
+        "cashflow_db.repository.presence.ping_log",
+        lambda conn, uid, **k: [{"source": "tab", "state": "unknown"}],
+    )
+    assert lead.post(f"/api/away/people/{target}/end").status_code == 200
+    assert ended == [target]
+    other = "33333333-3333-3333-3333-333333333333"
+    assert lead.post(f"/api/away/people/{other}/end").status_code == 404
+    res = lead.get(f"/api/away/people/{target}/pings")
+    assert res.status_code == 200 and res.json()["pings"][0]["state"] == "unknown"
+    assert lead.get(f"/api/away/people/{other}/pings").status_code == 404
+
+    agent = TestClient(_app(_user("red_agent"), monkeypatch))
+    assert agent.post(f"/api/away/people/{target}/end").status_code == 403
+    assert agent.get(f"/api/away/people/{target}/pings").status_code == 403
+

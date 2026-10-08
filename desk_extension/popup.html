@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Remitarc Desk Tracker</title>
+    <style>
+      body { font: 13px system-ui, sans-serif; margin: 0; padding: 14px; width: 260px; color: #111827; }
+      h1 { font-size: 14px; margin: 0 0 8px; }
+      p { margin: 6px 0; color: #4b5563; }
+      .ok { color: #047857; font-weight: 600; }
+      .bad { color: #be123c; font-weight: 600; }
+      button { margin-top: 10px; width: 100%; padding: 7px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; cursor: pointer; }
+      a { color: #1d4ed8; }
+    </style>
+  </head>
+  <body>
+    <h1>Remitarc Desk Tracker</h1>
+    <p id="status">Checking…</p>
+    <p id="detail"></p>
+    <button id="toggle" hidden>Pause tracking</button>
+    <p><a href="https://remitarc.cobsolution.cloud/my-day" target="_blank" rel="noreferrer">Open My day</a></p>
+    <p><a href="https://remitarc.cobsolution.cloud/desk-tracker-privacy.html" target="_blank" rel="noreferrer">What this sends</a></p>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -12,6 +12,40 @@ export type AwaySession = {
   with_whom: string | null
   elapsed_seconds: number
   work_day: string
+  auto_closed?: boolean
+}
+
+export type LiveStatus =
+  | 'working'
+  | 'idle'
+  | 'locked'
+  | 'unverified'
+  | 'paused'
+  | 'signed_out'
+  | 'offline'
+
+export type TrackerHealth = {
+  extension: { last_at: string | null; state: string | null; version: string | null } | null
+  tab: { last_at: string | null; permission: string | null; permission_at: string | null } | null
+}
+
+export type MyPresence = {
+  status: LiveStatus
+  since: string | null
+  source: 'tab' | 'extension' | null
+  online: boolean
+  tracker: TrackerHealth
+  idle_grace_seconds: number
+}
+
+export type PresencePing = {
+  at: string
+  source: 'tab' | 'extension'
+  state: string | null
+  tab_id: string | null
+  visible: boolean | null
+  client_at: string | null
+  booked: string | null
 }
 
 export type AwayMe = {
@@ -29,6 +63,7 @@ export type AwayMe = {
   sessions: AwaySession[]
   warning: AwayWarning
   work_day: string
+  presence?: MyPresence
 }
 
 export type AwayPerson = AwayMe & {
@@ -41,8 +76,13 @@ export type AwayPerson = AwayMe & {
   offline_since: string | null
   seconds_desk: number
   seconds_idle: number
+  seconds_unverified?: number
   logged_in_at: string | null
   desk_permission: string | null
+  live_status?: LiveStatus | null
+  live_since?: string | null
+  live_source?: 'tab' | 'extension' | null
+  tracker?: TrackerHealth
 }
 
 export type AwayLive = {
@@ -91,6 +131,40 @@ export function endAway() {
 export function fetchAwayBoard(day?: string) {
   const query = day ? `?day=${encodeURIComponent(day)}` : ''
   return api<AwayBoard>(`/api/away/board${query}`)
+}
+
+export function endAwayFor(userId: string) {
+  return api<AwayMe>(`/api/away/people/${encodeURIComponent(userId)}/end`, { method: 'POST' })
+}
+
+export function fetchPresencePings(userId: string) {
+  return api<{ pings: PresencePing[] }>(`/api/away/people/${encodeURIComponent(userId)}/pings`)
+}
+
+export const LIVE_LABEL: Record<LiveStatus, string> = {
+  working: 'Working',
+  idle: 'Idle at desk',
+  locked: 'Screen locked',
+  unverified: 'Portal open, unverified',
+  paused: 'Tracker paused',
+  signed_out: 'Signed out',
+  offline: 'Offline',
+}
+
+export function trackerNote(tracker: TrackerHealth | undefined, nowMs: number) {
+  const ext = tracker?.extension
+  if (ext?.last_at && nowMs - new Date(ext.last_at).getTime() < 10 * 60 * 1000) {
+    return { text: ext.state === 'paused' ? 'Desk tracker paused' : 'Desk tracker on', ok: ext.state !== 'paused' }
+  }
+  const permission = tracker?.tab?.permission
+  if (permission === 'watching') return { text: 'Browser idle detection on', ok: true }
+  if (permission === 'prompt') return { text: 'Idle detection off, no desk tracker', ok: false }
+  if (permission === 'denied') return { text: 'Idle detection blocked, no desk tracker', ok: false }
+  if (permission === 'unsupported') return { text: 'Browser without idle detection, no desk tracker', ok: false }
+  if (permission === 'granted_not_watching' || permission === 'error') {
+    return { text: 'Idle detection failed to start', ok: false }
+  }
+  return { text: 'No tracker yet', ok: false }
 }
 
 export function sessionElapsed(session: AwaySession, nowMs: number) {

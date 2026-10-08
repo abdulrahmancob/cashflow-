@@ -279,6 +279,7 @@ def login(body: LoginBody, request: Request, response: Response) -> dict[str, An
         username=user["username"],
         roles=roles,
         display_name=user["display_name"],
+        remember=body.remember_me,
     )
     set_session_cookie(response, request, token, remember=body.remember_me)
     return {
