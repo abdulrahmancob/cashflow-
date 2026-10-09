@@ -184,6 +184,14 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         break
     layout = analyse(words, family, question_y=q_hint, booking_y=b_hint)
     th = layout.text_h
+    # the labels themselves give the surest text height; when the page median was pulled off by
+    # handwriting or headers, analyse again with the label height
+    label_h = sorted(h.text_h for h in layout.hear + layout.booking if not h.inferred)
+    if len(label_h) >= 3:
+        th_labels = label_h[len(label_h) // 2]
+        if abs(th_labels - th) > 0.25 * th:
+            layout = analyse(words, family, text_h=th_labels, question_y=q_hint, booking_y=b_hint)
+            th = layout.text_h
     block_cut = False
     # R2: the option list may continue on the next page.
     last_codes = {hit.code for hit in layout.hear}
@@ -251,6 +259,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         "writeins": [(w.code, w.kind, w.text, round(w.conf, 1), w.mapped, w.ink, w.area) for w in writeins],
         "places": [(c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels")) for c in hear_controls + booking_controls],
         "writein_tries": tries,
+        "notes": layout.notes[:20],
     }
     if want_debug:
         reading.debug["gray"] = gray

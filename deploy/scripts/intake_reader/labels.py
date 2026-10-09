@@ -103,6 +103,7 @@ class Layout:
     hear: list[LabelHit]
     booking: list[LabelHit]
     block_text: str
+    notes: list = field(default_factory=list)
 
 
 def normalize(text: str) -> str:
@@ -458,11 +459,12 @@ def analyse(
                 (hear if group == "hear" else booking).append(hit)
     hear = _dedupe(hear)
     booking = _dedupe(booking)
+    notes: list = []
     hear = _infer_missing(lines, hear, family, th, group_of, q_index)
     hear = _infer_circle_rows(lines, hear, family, th, group_of)
-    hear = _infer_tiny(lines, hear, family, th, group_of)
+    hear = _infer_tiny(lines, hear, family, th, group_of, notes)
     hear = _infer_other(lines, hear, family, th, group_of)
-    return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
+    return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines), notes)
 
 
 # Section headers as OCR tends to break them ("IN SURANCE INFORMATION" with a dashed frame).
@@ -650,7 +652,7 @@ _TINY_NEIGHBOURS = (
 )
 
 
-def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of) -> list[LabelHit]:
+def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of, notes: list | None = None) -> list[LabelHit]:
     """On the one-row form a check glued to a box turns "Doctor" into "(Dtos": the label is the
     text just beside a found neighbour, box glyph and all (R11)."""
     if family.id != "tiny" or not hits:
@@ -667,11 +669,14 @@ def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int
         row_lines = [(i, ln) for i, ln in enumerate(lines) if abs(ln.cy - (ref.line_cy or ref.cy)) <= th * 1.0 and group_of(i) == "hear"]
         words = [w for _i, ln in row_lines for w in ln.words if id(w) not in taken and len(re.sub(r"[^A-Za-z]", "", w["text"])) >= 2]
         if side == "left":
-            cands = [w for w in words if w["x"] + w["w"] <= ref.x0 - th * 0.8 and w["x"] >= ref.x0 - th * 9]
+            # the word box may run into the neighbour's box when a check is glued to it
+            cands = [w for w in words if w["x"] <= ref.x0 - th * 2.0 and w["x"] + w["w"] <= ref.x0 + th * 0.5 and w["x"] >= ref.x0 - th * 10]
             pick = max(cands, key=lambda w: w["x"]) if cands else None
         else:
-            cands = [w for w in words if w["x"] >= ref.x1 + th * 0.8 and w["x"] <= ref.x1 + th * 9]
+            cands = [w for w in words if w["x"] >= ref.x1 + th * 0.5 and w["x"] <= ref.x1 + th * 10]
             pick = min(cands, key=lambda w: w["x"]) if cands else None
+        if notes is not None:
+            notes.append(("tiny", missing, neighbour, side, [(w["text"], w["x"], w["x"] + w["w"]) for w in words][:8], pick["text"] if pick else None))
         if pick is None:
             continue
         # the printed box or its mark is often glued to the word ("(Dtos", "LAGcoote")
@@ -725,7 +730,7 @@ def _infer_other(lines: list[Line], hits: list[LabelHit], family: Family, th: in
             hits = [h for h in hits if h is not cur]
             cur = None
         if cur is not None:
-            if cur.x1 - cur.x0 > th * 3.5 and len(cur.words) == 1:
+            if cur.x1 - cur.x0 > th * 3.5:
                 # "Other:__hugi": the word swallowed the handwriting; keep only the printed part
                 word = cur.words[0]
                 short = dict(word)

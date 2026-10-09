@@ -392,12 +392,21 @@ def find_controls(
         if hit.prefix_px > 0 and not control.found:
             x_ref = control.x1 + 1
         _measure(ink, control, max(x_ref, control.x1 + 1), hit.left_limit, th)
+        if locate is not None and locate is not ink:
+            # a faint pen stroke on faint print vanishes from the dark mask but not from the
+            # light one; siblings are measured the same way so the relative rule still holds
+            light = Control(control.code, control.x0, control.y0, control.x1, control.y1, control.found)
+            _measure(locate, light, max(x_ref, control.x1 + 1), hit.left_limit, th)
+            control.extra["interior2"] = light.interior
+            control.extra["outside2"] = light.outside
         control.ring = _ring(ink, hit, th, words, control)
         control.extra["hit"] = hit
     if not used_cluster and family.id != "tiny":
         _align_columns(ink, controls, th)
+    sides = sorted(max(c.x1 - c.x0, c.y1 - c.y0) for c in controls if c.found)
+    typical = sides[len(sides) // 2] if sides else th
     for control in controls:
-        if control.y0 <= 1 or control.y1 >= height - 2:
+        if (control.y0 <= 1 or control.y1 >= height - 2) and (control.y1 - control.y0) < 0.8 * typical:
             control.extra["edge"] = True  # clipped by the crop: half a circle looks filled
     return controls
 
@@ -632,6 +641,8 @@ def score_controls(controls: list[Control], family: Family) -> None:
     med_side = median(found_sides) if found_sides else 1.1
     found_px = [c.extra["pixels"] for c in controls if c.found and c.extra.get("pixels") is not None]
     med_px = median(found_px) if found_px else 0
+    light = [c.extra["interior2"] for c in controls if c.extra.get("interior2") is not None]
+    med_i2 = median(light) if len(light) == len(controls) and light else None
     bullet = family.control == "bullet"
     for c in controls:
         if n <= 2:
@@ -669,6 +680,11 @@ def score_controls(controls: list[Control], family: Family) -> None:
             b = (c.outside - med_o - 0.10) / 0.12
             if c.outside < 2.0 * max(med_o, 0.03):
                 b = min(b, -0.01)
+            if tight and c.extra.get("interior2") is not None and med_i2 is not None:
+                a2 = (c.extra["interior2"] - med_i2 - margin - 0.02) / 0.12
+                if c.extra["interior2"] < 2.5 * max(med_i2, 0.02):
+                    a2 = min(a2, -0.01)
+                a = max(a, a2)
             g = -9.0
             grown = c.extra.get("overlap")
             if grown is not None and (c.interior >= med_i + 0.02 or c.outside >= med_o + 0.02):

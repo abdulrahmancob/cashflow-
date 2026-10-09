@@ -289,7 +289,16 @@ def _mask_projections(ink: np.ndarray, th: int) -> np.ndarray:
 
 
 def median_text_height(words: list[dict], fallback: int = 18) -> int:
-    heights = sorted(min(int(w["h"]), 60) for w in words if int(w["h"]) >= 6 and re.search(r"[A-Za-z]{2,}", w["text"]))
+    """Median height of printed words. Handwriting, dotted lines read as words and the big
+    section headers are much taller than the option labels, so confident words of three or more
+    letters are preferred and the rest only count when there are too few of them."""
+
+    def ok(w: dict) -> bool:
+        return int(w["h"]) >= 6 and re.search(r"[A-Za-z]{2,}", w["text"]) is not None
+
+    good = [w for w in words if ok(w) and len(re.sub(r"[^A-Za-z]", "", w["text"])) >= 3 and float(w.get("conf", 90)) >= 40]
+    pool = good if len(good) >= 6 else [w for w in words if ok(w)]
+    heights = sorted(min(int(w["h"]), 60) for w in pool)
     if not heights:
         return fallback
     return max(8, heights[len(heights) // 2])
