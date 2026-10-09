@@ -70,7 +70,7 @@ jobs:
           set -euo pipefail
           $COMPOSE run --rm --no-deps -T $MOUNTS -e TESSDATA_PREFIX=/data/ocr/tessdata -e OMP_NUM_THREADS=1 scraper \
             python -u /app/deploy/scripts/intake_census_eval.py \
-              --map "$V2/golden_map.json" --out "$V2/eval" --workers 6 --boards miss --tile 900 --per-board 2 \
+              --map "$V2/golden_map.json" --out "$V2/eval" --workers 10 --boards miss --tile 900 --per-board 2 \
             | tee "$RUNNER_TEMP/eval_log.txt"
 
       - name: Publish results to the intake-eval-results branch
