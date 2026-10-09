@@ -64,14 +64,28 @@ jobs:
           $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
             python -u /app/deploy/scripts/intake_census_golden_map.py --out "$V2/golden_map.json"
 
+      - name: Stop stale eval containers
+        # a cancelled run leaves its container running; it would share the CPUs with this run
+        run: |
+          for id in $(docker ps -q --filter ancestor=cashflow-scraper:local); do
+            if docker inspect --format '{{json .Args}}' "$id" | grep -q intake_census_eval.py; then
+              echo "removing stale eval container $id"
+              docker rm -f "$id" || true
+            fi
+          done
+
       - name: Golden eval
         continue-on-error: true
         run: |
           set -euo pipefail
-          $COMPOSE run --rm --no-deps -T $MOUNTS -e TESSDATA_PREFIX=/data/ocr/tessdata -e OMP_NUM_THREADS=1 scraper \
+          $COMPOSE run --rm --no-deps -T --name "intake-eval-${{ github.run_id }}" $MOUNTS -e TESSDATA_PREFIX=/data/ocr/tessdata -e OMP_NUM_THREADS=1 scraper \
             python -u /app/deploy/scripts/intake_census_eval.py \
               --map "$V2/golden_map.json" --out "$V2/eval" --workers 10 --boards miss --tile 900 --per-board 2 \
             | tee "$RUNNER_TEMP/eval_log.txt"
+
+      - name: Remove this run's container
+        if: always()
+        run: docker rm -f "intake-eval-${{ github.run_id }}" >/dev/null 2>&1 || true
 
       - name: Publish results to the intake-eval-results branch
         if: always()
