@@ -164,67 +164,82 @@ def _forecast_warmup() -> None:
         pass
 
 
-# Protect forecast /api/* routes (finance + super_admin). Auth/login and
-# eligibility enforce their own deps. Public: /alive, /ready, /docs, /openapi.
+# Every /api route needs a valid session unless it is listed here. A route that
+# someone forgets to protect is closed, not open. Routers still check their own roles.
+PUBLIC_API_PATHS = frozenset(
+    {
+        "/api/auth/login",
+        "/api/auth/logout",
+        "/api/desk/ping",
+        "/api/health",
+    }
+)
+PUBLIC_PATHS = frozenset({"/alive", "/ready", "/docs", "/redoc", "/openapi.json"})
+
+# Forecast and finance data: finance, sub admin, and super admin only.
+FINANCE_PREFIXES = (
+    "/api/kpi",
+    "/api/projected",
+    "/api/actual",
+    "/api/outcomes",
+    "/api/insights",
+    "/api/drill",
+    "/api/meta",
+    "/api/behavior",
+    "/api/mission",
+    "/api/overdue",
+    "/api/unbanked",
+    "/api/cash",
+    "/api/exec",
+    "/api/day-ahead",
+)
+
+
+def _api_path(path: str) -> str:
+    """/api/v1/x and /api/x are the same route."""
+    if path == "/api/v1" or path.startswith("/api/v1/"):
+        return "/api" + path[len("/api/v1"):]
+    return path
+
+
+def is_public_path(path: str) -> bool:
+    if path in PUBLIC_PATHS or path.startswith("/docs/"):
+        return True
+    if not (path == "/api" or path.startswith("/api/")):
+        return True
+    return _api_path(path) in PUBLIC_API_PATHS
+
+
+def is_finance_path(path: str) -> bool:
+    api = _api_path(path)
+    return any(api == p or api.startswith(p + "/") or api.startswith(p + ".") for p in FINANCE_PREFIXES)
+
+
 @app.middleware("http")
 async def _forecast_rbac(request, call_next):  # type: ignore[no-untyped-def]
+    from fastapi.responses import JSONResponse
+    from starlette.concurrency import run_in_threadpool
+
+    from cashflow_ops.security import (
+        auth_user_from_token,
+        decode_access_token,
+        extract_access_token,
+    )
+
     path = request.url.path
-    public_prefixes = (
-        "/alive",
-        "/ready",
-        "/docs",
-        "/redoc",
-        "/openapi.json",
-        "/api/auth/login",
-        "/api/v1/auth/login",
-        "/api/auth/logout",
-        "/api/v1/auth/logout",
-    )
-    if any(path == p or path.startswith(p + "/") for p in public_prefixes):
+    if request.method == "OPTIONS" or is_public_path(path):
         return await call_next(request)
-    # Eligibility + auth/users already use Depends — skip double-check noise for OPTIONS
-    if request.method == "OPTIONS":
-        return await call_next(request)
-    # Forecast data endpoints under /api (not auth/eligibility/ops)
-    forecast_prefixes = (
-        "/api/kpi",
-        "/api/projected",
-        "/api/actual",
-        "/api/outcomes",
-        "/api/insights",
-        "/api/drill",
-        "/api/meta",
-        "/api/behavior",
-        "/api/mission",
-        "/api/overdue",
-        "/api/unbanked",
-        "/api/v1/kpi",
-        "/api/v1/projected",
-        "/api/v1/actual",
-        "/api/v1/outcomes",
-        "/api/v1/insights",
-        "/api/v1/drill",
-        "/api/v1/meta",
-        "/api/v1/behavior",
-        "/api/v1/mission",
-        "/api/v1/overdue",
-        "/api/v1/unbanked",
-    )
-    if not any(path.startswith(p) for p in forecast_prefixes):
-        return await call_next(request)
+    token = extract_access_token(request)
+    if not token:
+        return JSONResponse({"detail": "Authentication required"}, status_code=401)
     try:
-        from cashflow_ops.security import auth_user_from_token, extract_access_token
-        from fastapi.responses import JSONResponse
-
-        token = extract_access_token(request)
-        if not token:
-            return JSONResponse({"detail": "Authentication required"}, status_code=401)
-        user = auth_user_from_token(token)
-        if not user.is_finance:
-            return JSONResponse({"detail": "Insufficient permissions"}, status_code=403)
+        if is_finance_path(path):
+            user = await run_in_threadpool(auth_user_from_token, token)
+            if not user.is_finance:
+                return JSONResponse({"detail": "Insufficient permissions"}, status_code=403)
+        else:
+            decode_access_token(token)
     except Exception as exc:  # noqa: BLE001
-        from fastapi.responses import JSONResponse
-
         detail = getattr(exc, "detail", "Invalid or expired token")
         return JSONResponse({"detail": detail}, status_code=401)
     return await call_next(request)
@@ -1320,7 +1335,8 @@ def _by_facility_unfiltered_json(outcomes_key: str) -> str:
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "forecast": str(_forecast_dir()), "audit": str(_audit_dir())}
+    """Public liveness only. Paths and data stay behind login."""
+    return {"status": "ok"}
 
 
 @lru_cache(maxsize=4)
