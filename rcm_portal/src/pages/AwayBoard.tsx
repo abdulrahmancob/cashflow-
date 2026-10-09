@@ -22,6 +22,23 @@ import { Avatar } from '../components/table'
 import { Badge, Button, Drawer, PageHeader } from '../components/ui'
 
 const POLL_MS = 20_000
+const TEAM_KEY = 'awayBoard.team'
+
+function readStoredTeam() {
+  try {
+    return window.localStorage.getItem(TEAM_KEY) || 'all'
+  } catch {
+    return 'all'
+  }
+}
+
+function storeTeam(team: string) {
+  try {
+    window.localStorage.setItem(TEAM_KEY, team)
+  } catch {
+    // Private windows can block storage; the choice just will not stick.
+  }
+}
 
 const KIND_LABEL: Record<AwayKind, string> = {
   break: 'Break',
@@ -150,6 +167,34 @@ function comparePeople(sort: BoardSort, isToday: boolean) {
     const delta = statusRank(a, isToday) - statusRank(b, isToday)
     return delta === 0 ? byName : delta
   }
+}
+
+function FilterChip({
+  active,
+  label,
+  count,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  count: number
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+        active
+          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
+          : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700'
+      }`}
+    >
+      {label}
+      <span className="ml-1.5 tabular-nums opacity-70">{count}</span>
+    </button>
+  )
 }
 
 function meetingLine(session: AwaySession) {
@@ -461,6 +506,7 @@ export function AwayBoardPage() {
   const [now, setNow] = useState(() => Date.now())
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<BoardStatus>('all')
+  const [team, setTeam] = useState<string>(readStoredTeam)
   const [sort, setSort] = useState<BoardSort>('status')
   const [exporting, setExporting] = useState(false)
   const [refresh, setRefresh] = useState(0)
@@ -539,10 +585,16 @@ export function AwayBoardPage() {
     setDay(next)
   }
 
+  function chooseTeam(next: string) {
+    setTeam(next)
+    storeTeam(next)
+  }
+
   function downloadExcel() {
     setExporting(true)
     setError(null)
-    void fetch('/api/away/board/export', { credentials: 'include' })
+    const query = activeTeam === 'all' ? '' : `?team=${encodeURIComponent(activeTeam)}`
+    void fetch(`/api/away/board/export${query}`, { credentials: 'include' })
       .then(async (response) => {
         if (!response.ok) throw new Error('export failed')
         return response.blob()
@@ -551,7 +603,7 @@ export function AwayBoardPage() {
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
-        link.download = 'away_board.xlsx'
+        link.download = activeTeam === 'all' ? 'away_board.xlsx' : `away_board_${activeTeam}.xlsx`
         link.click()
         URL.revokeObjectURL(url)
       })
@@ -560,7 +612,11 @@ export function AwayBoardPage() {
   }
 
   const selected = board?.work_day || cairoToday || ''
-  const people = board?.people || []
+  const allPeople = board?.people || []
+  const teams = board?.teams || []
+  const activeTeam = teams.some((item) => item.key === team) ? team : 'all'
+  const people =
+    activeTeam === 'all' ? allPeople : allPeople.filter((person) => person.team === activeTeam)
   const isToday = !!board?.is_today
   const needle = query.trim().toLowerCase()
   const named = people.filter((person) =>
@@ -579,8 +635,20 @@ export function AwayBoardPage() {
     .filter((person) => status === 'all' || personBucket(person, isToday) === status)
     .slice()
     .sort(comparePeople(sort, isToday))
-  const live = board?.live || []
+  const live = (board?.live || []).filter(
+    (row) => activeTeam === 'all' || row.team === activeTeam,
+  )
   const atDesk = people.filter((person) => personBucket(person, true) === 'working').length
+  const grouped = activeTeam === 'all' && teams.length > 1
+  const sections = grouped
+    ? teams
+        .map((item) => ({
+          key: item.key,
+          label: item.label,
+          members: visible.filter((person) => person.team === item.key),
+        }))
+        .filter((section) => section.members.length > 0)
+    : [{ key: activeTeam, label: '', members: visible }]
 
   return (
     <div className="space-y-5">
@@ -593,6 +661,25 @@ export function AwayBoardPage() {
         }
       />
       {error && <p className="text-sm text-rose-600">{error}</p>}
+      {teams.length > 1 && (
+        <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1" aria-label="Teams">
+          <FilterChip
+            active={activeTeam === 'all'}
+            label="All teams"
+            count={allPeople.length}
+            onClick={() => chooseTeam('all')}
+          />
+          {teams.map((item) => (
+            <FilterChip
+              key={item.key}
+              active={activeTeam === item.key}
+              label={item.label}
+              count={item.people}
+              onClick={() => chooseTeam(item.key)}
+            />
+          ))}
+        </div>
+      )}
       <div className="grid gap-3 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <AwayNowCard live={live} now={now} />
@@ -682,24 +769,15 @@ export function AwayBoardPage() {
             ['unverified', 'Unverified'],
             ['offline', 'Offline'],
           ] as const
-        ).map(([key, label]) => {
-          const active = status === key
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStatus(key)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                active
-                  ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700'
-              }`}
-            >
-              {label}
-              <span className="ml-1.5 tabular-nums opacity-70">{counts[key]}</span>
-            </button>
-          )
-        })}
+        ).map(([key, label]) => (
+          <FilterChip
+            key={key}
+            active={status === key}
+            label={label}
+            count={counts[key]}
+            onClick={() => setStatus(key)}
+          />
+        ))}
         <select
           aria-label="Sort people"
           value={sort}
@@ -722,18 +800,28 @@ export function AwayBoardPage() {
       {board && visible.length === 0 && (
         <p className="text-sm text-gray-500">No one matches.</p>
       )}
-      <div className="grid gap-3 lg:grid-cols-2">
-        {visible.map((person) => (
-          <PersonCard
-            key={person.user_id}
-            person={person}
-            isToday={isToday}
-            now={now}
-            onEnd={endFor}
-            onDiagnose={setDiagnose}
-          />
-        ))}
-      </div>
+      {sections.map((section) => (
+        <section key={section.key} className="space-y-2">
+          {grouped && (
+            <h2 className="flex items-baseline gap-2 border-b border-gray-200 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800">
+              {section.label}
+              <span className="tabular-nums opacity-70">{section.members.length}</span>
+            </h2>
+          )}
+          <div className="grid gap-3 lg:grid-cols-2">
+            {section.members.map((person) => (
+              <PersonCard
+                key={person.user_id}
+                person={person}
+                isToday={isToday}
+                now={now}
+                onEnd={endFor}
+                onDiagnose={setDiagnose}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
       <Drawer
         open={!!diagnose}
         onClose={() => setDiagnose(null)}

@@ -107,6 +107,7 @@ def away_end(user: AuthUser = Depends(get_current_user)) -> dict[str, Any]:
 
 @router.get("/board/export", dependencies=[Depends(heavy_guard)])
 def away_board_export_view(
+    team: str | None = Query(None, max_length=32),
     user: AuthUser = Depends(require_roles(*BOARD_ROLES)),
 ) -> StreamingResponse:
     from cashflow_db.repository import connection, user_away
@@ -116,10 +117,14 @@ def away_board_export_view(
     except ImportError as exc:
         raise HTTPException(status_code=500, detail="openpyxl required") from exc
 
+    if team and team not in user_away.TEAM_LABELS:
+        raise HTTPException(status_code=400, detail=f"unknown team: {team}")
     with connection() as conn:
         payload = user_away.away_board_export(
             conn,
             role_keys=user_away.board_scope_roles(user.roles),
+            hidden_roles=user_away.board_hidden_roles(user.roles),
+            team=team or None,
         )
     workbook = Workbook(write_only=True)
     for title, headers, rows in user_away.export_tables(payload):
@@ -133,7 +138,13 @@ def away_board_export_view(
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=away_board.xlsx"},
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=away_board_{team}.xlsx"
+                if team
+                else "attachment; filename=away_board.xlsx"
+            )
+        },
     )
 
 
@@ -150,6 +161,7 @@ def away_board_view(
                 conn,
                 day=day,
                 role_keys=user_away.board_scope_roles(user.roles),
+                hidden_roles=user_away.board_hidden_roles(user.roles),
             )
         )
 

@@ -27,8 +27,24 @@ WARN_WITHIN_SECONDS = 5 * 60
 PRAYER_WARN_WITHIN_SECONDS = 2 * 60
 MEETING_MAX_SECONDS = 24 * 60 * 60
 ADMIN_BOARD_ROLES = frozenset({"super_admin", "sub_admin", "ops_admin"})
+SUPER_BOARD_HIDDEN_ROLES = frozenset({"super_admin"})
 SS_BOARD_ROLES = ("second_submission", "second_submission_lead")
 RED_BOARD_ROLES = ("red_agent",)
+TEAM_OTHER = "other"
+# Board order, and first match wins for a person holding roles from several teams.
+BOARD_TEAMS = (
+    ("admins", "Admins", ("sub_admin", "ops_admin")),
+    ("red_team", "Red team", ("redteam_leader", "red_agent")),
+    ("second_submission", "Second Submission", SS_BOARD_ROLES),
+    ("eligibility", "Eligibility", ("posting_team",)),
+    ("collection", "Collection", ("collector",)),
+    ("submission", "Submission", ("submission",)),
+    ("medical_audit", "Medical audit", ("medical_audit",)),
+    ("finance", "Finance", ("finance",)),
+    ("desk", "Desk", ("desk",)),
+    ("analytics", "Analytics", ("analytics_viewer",)),
+)
+TEAM_LABELS = {key: label for key, label, _ in BOARD_TEAMS} | {TEAM_OTHER: "Other"}
 
 
 def cairo_today(moment: datetime | None = None) -> date:
@@ -406,12 +422,35 @@ def aggregate_away_days(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def board_team(roles: list[str] | None) -> str:
+    keys = set(roles or [])
+    for team, _, team_roles in BOARD_TEAMS:
+        if keys.intersection(team_roles):
+            return team
+    return TEAM_OTHER
+
+
+def team_counts(people: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: dict[str, int] = {}
+    for person in people:
+        counts[person["team"]] = counts.get(person["team"], 0) + 1
+    return [
+        {"key": key, "label": label, "people": counts[key]}
+        for key, label in TEAM_LABELS.items()
+        if counts.get(key)
+    ]
+
+
 def _user_fields(user: dict[str, Any]) -> dict[str, Any]:
+    roles = list(user.get("roles") or [])
+    team = board_team(roles)
     return {
         "user_id": str(user["user_id"]),
         "display_name": user.get("display_name") or user.get("username") or "",
         "username": user.get("username") or "",
-        "roles": list(user.get("roles") or []),
+        "roles": roles,
+        "team": team,
+        "team_label": TEAM_LABELS[team],
         "desk_permission": user.get("desk_permission") or None,
     }
 
@@ -560,10 +599,12 @@ def assemble_board(
         if not user or row.get("ended_at") is not None:
             continue
         public = _public_session(row, moment)
+        fields = _user_fields(user)
         live_rows.append(
             {
-                "user_id": str(user["user_id"]),
-                "display_name": _user_fields(user)["display_name"],
+                "user_id": fields["user_id"],
+                "display_name": fields["display_name"],
+                "team": fields["team"],
                 "kind": public["kind"],
                 "elapsed_seconds": public["elapsed_seconds"],
                 "with_whom": public["with_whom"],
@@ -584,6 +625,7 @@ def assemble_board(
         "break_budget_seconds": BREAK_BUDGET_SECONDS,
         "prayer_limit": PRAYER_LIMIT,
         "people": people,
+        "teams": team_counts(people),
         "live": live_rows,
         "days": days,
     }
@@ -601,20 +643,36 @@ def board_scope_roles(viewer_roles: list[str] | None) -> tuple[str, ...] | None:
     raise PermissionError("insufficient away board scope")
 
 
+def board_hidden_roles(viewer_roles: list[str] | None) -> frozenset[str]:
+    """Only the super admin sees sub admins and ops admins on the board."""
+    if "super_admin" in set(viewer_roles or []):
+        return SUPER_BOARD_HIDDEN_ROLES
+    return ADMIN_BOARD_ROLES
+
+
 def users_in_board_scope(
     users: list[dict[str, Any]],
     role_keys: tuple[str, ...] | None,
+    hidden_roles: frozenset[str] = ADMIN_BOARD_ROLES,
 ) -> list[dict[str, Any]]:
     active = [
         row
         for row in users
         if row.get("is_active")
-        and not ADMIN_BOARD_ROLES.intersection(row.get("roles") or [])
+        and not hidden_roles.intersection(row.get("roles") or [])
     ]
     if role_keys is None:
         return active
     allowed = set(role_keys)
     return [row for row in active if allowed.intersection(row.get("roles") or [])]
+
+
+def users_in_team(users: list[dict[str, Any]], team: str | None) -> list[dict[str, Any]]:
+    if not team:
+        return users
+    if team not in TEAM_LABELS:
+        raise ValueError(f"unknown team: {team}")
+    return [row for row in users if board_team(row.get("roles")) == team]
 
 
 def person_in_board_scope(
@@ -625,9 +683,10 @@ def person_in_board_scope(
     from cashflow_db.repository.auth_users import list_users
 
     scope = board_scope_roles(viewer_roles)
+    hidden = board_hidden_roles(viewer_roles)
     return any(
         str(row["user_id"]) == str(target_id)
-        for row in users_in_board_scope(list_users(conn), scope)
+        for row in users_in_board_scope(list_users(conn), scope, hidden)
     )
 
 
@@ -674,6 +733,7 @@ def away_board(
     day: date | None = None,
     now: datetime | None = None,
     role_keys: tuple[str, ...] | None = None,
+    hidden_roles: frozenset[str] = ADMIN_BOARD_ROLES,
 ) -> dict[str, Any]:
     from cashflow_db.repository.auth_users import list_users
 
@@ -682,7 +742,7 @@ def away_board(
     selected = day or today
     from cashflow_db.repository import presence as live_presence
 
-    users = users_in_board_scope(list_users(conn), role_keys)
+    users = users_in_board_scope(list_users(conn), role_keys, hidden_roles)
     scoped_ids = [str(row["user_id"]) for row in users]
     close_stale_away(conn, user_ids=scoped_ids, now=moment)
     day_start, day_end = cairo_day_bounds(selected)
@@ -821,6 +881,7 @@ KIND_LABELS = {
 _DAY_COLUMNS = (
     ("date", "Date"),
     ("name", "Name"),
+    ("team", "Team"),
     ("username", "Username"),
     ("roles", "Roles"),
     ("first_login", "First login"),
@@ -841,6 +902,7 @@ _DAY_COLUMNS = (
 _SESSION_COLUMNS = (
     ("date", "Date"),
     ("name", "Name"),
+    ("team", "Team"),
     ("username", "Username"),
     ("kind", "Kind"),
     ("started", "Started"),
@@ -854,6 +916,7 @@ _SESSION_COLUMNS = (
 _WORK_COLUMNS = (
     ("date", "Date"),
     ("name", "Name"),
+    ("team", "Team"),
     ("username", "Username"),
     ("page", "Page"),
     ("started", "From"),
@@ -867,6 +930,7 @@ _CHANGE_COLUMNS = (
     ("date", "Date"),
     ("time", "Time"),
     ("name", "Name"),
+    ("team", "Team"),
     ("username", "Username"),
     ("area", "Area"),
     ("action", "Action"),
@@ -878,6 +942,7 @@ _MONTH_COLUMNS = (
     ("period_from", "From"),
     ("period_to", "To"),
     ("name", "Name"),
+    ("team", "Team"),
     ("username", "Username"),
     ("roles", "Roles"),
     ("days_in_period", "Days in period"),
@@ -950,6 +1015,7 @@ def _people_index(users: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "user_id": fields["user_id"],
             "name": fields["display_name"],
             "username": fields["username"],
+            "team": fields["team_label"],
             "roles": ", ".join(fields["roles"]),
         }
     return indexed
@@ -1208,11 +1274,16 @@ def away_board_export(
     *,
     now: datetime | None = None,
     role_keys: tuple[str, ...] | None = None,
+    hidden_roles: frozenset[str] = ADMIN_BOARD_ROLES,
+    team: str | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     from cashflow_db.repository.auth_users import list_users
 
     moment = _as_aware(now or datetime.now(timezone.utc))
-    users = users_in_board_scope(list_users(conn), role_keys)
+    users = users_in_team(
+        users_in_board_scope(list_users(conn), role_keys, hidden_roles),
+        team,
+    )
     ids = [str(row["user_id"]) for row in users]
     if not ids:
         return assemble_board_export(

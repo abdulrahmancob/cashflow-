@@ -19,13 +19,17 @@ from cashflow_db.repository.user_away import (
     ONLINE_SECONDS,
     PRAYER_LIMIT,
     SS_BOARD_ROLES,
+    ADMIN_BOARD_ROLES,
     aggregate_away_days,
     assemble_board,
+    board_hidden_roles,
     board_scope_roles,
+    board_team,
     online_user_ids,
     offline_since_at,
     summarize_day,
     users_in_board_scope,
+    users_in_team,
     validate_start,
     warning_level,
 )
@@ -240,6 +244,7 @@ def test_past_day_excludes_an_open_session_from_another_day():
         {
             "user_id": "u1",
             "display_name": "Nour",
+            "team": "collection",
             "kind": KIND_MEETING,
             "elapsed_seconds": 10 * 60,
             "with_whom": "Sara",
@@ -276,6 +281,96 @@ def test_board_scope_is_team_for_lead_and_open_for_admin():
     assert scoped == ["ss", "lead"]
     everyone = [row["user_id"] for row in users_in_board_scope(users, None)]
     assert everyone == ["ss", "lead", "collector"]
+
+
+def test_only_the_super_admin_sees_sub_and_ops_admins():
+    assert board_hidden_roles(["super_admin"]) == frozenset({"super_admin"})
+    assert board_hidden_roles(["sub_admin"]) == ADMIN_BOARD_ROLES
+    assert board_hidden_roles(["ops_admin"]) == ADMIN_BOARD_ROLES
+    assert board_hidden_roles(["second_submission_lead"]) == ADMIN_BOARD_ROLES
+    users = [
+        {"user_id": "collector", "is_active": True, "roles": ["collector"]},
+        {"user_id": "ops", "is_active": True, "roles": ["ops_admin"]},
+        {"user_id": "sub", "is_active": True, "roles": ["sub_admin"]},
+        {"user_id": "super", "is_active": True, "roles": ["super_admin"]},
+        {"user_id": "gone", "is_active": False, "roles": ["sub_admin"]},
+    ]
+    for viewer, expected in (
+        (["super_admin"], ["collector", "ops", "sub"]),
+        (["sub_admin"], ["collector"]),
+        (["ops_admin"], ["collector"]),
+    ):
+        seen = users_in_board_scope(
+            users, board_scope_roles(viewer), board_hidden_roles(viewer)
+        )
+        assert [row["user_id"] for row in seen] == expected, viewer
+    lead = ["second_submission_lead"]
+    led = [{"user_id": "sub", "is_active": True, "roles": ["sub_admin", "second_submission_lead"]}]
+    assert users_in_board_scope(led, board_scope_roles(lead), board_hidden_roles(lead)) == []
+
+
+def test_each_person_lands_in_one_team():
+    assert board_team(["desk"]) == "desk"
+    assert board_team(["red_agent"]) == "red_team"
+    assert board_team(["redteam_leader", "ops_admin"]) == "admins"
+    assert board_team(["sub_admin"]) == "admins"
+    assert board_team(["posting_team"]) == "eligibility"
+    assert board_team(["collector"]) == "collection"
+    assert board_team(["second_submission_lead"]) == "second_submission"
+    assert board_team(
+        ["analytics_viewer", "collector", "posting_team", "second_submission"]
+    ) == "second_submission"
+    assert board_team(["medical_audit"]) == "medical_audit"
+    assert board_team([]) == "other"
+    users = [
+        {"user_id": "a", "roles": ["desk"]},
+        {"user_id": "b", "roles": ["collector"]},
+        {"user_id": "c", "roles": ["desk"]},
+    ]
+    assert [row["user_id"] for row in users_in_team(users, "desk")] == ["a", "c"]
+    assert users_in_team(users, None) == users
+    with pytest.raises(ValueError):
+        users_in_team(users, "nope")
+
+
+def test_board_tags_people_and_live_rows_with_their_team():
+    now = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    today = date(2026, 9, 26)
+    users = [
+        {"user_id": "d1", "display_name": "Dina", "username": "d1", "roles": ["desk"]},
+        {"user_id": "d2", "display_name": "Dalia", "username": "d2", "roles": ["desk"]},
+        {"user_id": "r1", "display_name": "Rami", "username": "r1", "roles": ["red_agent"]},
+        {"user_id": "o1", "display_name": "Omar", "username": "o1", "roles": ["ops_admin"]},
+    ]
+    open_break = {
+        "away_id": "open",
+        "user_id": "r1",
+        "kind": KIND_BREAK,
+        "started_at": now - timedelta(minutes=2),
+        "ended_at": None,
+        "planned_seconds": None,
+        "with_whom": None,
+        "work_day": today,
+    }
+    board = assemble_board(
+        users,
+        day_sessions=[open_break],
+        open_sessions=[open_break],
+        day_counts=[],
+        selected=today,
+        today=today,
+        now=now,
+    )
+    by_id = {person["user_id"]: person for person in board["people"]}
+    assert by_id["d1"]["team"] == "desk"
+    assert by_id["d1"]["team_label"] == "Desk"
+    assert by_id["o1"]["team"] == "admins"
+    assert board["teams"] == [
+        {"key": "admins", "label": "Admins", "people": 1},
+        {"key": "red_team", "label": "Red team", "people": 1},
+        {"key": "desk", "label": "Desk", "people": 2},
+    ]
+    assert board["live"][0]["team"] == "red_team"
 
 
 def test_working_requires_a_recent_portal_ping():

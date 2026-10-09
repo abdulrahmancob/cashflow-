@@ -153,6 +153,35 @@ def test_export_is_board_roles_and_streams_the_workbook(monkeypatch):
     admin = TestClient(_app(_user("ops_admin"), monkeypatch))
     assert admin.get("/api/away/board/export").status_code == 200
     assert captured["role_keys"] is None
+    assert captured["team"] is None
+
+    captured.clear()
+    res = admin.get("/api/away/board/export?team=desk")
+    assert res.status_code == 200
+    assert captured["team"] == "desk"
+    assert "away_board_desk.xlsx" in res.headers["content-disposition"]
+    assert admin.get("/api/away/board/export?team=nope").status_code == 400
+
+
+def test_only_the_super_admin_board_shows_sub_and_ops_admins(monkeypatch):
+    captured: dict = {}
+
+    def _board(*_a, **kwargs):
+        captured.update(kwargs)
+        return {"people": [], "live": [], "days": []}
+
+    for roles, hidden in (
+        (("super_admin",), {"super_admin"}),
+        (("sub_admin",), {"super_admin", "sub_admin", "ops_admin"}),
+        (("ops_admin",), {"super_admin", "sub_admin", "ops_admin"}),
+        (("second_submission_lead",), {"super_admin", "sub_admin", "ops_admin"}),
+        (("redteam_leader",), {"super_admin", "sub_admin", "ops_admin"}),
+    ):
+        captured.clear()
+        client = TestClient(_app(_user(*roles), monkeypatch))
+        monkeypatch.setattr("cashflow_db.repository.user_away.away_board", _board)
+        assert client.get("/api/away/board").status_code == 200, roles
+        assert captured["hidden_roles"] == hidden, roles
 
 
 def test_start_maps_rejection_to_400(monkeypatch):

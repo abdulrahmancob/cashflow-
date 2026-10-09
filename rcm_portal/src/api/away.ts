@@ -71,6 +71,8 @@ export type AwayPerson = AwayMe & {
   display_name: string
   username: string
   roles: string[]
+  team: string
+  team_label: string
   status: 'working' | AwayKind
   online: boolean
   offline_since: string | null
@@ -88,6 +90,7 @@ export type AwayPerson = AwayMe & {
 export type AwayLive = {
   user_id: string
   display_name: string
+  team?: string
   kind: AwayKind
   elapsed_seconds: number
   with_whom: string | null
@@ -99,12 +102,19 @@ export type AwayDayCount = {
   people: number
 }
 
+export type AwayTeam = {
+  key: string
+  label: string
+  people: number
+}
+
 export type AwayBoard = {
   work_day: string
   is_today: boolean
   break_budget_seconds: number
   prayer_limit: number
   people: AwayPerson[]
+  teams?: AwayTeam[]
   live: AwayLive[]
   days: AwayDayCount[]
 }
