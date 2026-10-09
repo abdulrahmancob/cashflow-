@@ -555,6 +555,64 @@ class StripOcrHelperTests(unittest.TestCase):
         self.assertFalse(trace[0][-1])
 
 
+class BlockReachTests(unittest.TestCase):
+    OLD_FORM = [
+        "How did you book your appointment?(*) Please checkwhat applies",
+        "O PhoneCall/ Text",
+        "O Zocdoc",
+        "O Ourwebsite (www.ptofthecity.com)/Google",
+        "O Walk-in",
+        "How did you hear about us? (*) Please check what applies",
+        "O Doctor's referral/recommendations",
+        "(Typedoctor's name/office)",
+        "O Google",
+        "O Zocdoc",
+        "O Social Media",
+        "O Insurance Recommendations",
+        "O Direct Mail",
+        "O Word of Mouth",
+        "O Marketing Table",
+        "O Event or community outreach",
+        "O Clinic staff",
+        "O From doctor office",
+        "O From street distribution",
+        "O Other(please specify)",
+        "1",
+        "PT City",
+        "IN SURANCE INFORMATION",
+        "Primary Insurance Company:",
+    ]
+
+    def test_generic_pass_sees_the_whole_checkbox_list(self):
+        """The family is told apart from the block text of the first (generic) pass."""
+        from intake_reader.anchors import GENERIC, detect_family
+
+        words = words_from_text(self.OLD_FORM, gap=46)
+        layout = analyse(words, GENERIC, 34)
+        self.assertIn("Marketing Table", layout.block_text)
+        self.assertEqual(detect_family(layout.block_text, "our sources are working well").id, "old_checkbox")
+        self.assertEqual(layout.end_line, 22)
+
+    def test_circle_block_stops_before_the_insurance_header(self):
+        words = words_from_text(
+            [
+                "How did you hear about us?",
+                "O Doctor referral|O Google",
+                "O Zocdoc|O Social Media",
+                "O Insurance|O Word of Mouth",
+                "O Event / Outreach",
+                "O Other:",
+                "PT City",
+                "IN SURANCE INFORMATION",
+                "Primary Insurance Company:",
+            ]
+        )
+        layout = analyse(words, NEW_CIRCLE, 20)
+        insurance = [h for h in layout.hear if h.code == "insurance"]
+        self.assertEqual(len(insurance), 1)
+        self.assertEqual(insurance[0].line_index, 3)
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")

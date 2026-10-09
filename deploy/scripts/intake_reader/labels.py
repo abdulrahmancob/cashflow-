@@ -375,9 +375,12 @@ def analyse(
     if q_index is not None:
         # the option list never runs deeper than this below the question; a section header the
         # OCR garbled ("INSURANCE INFORMATION") must not feed labels
-        reach = th * (13 if family.id in ("new_circle", "es_circle", "tiny", "generic") else 26)
+        # (the first pass runs with the generic family and must see the whole list to tell the
+        # families apart, so only the known short layouts get the short reach)
+        reach = th * (13 if family.id in ("new_circle", "es_circle", "tiny") else 26)
         for i in range(q_index + 1, len(lines)):
-            if SECTION_END_RE.search(lines[i].text) and not INSTRUCTION_RE.search(lines[i].text):
+            text = lines[i].text
+            if (SECTION_END_RE.search(text) or _LOOSE_END_RE.search(text)) and not INSTRUCTION_RE.search(text):
                 end_index = i
                 break
             if i - q_index > max_lines or lines[i].y0 - lines[q_index].y0 > reach:
@@ -461,6 +464,9 @@ def analyse(
     hear = _infer_other(lines, hear, family, th, group_of)
     return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
 
+
+# Section headers as OCR tends to break them ("IN SURANCE INFORMATION" with a dashed frame).
+_LOOSE_END_RE = re.compile(r"surance\s+informa|informaci.n\s+del\s+seguro|patient\s+informa|workers.?\s+comp|secondary\s+insurance", re.IGNORECASE)
 
 _HELPER_LINE_RE = re.compile(r"type\s*doctor|doctor.s\s*name|name\s*/?\s*office|escriba|nombre\s*del|oficina", re.IGNORECASE)
 
