@@ -404,6 +404,126 @@ class ColumnGeometryTests(unittest.TestCase):
         self.assertEqual(marked_codes(controls), ["google", "zocdoc"])
 
 
+class RoundFourTests(unittest.TestCase):
+    def test_helper_words_never_start_the_doctor_label(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? (*) Please check what applies",
+                "(Typedoctor's referral/recommendations",
+                "O Google",
+                "O Zocdoc",
+            ]
+        )
+        layout = analyse(words, OLD_CHECKBOX, 20)
+        doctor = next(h for h in layout.hear if h.code == "doctor")
+        self.assertEqual(doctor.words[0]["text"], "referral/recommendations")
+        self.assertEqual(doctor.prefix_px, 0)
+
+    def test_virtual_question_line_when_question_text_is_lost(self):
+        words = words_from_text(
+            [
+                "How did you book your appointment?",
+                "O Phone / Text|O Website / Google",
+                "O Zocdoc|O Walk-in",
+                "|",
+                "O Doctor referral|O Google",
+                "O Zocdoc|O Social Media",
+                "O Insurance|O Word of Mouth",
+                "O Event / Outreach",
+                "O Other:",
+            ]
+        )
+        layout = analyse(words, NEW_CIRCLE, 20)
+        self.assertIsNotNone(layout.question_line)
+        self.assertEqual(sorted(h.code for h in layout.hear), ["doctor", "event", "friend_family", "google", "insurance", "other", "social_media", "zocdoc"])
+        self.assertEqual(sorted(h.code for h in layout.booking), ["phone", "walk_in", "website", "zocdoc"])
+
+    def test_first_option_row_filled_from_junk_line(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? (*) Please check what applies",
+                "pa",
+                "(Typedoctor's name/office)",
+                "O Google",
+                "O Zocdoc",
+                "O Social Media",
+                "O Insurance Recommendations",
+                "O Direct Mail",
+                "O Word of Mouth",
+                "O Marketing Table",
+                "O Event or community outreach",
+                "O Clinic staff",
+                "O From doctor office",
+                "O From street distribution",
+                "O Other (please specify)",
+            ]
+        )
+        layout = analyse(words, OLD_CHECKBOX, 20)
+        doctor = next(h for h in layout.hear if h.code == "doctor")
+        self.assertTrue(doctor.inferred)
+        self.assertEqual(doctor.line_index, 1)
+
+    def test_grid_row_confirmed_by_other_column(self):
+        words = words_from_text(
+            [
+                "How did you hear about us?",
+                "O referral|",
+                "O Zocdoc|O Social Media",
+                "O Insurance|O Word of Mouth",
+                "O Event / Outreach",
+                "O Other:",
+            ]
+        )
+        layout = analyse(words, NEW_CIRCLE, 20)
+        google = next(h for h in layout.hear if h.code == "google")
+        social = next(h for h in layout.hear if h.code == "social_media")
+        self.assertTrue(google.inferred)
+        self.assertAlmostEqual(google.cy, social.cy - 34, delta=4)
+        self.assertEqual(google.anchor_x, social.anchor_x)
+
+    def test_tiny_neighbour_on_a_split_line(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? O Doctor O Google O Social Media O Zocdoc",
+                "A vatin",
+                "O Flyers O Friends/Family Other:",
+            ]
+        )
+        for w in words:
+            if w["text"] in ("A", "vatin"):
+                w["y"] += 23  # a check glued to the box pulls the word box off the row
+            elif w["line"][2] == 2:
+                w["x"] += 90  # the rest of the row prints to the right of Walk-in
+        layout = analyse(words, TINY, 14)
+        codes = {h.code: h for h in layout.hear}
+        self.assertIn("walk_in", codes)
+        self.assertEqual(codes["walk_in"].words[0]["text"], "vatin")
+
+    def test_tiny_dropped_zocdoc_placed_after_social_media(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? O Doctor O Google O Social Media",
+                "O Walk-in O Flyers O Friends/Family Other:",
+            ]
+        )
+        layout = analyse(words, TINY, 14)
+        codes = {h.code: h for h in layout.hear}
+        self.assertIn("zocdoc", codes)
+        self.assertTrue(codes["zocdoc"].inferred)
+        self.assertGreater(codes["zocdoc"].x0, codes["social_media"].x1)
+
+    def test_check_running_out_of_the_box_marks_it(self):
+        """A big check that merges with its box into one component (no longer box-like)."""
+        block = draw_block("How did you hear about us? (*) Please check what applies", _old_specs({"Google": "spill"}), "box")
+        _, controls = run_block(block, OLD_CHECKBOX)
+        self.assertEqual(marked_codes(controls), ["google"])
+
+    def test_website_keyword(self):
+        self.assertEqual(map_text("Website"), "website")
+        self.assertEqual(map_text("web site"), "website")
+        self.assertEqual(map_text("googled you"), "google")
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")

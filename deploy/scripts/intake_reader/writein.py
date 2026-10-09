@@ -62,6 +62,7 @@ _KEYWORDS: tuple[tuple[str, re.Pattern], ...] = (
             re.I,
         ),
     ),
+    ("website", re.compile(r"web\s*site|website|your\s*site|our\s*site|sitio\s*web|p[aá]gina\s*web", re.I)),
     ("google", re.compile(r"google|search|internet|online|\bweb|site|yelp|\bai\b|chat\s*gpt|maps", re.I)),
     ("phone", re.compile(r"phone|call|tel[eé]fono|llam", re.I)),
 )
@@ -283,14 +284,16 @@ def detect(
         return None  # the strip read the printed helper line, not handwriting
     letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
     strong = len(letters) >= 3 and conf >= 45
-    some = len(letters) >= 2 and conf >= 30
+    some = len(letters) >= 3 and conf >= 35
     if strong:
         pass
-    elif some and total >= th * th * 1.0:
+    elif kind == "inline" and some and total >= th * th * 1.2:
         pass
     elif kind == "inline" and tall >= 2 and total >= th * th * 1.2:
         pass
-    elif kind == "below" and tall >= 3 and total >= th * th * 2.0:
+    elif kind == "below" and tall >= 3 and total >= th * th * 1.0:
+        pass  # the helper line under the doctor option OCRs into junk; only real ink counts there
+    elif kind == "below" and some and tall >= 2 and total >= th * th * 1.0:
         pass
     else:
         return None

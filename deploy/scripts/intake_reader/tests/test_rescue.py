@@ -131,13 +131,13 @@ class RingTests(unittest.TestCase):
         plain = _ring(np.asarray(image) < 150, hit, 24)
         draw.ellipse((88, 28, 192, 78), outline=0, width=2)
         circled = _ring(np.asarray(image) < 150, hit, 24)
-        self.assertGreater(circled, plain + 0.05)
-        self.assertGreaterEqual(circled, 0.07)
+        self.assertGreater(circled, plain + 0.3)
+        self.assertGreaterEqual(circled, 0.5)
         line = Image.new("L", (400, 120), 255)
         d2 = ImageDraw.Draw(line)
         d2.text((100, 40), "Google", fill=0, font=font(24))
         d2.line((92, 0, 92, 119), fill=0, width=4)
-        self.assertLess(_ring(np.asarray(line) < 150, hit, 24), 0.08)
+        self.assertLess(_ring(np.asarray(line) < 150, hit, 24), 0.3)
 
 
 if __name__ == "__main__":

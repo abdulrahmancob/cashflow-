@@ -10,6 +10,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
+from .anchors import OPTION_ANCHOR_RE
 from .anchors import (
     BOOKING_PHRASES,
     BOOKING_RE,
@@ -291,9 +292,13 @@ def _nearest_line(lines: list[Line], y: float | None, th: int, prefer_above: boo
     if y is None or not lines:
         return None
 
+    def letters(i: int) -> int:
+        return sum(len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) for w in lines[i].words)
+
     def cost(i: int) -> float:
         delta = lines[i].y0 - y
-        return abs(delta) + (th * 0.8 if (prefer_above and delta > th * 0.5) else 0)
+        junk = th * 1.0 if letters(i) < 4 else 0  # "|" or a stray glyph is not the question line
+        return abs(delta) + (th * 0.8 if (prefer_above and delta > th * 0.5) else 0) + junk
 
     index = min(range(len(lines)), key=cost)
     return index if abs(lines[index].y0 - y) <= th * 2.5 else None
@@ -325,6 +330,8 @@ def _glyph_prefix(first: dict, key: str) -> int:
     chars = lead + best_k
     if chars <= 0:
         return 0
+    if lead >= 4:
+        return 0  # a run of letters that long is another word joined to the label, not a glyph
     return int(round(first["w"] * chars / max(1, len(raw))))
 
 
@@ -349,17 +356,31 @@ def analyse(
     b_index = next((i for i, line in enumerate(lines) if phrase_in_line(line.text, BOOKING_PHRASES, BOOKING_RE)), None)
     if q_index is None:
         q_index = _nearest_line(lines, question_y, th)
+    if q_index is None:
+        # the question text did not OCR but the options did: a virtual line just above the first
+        # option row takes its place so the block still starts in the right place
+        anchors_at = [i for i, line in enumerate(lines) if OPTION_ANCHOR_RE.search(line.text)]
+        if len(anchors_at) >= 2 and (b_index is None or anchors_at[0] > b_index):
+            first = lines[anchors_at[0]]
+            virtual = Line([], first.y0 - th * 0.6, int(first.y0 - th * 1.1), int(first.y0 - th * 0.1), "")
+            lines.insert(anchors_at[0], virtual)
+            q_index = anchors_at[0]
+            if b_index is not None and b_index >= q_index:
+                b_index += 1
     if b_index is None and booking_y is not None:
         b_index = _nearest_line(lines, booking_y, th)
         if b_index is not None and b_index == q_index:
             b_index = None
     end_index: int | None = None
     if q_index is not None:
+        # the option list never runs deeper than this below the question; a section header the
+        # OCR garbled ("INSURANCE INFORMATION") must not feed labels
+        reach = th * (13 if family.id in ("new_circle", "es_circle", "tiny", "generic") else 26)
         for i in range(q_index + 1, len(lines)):
             if SECTION_END_RE.search(lines[i].text) and not INSTRUCTION_RE.search(lines[i].text):
                 end_index = i
                 break
-            if i - q_index > max_lines:
+            if i - q_index > max_lines or lines[i].y0 - lines[q_index].y0 > reach:
                 end_index = i
                 break
     hear: list[LabelHit] = []
@@ -411,6 +432,10 @@ def analyse(
                         matched = matched[1:]
                     else:
                         break
+                # OCR sometimes joins "(Type doctor's name/office)" to the label row; the helper
+                # words are not the label and sit on the row below
+                while len(matched) > 1 and _HELPER_LINE_RE.search(re.sub(r"^[^A-Za-z]+", "", matched[0]["text"])):
+                    matched = matched[1:]
                 # a trailing scrap ("�", "|") stretches the label box over the next row; drop it
                 while len(matched) > 1 and len(normalize(matched[-1]["text"])) <= 1:
                     matched = matched[:-1]
@@ -444,9 +469,10 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
     """Fill gaps by row order (R4): when the unlabelled text segments inside a gap between two
     matched labels of a column are exactly as many as the options missing from that gap, take
     them in order. The control of an inferred label is looked up at the column position."""
-    if family.id in ("tiny", "generic") or len(family.options) < 5 or not hits:
+    if family.id in ("tiny", "generic", "new_circle", "es_circle") or len(family.options) < 5 or not hits:
         return hits
     found = {h.code: h for h in hits}
+    q_cy = lines[q_index].cy if q_index is not None and 0 <= q_index < len(lines) else None
     taken = {id(w) for h in hits for w in h.words}
     for column in sorted({o.column for o in family.options}):
         order = [o for o in family.options if o.column == column]
@@ -477,6 +503,8 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
             for index, line in enumerate(lines):
                 if group_of(index) != "hear" or index == q_index:
                     continue
+                if q_cy is not None and line.cy <= q_cy + th * 0.8:
+                    continue  # on the question row
                 if line.y1 <= lo_y - th * 0.3 or line.y0 >= hi_y + th * 0.3:
                     continue
                 if leading and _HELPER_LINE_RE.search(line.text):
@@ -509,6 +537,23 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
                     chosen.append(best)
                     rest = [c for c in rest if c not in row]
                 candidates = chosen
+            if leading and not candidates and len(missing) == 1 and q_cy is not None:
+                # the first option's line turned to junk ("pas al"): the first row of ink below the
+                # question that is not the helper line is that option; its control sits at the column
+                rows = [
+                    (line.cy, index)
+                    for index, line in enumerate(lines)
+                    if group_of(index) == "hear" and index != q_index and line.words and line.cy > q_cy + th * 0.8
+                    and line.cy < hi_y - th * 0.3 and not _HELPER_LINE_RE.search(line.text)
+                ]
+                if rows:
+                    cy, index = min(rows)
+                    pseudo = {"text": missing[0].phrases[0], "x": col_anchor, "y": int(cy - th / 2), "w": int(th * 0.55 * len(missing[0].phrases[0])), "h": th, "conf": 0.0, "synthetic": True}
+                    hit = LabelHit(missing[0].code, missing[0], [pseudo], index, "hear", 0.45, 0, col_anchor + pseudo["w"], None, 0, col_anchor, True)
+                    hit.line_cy, hit.line_h = _line_stats(lines[index], th)
+                    hits.append(hit)
+                    found[missing[0].code] = hit
+                continue
             if len(candidates) != len(missing):
                 continue
             for option, (_cy, index, words) in zip(missing, candidates):
@@ -564,7 +609,9 @@ def _infer_circle_rows(lines: list[Line], hits: list[LabelHit], family: Family, 
                     continue  # that row's text belongs to another label
                 if abs(line.cy - exp_y) <= spacing * 0.4 and (best is None or abs(line.cy - exp_y) < abs(lines[best].cy - exp_y)):
                     best = index
-            if best is None and (len(known) < 2 or abs(ref_i - i) > 1 or len(known) < 3 and not (known[0][0] < i < known[-1][0])):
+            row_confirmed = any(abs((h.line_cy or h.cy) - exp_y) <= spacing * 0.3 for h in other_cols + added)
+            between = known[0][0] < i < known[-1][0]
+            if best is None and (len(known) < 2 or abs(ref_i - i) > 1 or not (between or row_confirmed or len(known) >= 3)):
                 continue  # no text at that row and too few siblings to trust the grid
             line_index = best if best is not None else ref.line_index
             y_c = exp_y
@@ -610,7 +657,9 @@ def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int
             continue
         ref = found[neighbour]
         line = lines[ref.line_index]
-        words = [w for w in line.words if id(w) not in taken and len(re.sub(r"[^A-Za-z]", "", w["text"])) >= 2]
+        # OCR may split one printed row into two lines; look at every line on that row
+        row_lines = [(i, ln) for i, ln in enumerate(lines) if abs(ln.cy - (ref.line_cy or ref.cy)) <= th * 1.0 and group_of(i) == "hear"]
+        words = [w for _i, ln in row_lines for w in ln.words if id(w) not in taken and len(re.sub(r"[^A-Za-z]", "", w["text"])) >= 2]
         if side == "left":
             cands = [w for w in words if w["x"] + w["w"] <= ref.x0 - th * 0.8 and w["x"] >= ref.x0 - th * 9]
             pick = max(cands, key=lambda w: w["x"]) if cands else None
@@ -622,11 +671,25 @@ def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int
         # the printed box or its mark is often glued to the word ("(Dtos", "LAGcoote")
         key = normalize(options[missing].phrases[0])
         prefix = _glyph_prefix(pick, key)
-        hit = LabelHit(missing, options[missing], [pick], ref.line_index, "hear", 0.5, 0, pick["x"] + pick["w"], None, prefix, None, True)
-        hit.line_cy, hit.line_h = _line_stats(line, th)
+        line_index = next((i for i, ln in row_lines if pick in ln.words), ref.line_index)
+        hit = LabelHit(missing, options[missing], [pick], line_index, "hear", 0.5, 0, pick["x"] + pick["w"], None, prefix, None, True)
+        hit.line_cy, hit.line_h = _line_stats(lines[line_index], th)
         hits.append(hit)
         found[missing] = hit
         taken.add(id(pick))
+    # the two-row variant always prints Zocdoc after Social Media; when the word was swallowed by
+    # a check the label is placed by geometry
+    if "zocdoc" not in found and "social_media" in found and any(c in found for c in ("walk_in", "event", "friend_family")):
+        ref = found["social_media"]
+        line = lines[ref.line_index]
+        beyond = [w for w in line.words if w["x"] >= ref.x1 + th * 0.8]
+        if not beyond:
+            x = int(ref.x1 + th * 2.9)
+            pseudo = {"text": "zocdoc", "x": x, "y": int(ref.cy - (ref.line_h or th) / 2), "w": int(th * 3.3), "h": int(ref.line_h or th), "conf": 0.0, "synthetic": True}
+            hit = LabelHit("zocdoc", options["zocdoc"], [pseudo], ref.line_index, "hear", 0.45, 0, x + pseudo["w"], None, 0, x, True)
+            hit.line_cy, hit.line_h = ref.line_cy, ref.line_h
+            hits.append(hit)
+            found["zocdoc"] = hit
     return sorted(hits, key=lambda h: (h.line_index, h.x0))
 
 
@@ -656,17 +719,32 @@ def _infer_other(lines: list[Line], hits: list[LabelHit], family: Family, th: in
             hits = [h for h in hits if h is not cur]
             cur = None
         if cur is not None:
+            if cur.x1 - cur.x0 > th * 3.5 and len(cur.words) == 1:
+                # "Other:__hugi": the word swallowed the handwriting; keep only the printed part
+                word = cur.words[0]
+                short = dict(word)
+                short["w"] = int(th * 3.0)
+                short["text"] = word["text"][:6]
+                hits = [h for h in hits if h is not cur]
+                hit = LabelHit("other", last, [short], cur.line_index, "hear", cur.score, 0, short["x"] + short["w"] + th, None, cur.prefix_px, None, True)
+                hit.line_cy, hit.line_h = cur.line_cy, cur.line_h
+                hits.append(hit)
+                return sorted(hits, key=lambda h: (h.line_index, h.x0))
             return hits
+        row_x0 = min(h.x0 for h in others)
         for index in range(last_hit.line_index, min(len(lines), last_hit.line_index + 3)):
             if group_of(index) != "hear":
                 continue
             line = lines[index]
+            if index != last_hit.line_index and line.cy < last_hit.cy + th * 0.8:
+                continue  # OCR split the option row; the Other line sits below it
             for word in line.words:
                 if index == last_hit.line_index and word["x"] <= last_hit.x1:
                     continue
                 if len(re.sub(r"[^A-Za-z]", "", word["text"])) < 2:
                     continue
-                if similarity(normalize(word["text"]), "other") >= 0.5 or (index > last_hit.line_index and word is line.words[0]):
+                starts_row = index > last_hit.line_index and word is line.words[0] and word["x"] < row_x0 + th * 4
+                if similarity(normalize(word["text"]), "other") >= 0.5 or starts_row:
                     hit = LabelHit("other", last, [word], index, "hear", 0.5, 0, word["x"] + word["w"] + th, None, 0, None, True)
                     hit.line_cy, hit.line_h = _line_stats(line, th)
                     hits.append(hit)

@@ -281,6 +281,17 @@ GENERIC = Family(
 FAMILIES = {fam.id: fam for fam in (OLD_CHECKBOX, OLD_BULLET, NEW_CIRCLE, ES_CHECKBOX, ES_CIRCLE, TINY, GENERIC)}
 
 
+# Phrases that only appear in the hear-question block (never in the booking question).
+OPTION_ANCHOR_RE = re.compile(
+    r"word\s*of\s*mouth|una\s*referencia\s*m[eé]dica|redes\s*sociales|doctor.?s?\s*referral|"
+    r"referral\s*/?\s*recommendations|recomendaci[oó]n\s*personal|remisi[oó]n|social\s*media|"
+    r"lives\s*nearby|friends\s*/?\s*family|community\s*outreach|insurance\s*recommendations|"
+    r"event\s*/?\s*outreach|de\s*boca\s*en\s*boca|marketing\s*table|direct\s*mail|clinic\s*staff|"
+    r"recomendaciones\s*sobre\s*seguros|evento",
+    re.IGNORECASE,
+)
+
+
 def _low(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower())
 
@@ -304,6 +315,8 @@ def detect_family(block_text: str, page_text: str = "") -> Family:
         if bullet_words:
             return OLD_BULLET
         return OLD_BULLET if re.search(r"\bo\s+(?:doctor|google|zocdoc)", block) else OLD_CHECKBOX
-    if re.search(r"doctor referral|event\s*/\s*outreach|how did you find us|phone\s*/\s*text", both):
+    if re.search(r"doct\w*\s*referral|event\s*/?\s*outreach|how did you find us|phone\s*/?\s*text|website\s*/\s*google", both):
+        return NEW_CIRCLE
+    if re.search(r"word of mouth", block) and re.search(r"social media", block) and not re.search(r"marketing|clinic|direct mail|flyers|lives nearby", block):
         return NEW_CIRCLE
     return GENERIC

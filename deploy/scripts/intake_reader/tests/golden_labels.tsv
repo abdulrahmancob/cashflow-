@@ -153,7 +153,7 @@ D048	doctor	es-new
 D049	multi:doctor+flyer_doctor_office	board-shows-both
 D050	flyer_doctor_office	
 D051	doctor	
-D052	multi:doctor+insurance	board-shows-both
+D052	doctor	board-shows-one
 D053	multi:doctor+flyer_street	
 D054	doctor	
 D055	doctor	
@@ -188,8 +188,8 @@ D083	doctor
 D084	multi:doctor+flyer_doctor_office	
 D085	doctor	
 D086	doctor	
-D087	unmarked?	
-D088	doctor	
+D087	flyer_street	board-shows-slash
+D088	multi:doctor+flyer_street	board-shows-both
 D089	multi:doctor+google?	
 D090	doctor	
 D091	doctor	
@@ -369,7 +369,7 @@ T13	upside_down
 T14	other	prior-patient
 T15	google	
 T16	other	question
-T17	insurance	approved-providers
+T17	multi:doctor+insurance	doctor-x-and-approved-providers
 T18	insurance	
 T19	doctor	
 T20	google	

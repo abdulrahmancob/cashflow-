@@ -49,6 +49,7 @@ class _Cand:
     real: bool  # control-sized, squarish and box-like (ink on three or four sides)
     merged: bool  # recovered from a component that ran into the label
     pixels: int
+    index: int = 0  # component label
 
 
 def _refine_box(mask: np.ndarray, cx0: int, cy0: int, cx1: int, cy1: int, nominal: int) -> tuple[int, int, int, int] | None:
@@ -152,8 +153,10 @@ def _candidates(source, labels, slices, hit: LabelHit, th: int, family: Family, 
         boxlike = bullet or _boxlike(source, cx0, cy0, cx1, cy1)
         if boxlike and family.control == "box" and not merged:
             boxlike = _cornered(source, cx0, cy0, cx1, cy1)
+        if merged and family.control == "circle":
+            boxlike = False  # a circle glued to its label cannot be cut free; the column places it
         real = side >= real_side and min(w, h) >= 0.6 * real_side and squarish and boxlike
-        out.append(_Cand(cx0, cy0, cx1, cy1, real, merged, pixels))
+        out.append(_Cand(cx0, cy0, cx1, cy1, real, merged, pixels, index))
     return out
 
 
@@ -311,6 +314,8 @@ def find_controls(
         if chosen is not None:
             control = Control(hit.code, chosen.x0, chosen.y0, chosen.x1, chosen.y1, True)
             control.extra["merged"] = chosen.merged
+            control.extra["pixels"] = chosen.pixels
+            control.extra["place"] = reason or ("near" if cluster is not None else ("row" if row_vote is not None else "nearest"))
             control.reason = reason
         else:
             control = None
@@ -357,6 +362,13 @@ def find_controls(
                 x0, y0, x1, y1 = snapped  # the printed control sits a little off the label's row
             control = Control(hit.code, x0, y0, x1, y1, False)
             control.reason = reason
+            control.extra["place"] = reason
+            if labels is not None:
+                # a check that merged with the box into one large component: the component
+                # covering this window is far bigger than a box but stops before the label
+                grown = _overlap_growth(labels, slices, x0, y0, x1, y1, side, hit.anchor_x, th)
+                if grown is not None:
+                    control.extra["overlap"] = grown
         else:
             if glued:
                 x0 = _clip(hit.x0 - th * 0.1, 0, width)
@@ -372,6 +384,7 @@ def find_controls(
             y1 = _clip(y_c + th * 0.6, 0, height)
             control = Control(hit.code, x0, y0, x1, y1, False)
             control.extra["wide"] = wide
+            control.extra["place"] = "glued" if glued else "loose"
         control.extra["cands"] = [(c.x0, c.y0, c.x1, c.y1, int(c.real), int(c.merged)) for c in cands[:6]]
         controls[index] = control
     for control, hit in zip(controls, hits):
@@ -379,7 +392,7 @@ def find_controls(
         if hit.prefix_px > 0 and not control.found:
             x_ref = control.x1 + 1
         _measure(ink, control, max(x_ref, control.x1 + 1), hit.left_limit, th)
-        control.ring = _ring(ink, hit, th, words)
+        control.ring = _ring(ink, hit, th, words, control)
         control.extra["hit"] = hit
     if not used_cluster and family.id != "tiny":
         _align_columns(ink, controls, th)
@@ -455,6 +468,35 @@ def _boxlike(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
     return sum(1 for s in sides if s >= 0.6) >= 3
 
 
+def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int, x_ref: int, th: int) -> float | None:
+    """Area ratio of the one component that covers most of this window when it is much larger
+    than a control and ends before the label: a check that ran out of the box and merged with it.
+    Lines (binder lines, rules) and words glued to the box are excluded."""
+    region = labels[y0:y1, x0:x1]
+    if region.size == 0:
+        return None
+    ids, counts = np.unique(region, return_counts=True)
+    best = None
+    for index, count in zip(ids, counts):
+        if index == 0:
+            continue
+        if best is None or count > best[1]:
+            best = (index, count)
+    if best is None or best[1] < 0.25 * region.size:
+        return None
+    sl = slices[best[0] - 1]
+    if sl is None:
+        return None
+    cy0, cy1, cx0, cx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
+    w, h = cx1 - cx0, cy1 - cy0
+    if w <= th * 0.3 or h <= th * 0.3 or h >= th * 6 or w >= th * 8:
+        return None  # a line or a huge blob, not a check
+    if cx1 > x_ref + th * 0.3:
+        return None  # runs into the label: text glued to the box
+    ratio = (w * h) / max(1.0, float((x1 - x0) * (y1 - y0)))
+    return ratio if ratio >= 1.8 else None
+
+
 def _snap(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int) -> tuple[int, int, int, int] | None:
     """Move a window placed by column geometry onto the one control-sized component it overlaps,
     so a hollow box or bullet is measured on its own bounds and its rim stays out of the interior."""
@@ -494,7 +536,7 @@ def _cornered(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
     h = y1 - y0
     if w < 6 or h < 6:
         return False
-    cell = max(2, min(w, h) // 5)
+    cell = max(3, min(w, h) // 5)
     corners = (
         mask[y0 : y0 + cell, x0 : x0 + cell].mean(),
         mask[y0 : y0 + cell, x1 - cell : x1].mean(),
@@ -529,14 +571,14 @@ def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) 
     c.extra["window"] = (gx0, gy0, gx1, gy1)
 
 
-def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = None) -> float:
+def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = None, control: Control | None = None) -> float:
     """Ink around the label words, excluding every printed word box in the region (circled text,
     R6b). A pen circle drawn around a label leaves ink on all four sides; an underline, a binder
     line or the neighbouring row touches one or two sides, so the score is the weakest side.
     """
     height, width = ink.shape
-    dx = int(th * 0.6)
-    dy = int(th * 0.45)
+    dx = int(th * 0.9)
+    dy = int(th * 0.7)
     x0 = _clip(hit.x0 - dx, 0, width)
     x1 = _clip(hit.x1 + dx, 0, width)
     y0 = _clip(hit.y0 - dy, 0, height)
@@ -544,6 +586,12 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = No
     if x1 <= x0 or y1 <= y0:
         return 0.0
     region = ink[y0:y1, x0:x1].copy()
+    if control is not None:
+        cx0 = _clip(control.x0 - 2 - x0, 0, region.shape[1])
+        cx1 = _clip(control.x1 + 2 - x0, 0, region.shape[1])
+        cy0 = _clip(control.y0 - 2 - y0, 0, region.shape[0])
+        cy1 = _clip(control.y1 + 2 - y0, 0, region.shape[0])
+        region[cy0:cy1, cx0:cx1] = False  # the printed box or circle is not a pen ring
     boxes = list(hit.words)
     if words:
         boxes += [w for w in words if w["x"] < x1 and w["x"] + w["w"] > x0 and w["y"] < y1 and w["y"] + w["h"] > y0]
@@ -557,7 +605,15 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = No
     bottom_band = region[min(region.shape[0] - 1, hit.y1 - y0) :, :]
     left_band = region[:, : max(1, hit.x0 - x0)]
     right_band = region[:, min(region.shape[1] - 1, hit.x1 - x0) :]
-    bands = [(float(b.mean()) if b.size else 0.0) for b in (top_band, bottom_band, left_band, right_band)]
+    # a pen ring crosses the whole width above and below the label and the whole height at its
+    # sides: measure how much of each band's span carries ink, not how dark the band is, so the
+    # value does not depend on the band size or the pen width
+    bands = [
+        float(top_band.any(axis=0).mean()) if top_band.size else 0.0,
+        float(bottom_band.any(axis=0).mean()) if bottom_band.size else 0.0,
+        float(left_band.any(axis=1).mean()) if left_band.size else 0.0,
+        float(right_band.any(axis=1).mean()) if right_band.size else 0.0,
+    ]
     return min(bands)
 
 
@@ -574,6 +630,8 @@ def score_controls(controls: list[Control], family: Family) -> None:
     med_o = median(outsides)
     med_r = median(rings)
     med_side = median(found_sides) if found_sides else 1.1
+    found_px = [c.extra["pixels"] for c in controls if c.found and c.extra.get("pixels") is not None]
+    med_px = median(found_px) if found_px else 0
     bullet = family.control == "bullet"
     for c in controls:
         if n <= 2:
@@ -595,20 +653,30 @@ def score_controls(controls: list[Control], family: Family) -> None:
             g = -9.0
             if c.found and not c.extra.get("merged") and c.side >= 1.35 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.03):
                 g = (c.side / med_side - 1.35) / 0.3  # a check drawn over a bullet grows the component
+            px = c.extra.get("pixels")
+            if px is not None and med_px > 0 and c.found:
+                g = max(g, (px / med_px - 1.6) / 0.5)  # a bullet with a pen stroke carries more ink
         else:
-            tight = c.found or c.reason in ("column", "offset")
-            margin = 0.06 if tight else 0.12  # a loose window catches rim and neighbour ink
+            place = c.extra.get("place", "")
+            tight = c.found or place in ("column", "offset")
+            # a box measured on its own bounds is clean (99% of empty boxes stay under 0.02 above
+            # the median); a window placed by geometry may catch a bit of rim; a loose window
+            # catches rim and neighbour ink
+            margin = 0.04 if c.found else (0.08 if tight else 0.14)
             a = (c.interior - med_i - margin) / 0.12
-            if c.interior < 2.5 * max(med_i, 0.02):
+            if c.interior < 2.5 * max(med_i, 0.015):
                 a = min(a, -0.01)
             b = (c.outside - med_o - 0.10) / 0.12
             if c.outside < 2.0 * max(med_o, 0.03):
                 b = min(b, -0.01)
             g = -9.0
+            grown = c.extra.get("overlap")
+            if grown is not None and (c.interior >= med_i + 0.02 or c.outside >= med_o + 0.02):
+                g = (grown - 1.8) / 0.6  # the box merged with a check that ran out of it
             if c.found and not c.extra.get("merged") and c.side >= 1.3 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.05):
                 g = (c.side / med_side - 1.3) / 0.3
-        r = (c.ring - max(med_r, 0.02) - 0.05) / 0.06
-        if c.ring < 0.07 or c.ring < 2.5 * max(med_r, 0.015):
+        r = (c.ring - max(med_r, 0.1) - 0.25) / 0.2
+        if c.ring < 0.45 or c.ring < med_r + 0.25:
             r = min(r, -0.01)
         c.score = max(a, b, g, r)
         if c.extra.get("edge"):
