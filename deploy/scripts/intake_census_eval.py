@@ -121,6 +121,21 @@ def _run_one(payload: tuple[str, str, str]) -> dict:
         }
         if gray is not None:
             row["_gray"] = gray
+        elif reading.source in ("no_question", "unreadable"):
+            # nothing was read: show the first page so the board explains the miss
+            try:
+                import fitz
+
+                from intake_reader.page import render, rotate
+
+                doc = fitz.open(path)
+                if len(doc):
+                    page0 = render(doc, 0, 0.9)
+                    angle = result.scanned[0].angle if result.scanned else 0
+                    row["_gray"] = rotate(page0, angle) if angle else page0
+                doc.close()
+            except Exception:
+                pass
         return row
     except Exception as exc:  # keep the eval going
         return {"code": code, "source": "error", "marks": [], "error": f"{type(exc).__name__}: {exc}", "secs": round(time.monotonic() - started, 1)}

@@ -14,7 +14,7 @@ U009	friend_family	spouse
 U010	google	
 U011	google	tiny
 U012	other	no-text
-U013	unmarked?	
+U013	walk_in	es-otros-vivo-cerca
 U014	?	
 U015	google	es-new
 U016	walk_in	walk-by
@@ -48,7 +48,7 @@ U043	flyer_street
 U044	other	es-new-no-text
 U045	doctor	
 U046	unmarked?	
-U047	google	ai-search
+U047	google?	floating-ai-search-text
 U048	google	
 U049	google	
 U050	doctor	
@@ -75,11 +75,11 @@ U070	friend_family
 U071	doctor	
 U072	doctor	
 U073	other	no-text
-U074	unmarked	
+U074	walk_in	other-walking-by-board
 U075	google	es-new
 U076	walk_in	just-walked-in
 U077	doctor	es
-U078	other	in-my-area
+U078	walk_in	other-in-my-area
 U079	friend_family	name
 U080	google	
 U081	google	
@@ -102,7 +102,7 @@ U097	google
 U098	insurance	
 U099	google	
 D000	doctor	
-D001	event	marketing-table
+D001	multi:doctor+marketing_table	board-shows-both
 D002	doctor	es-old-name
 D003	multi:doctor+flyer_doctor_office	
 D004	doctor	
@@ -127,10 +127,10 @@ D022	doctor
 D023	google	
 D024	doctor	
 D025	doctor	
-D026	insurance	
+D026	multi:doctor+insurance	board-shows-both
 D027	doctor	
 D028	doctor	
-D029	doctor	
+D029	multi:doctor+friend_family	other-a-friend
 D030	doctor	
 D031	doctor	x-mark
 D032	doctor	filled
@@ -150,10 +150,10 @@ D045	doctor
 D046	doctor	es-new
 D047	doctor	
 D048	doctor	es-new
-D049	doctor	
+D049	multi:doctor+flyer_doctor_office	board-shows-both
 D050	flyer_doctor_office	
 D051	doctor	
-D052	doctor	
+D052	multi:doctor+insurance	board-shows-both
 D053	multi:doctor+flyer_street	
 D054	doctor	
 D055	doctor	
@@ -246,7 +246,7 @@ Z09	?
 Z10	zocdoc	bullet
 Z11	zocdoc	
 Z12	zocdoc	
-Z13	zocdoc	tiny-other-online
+Z13	multi:zocdoc+google	tiny-other-online
 Z14	doctor	
 Z15	zocdoc	
 I00	multi:doctor+insurance	
@@ -379,7 +379,7 @@ T23	doctor
 T24	doctor	
 T25	unmarked?	
 T26	doctor	
-T27	insurance	
+T27	multi:doctor+insurance	board-shows-both
 T28	doctor	
 T29	walk_in	other-walk-in
 T30	doctor	
@@ -388,7 +388,7 @@ T32	insurance
 T33	insurance	
 T34	upside_down	
 T35	upside_down	
-T36	unmarked?	
+T36	doctor	board-shows-check	
 T37	google	
 T38	friend_family	
 T39	unmarked	

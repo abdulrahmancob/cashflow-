@@ -150,8 +150,8 @@ def similarity(window: str, key: str) -> float:
     if stripped != window and stripped:
         best = max(best, 1 - edit_distance(stripped, key) / max(len(stripped), len(key)))
     if len(window) >= 4 and len(window) >= 0.6 * len(key):
-        best = max(best, 1 - edit_distance(key[0] + window[1:], key) / max(len(window), len(key)) - 0.05)
-        best = max(best, 1 - edit_distance(key[0] + window, key) / max(len(window) + 1, len(key)) - 0.05)
+        best = max(best, 1 - edit_distance(key[0] + window[1:], key) / max(len(window), len(key)) - 0.10)
+        best = max(best, 1 - edit_distance(key[0] + window, key) / max(len(window) + 1, len(key)) - 0.10)
     # A label cut off by a binder line or the page edge ("Goog", "Zocd"): a clean prefix of the key.
     if len(window) >= 4 and len(window) >= 0.6 * len(key) and key.startswith(window):
         best = max(best, 0.76)
@@ -430,12 +430,15 @@ def analyse(
                 (hear if group == "hear" else booking).append(hit)
     hear = _dedupe(hear)
     booking = _dedupe(booking)
-    hear = _infer_missing(lines, hear, family, th, group_of)
+    hear = _infer_missing(lines, hear, family, th, group_of, q_index)
     hear = _infer_other(lines, hear, family, th, group_of)
     return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
 
 
-def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of) -> list[LabelHit]:
+_HELPER_LINE_RE = re.compile(r"type\s*doctor|doctor.s\s*name|name\s*/?\s*office|escriba|nombre\s*del|oficina", re.IGNORECASE)
+
+
+def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of, q_index: int | None = None) -> list[LabelHit]:
     """Fill gaps by row order (R4): when the unlabelled text segments inside a gap between two
     matched labels of a column are exactly as many as the options missing from that gap, take
     them in order. The control of an inferred label is looked up at the column position."""
@@ -452,27 +455,30 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
         col_anchor = sorted(h.anchor_x for h in col_hits)[len(col_hits) // 2]
         other_cols = [h.x0 for h in hits if h.option.column != column]
         # gaps: (y_lo, y_hi, missing options in order)
-        gaps: list[tuple[float, float, list[Option]]] = []
+        gaps: list[tuple[float, float, list[Option], bool]] = []
         pending: list[Option] = []
         prev_hit: LabelHit | None = None
         for option in order:
             if option.code in found:
                 if pending:
-                    lo = prev_hit.y1 if prev_hit is not None else found[option.code].y0 - th * 2.6 * len(pending)
-                    gaps.append((lo, found[option.code].y0, pending))
+                    leading = prev_hit is None
+                    lo = prev_hit.y1 if prev_hit is not None else found[option.code].y0 - th * (2.6 * len(pending) + 2.2)
+                    gaps.append((lo, found[option.code].y0, pending, leading))
                     pending = []
                 prev_hit = found[option.code]
             else:
                 pending.append(option)
         if pending and prev_hit is not None:
-            gaps.append((prev_hit.y1, prev_hit.y1 + th * 2.6 * len(pending) + th, pending))
-        for lo_y, hi_y, missing in gaps:
+            gaps.append((prev_hit.y1, prev_hit.y1 + th * 2.6 * len(pending) + th, pending, False))
+        for lo_y, hi_y, missing, leading in gaps:
             candidates = []
             for index, line in enumerate(lines):
-                if group_of(index) != "hear":
+                if group_of(index) != "hear" or index == q_index:
                     continue
                 if line.y1 <= lo_y - th * 0.3 or line.y0 >= hi_y + th * 0.3:
                     continue
+                if leading and _HELPER_LINE_RE.search(line.text):
+                    continue  # "(Type doctor's name/office)" under the first option is not a label
                 for segment in line.segments:
                     texty = [w for w in segment if len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) >= 2 and id(w) not in taken]
                     if not texty:
@@ -487,9 +493,13 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
                     if other_cols and min(abs(x0 - x) for x in other_cols) < abs(x0 - col_x):
                         continue
                     candidates.append((line.cy, index, texty))
+            candidates.sort()
+            if leading and len(candidates) > len(missing):
+                # the first option sits right under the question; a check glued to its box
+                # garbles the whole line, so the first text lines of the block are taken in order
+                candidates = candidates[: len(missing)]
             if len(candidates) != len(missing):
                 continue
-            candidates.sort()
             for option, (_cy, index, words) in zip(missing, candidates):
                 hit = LabelHit(option.code, option, words, index, "hear", 0.5, 0, words[-1]["x"] + words[-1]["w"], None, 0, col_anchor, True)
                 hit.line_cy, hit.line_h = _line_stats(lines[index], th)

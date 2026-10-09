@@ -190,6 +190,37 @@ class OtherLineTests(unittest.TestCase):
         self.assertNotIn("other", [h.code for h in layout.hear])
 
 
+class FirstOptionInferenceTests(unittest.TestCase):
+    def test_doctor_line_garbled_by_check_is_inferred(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? (*) Please check what applies",
+                "X Dpctprz rfrrlrcmmndtns",
+                "(Typedoctor's name/office)",
+                "O Google",
+                "O Zocdoc",
+                "O Social Media",
+                "O Insurance Recommendations",
+                "O Direct Mail",
+                "O Word of Mouth",
+                "O Marketing Table",
+                "O Event or community outreach",
+                "O Clinic staff",
+                "O From doctor office",
+                "O From street distribution",
+                "O Other (please specify)",
+            ]
+        )
+        layout = analyse(words, OLD_CHECKBOX, 20)
+        doctor = next(h for h in layout.hear if h.code == "doctor")
+        self.assertTrue(doctor.inferred)
+        self.assertEqual(doctor.line_index, 1)
+
+    def test_thes_is_not_other(self):
+        self.assertLess(similarity("thes", "other"), 0.75)
+        self.assertGreaterEqual(similarity("ocdoc", "zocdoc"), 0.75)
+
+
 class WriteInFalsePositiveTests(unittest.TestCase):
     LABELS = ["Doctor's referral/recommendations", "Google", "Word of Mouth", "Clinic staff", "Other (please specify)"]
 
