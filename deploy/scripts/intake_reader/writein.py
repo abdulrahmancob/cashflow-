@@ -217,6 +217,7 @@ def detect(
     lang: str,
     bounds: tuple[int | None, int | None] | None = None,
     erase: np.ndarray | None = None,
+    trace: list | None = None,
 ) -> WriteIn | None:
     """Return a WriteIn when real ink sits in the write-in area, else None.
 
@@ -277,10 +278,16 @@ def detect(
             continue  # a dash of a printed border or a binder line, not a letter
         if (h >= th * 0.45 and h >= 0.25 * w) or (w >= th * 1.5 and h >= th * 0.3):
             tall += 1
+    def note(text: str, conf: float, accepted: bool) -> None:
+        if trace is not None:
+            trace.append((hit.code, kind, area, tall, int(total), round(total / (th * th), 2), text[:40], round(conf, 1), accepted))
+
     if tall == 0 or total < th * th * 0.6:
+        note("", 0.0, False)
         return None
     text, conf = ocr_strip(gray, area, lang, erase, boxes)
     if _is_printed_hint(text):
+        note(text, conf, False)
         return None  # the strip read the printed helper line, not handwriting
     letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
     strong = len(letters) >= 3 and conf >= 45
@@ -296,7 +303,9 @@ def detect(
     elif kind == "below" and some and tall >= 2 and total >= th * th * 1.0:
         pass
     else:
+        note(text, conf, False)
         return None
+    note(text, conf, True)
     return WriteIn(hit.code, kind, text, conf, map_text(text), total, area)
 
 
@@ -355,10 +364,21 @@ def ocr_strip(
         ry0, ry1 = max(0, by0 - 1 - y0), min(crop.shape[0], by1 + 1 - y0)
         if rx1 > rx0 and ry1 > ry0:
             crop[ry0:ry1, rx0:rx1] = 255
-    image = Image.fromarray(np.where(crop < 165, 0, 255).astype(np.uint8))
-    image = image.resize((image.width * 3, image.height * 3), Image.BICUBIC)
+    # upscale the grey strip first (binarising a small crop and scaling the result gives jagged
+    # letters), pad it with paper, then try a fixed and an adaptive threshold: pencil and faint
+    # pen sit well above 165 while dark pen is fine either way
+    big = Image.fromarray(crop).resize((crop.shape[1] * 3, crop.shape[0] * 3), Image.BICUBIC)
+    arr = np.asarray(big)
+    pad = 12
+    canvas = np.full((arr.shape[0] + 2 * pad, arr.shape[1] + 2 * pad), 255, dtype=np.uint8)
+    canvas[pad:-pad, pad:-pad] = arr
+    thresholds = [165]
+    otsu = _otsu(canvas)
+    if otsu is not None and abs(otsu - 165) > 12:
+        thresholds.append(int(min(205, max(120, otsu))))
+    images = [Image.fromarray(np.where(canvas < thr, 0, 255).astype(np.uint8)) for thr in thresholds]
 
-    def run(psm: int) -> tuple[str, float]:
+    def run(psm: int, image: Image.Image) -> tuple[str, float]:
         try:
             data = pytesseract.image_to_data(image, lang=lang, config=f"--psm {psm}", output_type=pytesseract.Output.DICT)
         except Exception:
@@ -384,9 +404,38 @@ def ocr_strip(
     def letters_of(text: str) -> int:
         return len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text))
 
-    text, conf = run(7)
-    if conf < 40 or letters_of(text) < 3:
-        alt, alt_conf = run(8)
-        if alt_conf * min(letters_of(alt), 8) > conf * min(letters_of(text), 8):
-            text, conf = alt, alt_conf
-    return text, conf
+    def score(text: str, conf: float) -> float:
+        value = conf * min(letters_of(text), 8)
+        if map_text(text) is not None:
+            value += 150  # a readable keyword is what the strip is for
+        return value
+
+    best_text, best_conf = "", 0.0
+    best_image = images[0]
+    for image in images:
+        text, conf = run(7, image)
+        if score(text, conf) > score(best_text, best_conf):
+            best_text, best_conf, best_image = text, conf, image
+    if best_conf < 50 or letters_of(best_text) < 3 or map_text(best_text) is None:
+        alt, alt_conf = run(8, best_image)
+        if score(alt, alt_conf) > score(best_text, best_conf):
+            best_text, best_conf = alt, alt_conf
+    return best_text, best_conf
+
+
+def _otsu(gray: np.ndarray) -> int | None:
+    """Otsu threshold of a grey strip; None when the strip is (nearly) blank."""
+    hist = np.bincount(gray.ravel(), minlength=256).astype(np.float64)
+    total = hist.sum()
+    if total <= 0:
+        return None
+    dark = (gray < 200).sum()
+    if dark < 0.005 * total:
+        return None
+    omega = np.cumsum(hist)
+    mu = np.cumsum(hist * np.arange(256))
+    mu_t = mu[-1]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sigma = (mu_t * omega - mu) ** 2 / (omega * (total - omega))
+    sigma[~np.isfinite(sigma)] = -1
+    return int(np.argmax(sigma))

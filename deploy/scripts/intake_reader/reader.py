@@ -214,13 +214,14 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     score_controls(hear_controls, family)
     score_controls(booking_controls, family)
     writeins = []
+    tries: list = []
     all_hits = layout.hear + layout.booking
     for hit in layout.hear:
         kind = hit.option.writein
         if not kind:
             continue
         bounds = _neighbour_bounds(hit, all_hits, th)
-        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased)
+        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased, trace=tries)
         if found is not None:
             writeins.append(found)
     reading = decide(
@@ -249,6 +250,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         ],
         "writeins": [(w.code, w.kind, w.text, round(w.conf, 1), w.mapped, w.ink, w.area) for w in writeins],
         "places": [(c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels")) for c in hear_controls + booking_controls],
+        "writein_tries": tries,
     }
     if want_debug:
         reading.debug["gray"] = gray

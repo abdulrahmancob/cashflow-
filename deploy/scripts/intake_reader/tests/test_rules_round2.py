@@ -524,6 +524,37 @@ class RoundFourTests(unittest.TestCase):
         self.assertEqual(map_text("googled you"), "google")
 
 
+class StripOcrHelperTests(unittest.TestCase):
+    def test_otsu_separates_pen_from_paper(self):
+        from intake_reader.writein import _otsu
+
+        strip = np.full((60, 300), 235, dtype=np.uint8)
+        strip[20:40, 50:250] = 90  # a pencil stroke band
+        value = _otsu(strip)
+        self.assertIsNotNone(value)
+        self.assertTrue(90 < value < 235)
+        self.assertIsNone(_otsu(np.full((60, 300), 250, dtype=np.uint8)))
+
+    def test_detect_trace_records_attempts(self):
+        from intake_reader import writein as module
+
+        specs = [Spec(label) for label in ["Doctor's referral/recommendations", "Google", "Other (please specify)"]]
+        block = draw_block("How did you hear about us? (*) Please check what applies", specs, "box")
+        layout = analyse(block.words, OLD_CHECKBOX, block.text_h)
+        ink = mask_lines(binarize(block.gray), layout.text_h)
+        hit = next(h for h in layout.hear if h.code == "other")
+        trace: list = []
+        original = module.ocr_strip
+        module.ocr_strip = lambda *_a, **_k: ("", 0.0)
+        try:
+            module.detect(ink, block.gray, block.words, hit, "inline", layout.text_h, "eng", trace=trace)
+        finally:
+            module.ocr_strip = original
+        self.assertEqual(len(trace), 1)
+        self.assertEqual(trace[0][0], "other")
+        self.assertFalse(trace[0][-1])
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")
