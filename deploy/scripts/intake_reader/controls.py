@@ -40,15 +40,29 @@ def _clip(v: float, lo: int, hi: int) -> int:
     return int(max(lo, min(hi, round(v))))
 
 
-def find_controls(ink: np.ndarray, hits: list[LabelHit], text_h: int, family: Family) -> list[Control]:
-    """Locate the control for every label (component first, window fallback)."""
+def find_controls(
+    ink: np.ndarray,
+    hits: list[LabelHit],
+    text_h: int,
+    family: Family,
+    locate: np.ndarray | None = None,
+    words: list[dict] | None = None,
+) -> list[Control]:
+    """Locate the control for every label (component first, window fallback).
+
+    `locate` is a lighter binarisation used only to find faint printed boxes and circles; marks
+    are always measured on `ink`. When most boxes of a group cannot be found (very faint print)
+    the fallback window spans the whole gutter so a pen check far from the label still counts.
+    """
     if not hits:
         return []
     height, width = ink.shape
-    labels, count, slices = components(ink) if ink.any() else (None, 0, [])
+    source = locate if locate is not None else ink
+    labels, count, slices = components(source) if source.any() else (None, 0, [])
     th = max(8, int(text_h))
     lo, hi = family.size
     controls: list[Control] = []
+    pending: list[tuple[LabelHit, int, bool]] = []
     for hit in hits:
         x_ref = hit.anchor_x
         y_c = hit.cy
@@ -58,7 +72,7 @@ def find_controls(ink: np.ndarray, hits: list[LabelHit], text_h: int, family: Fa
             search_lo = hit.x0 - th * 0.6
             search_hi = hit.x0 + hit.prefix_px + th * 1.3
         else:
-            search_lo = x_ref - th * 4.5
+            search_lo = x_ref - th * 5.0
             search_hi = x_ref - max(1, th * 0.05)
         best = None
         best_rank = (False, -1)
@@ -95,24 +109,33 @@ def find_controls(ink: np.ndarray, hits: list[LabelHit], text_h: int, family: Fa
             best = None  # a speck is not a control; measure a window instead
         if best is not None:
             control = Control(hit.code, *best, True)
-        elif glued:
+            controls.append(control)
+            pending.append((hit, x_ref, glued))
+            continue
+        controls.append(None)  # placeholder, filled below once we know how many were found
+        pending.append((hit, x_ref, glued))
+    found_n = sum(1 for c in controls if c is not None)
+    wide = found_n * 2 < len(controls)  # most boxes invisible: scan the whole gutter
+    for index, (hit, x_ref, glued) in enumerate(pending):
+        if controls[index] is not None:
+            continue
+        y_c = hit.cy
+        if glued:
             x0 = _clip(hit.x0 - th * 0.1, 0, width)
             x1 = _clip(hit.x0 + max(hit.prefix_px, th * 1.0) + th * 0.4, 0, width)
-            y0 = _clip(y_c - th * 0.6, 0, height)
-            y1 = _clip(y_c + th * 0.6, 0, height)
-            control = Control(hit.code, x0, y0, x1, y1, False)
             x_ref = x1 + 1
         else:
-            reach = 1.15 if family.control == "bullet" else 1.6
+            reach = 1.15 if family.control == "bullet" else (4.5 if wide else 1.6)
             x1 = _clip(x_ref - th * 0.15, 0, width)
             x0 = _clip(max(hit.left_limit + 1, x1 - th * reach), 0, width)
-            y0 = _clip(y_c - th * 0.6, 0, height)
-            y1 = _clip(y_c + th * 0.6, 0, height)
-            control = Control(hit.code, x0, y0, x1, y1, False)
+        y0 = _clip(y_c - th * 0.6, 0, height)
+        y1 = _clip(y_c + th * 0.6, 0, height)
+        controls[index] = Control(hit.code, x0, y0, x1, y1, False)
+        controls[index].extra["wide"] = wide
+    for control, (hit, x_ref, glued) in zip(controls, pending):
         _measure(ink, control, max(x_ref, control.x1 + 1), hit.left_limit, th)
-        control.ring = _ring(ink, hit, th)
+        control.ring = _ring(ink, hit, th, words)
         control.extra["hit"] = hit
-        controls.append(control)
     _align_columns(ink, controls, th)
     for control in controls:
         if control.y0 <= 1 or control.y1 >= height - 2:
@@ -123,19 +146,27 @@ def find_controls(ink: np.ndarray, hits: list[LabelHit], text_h: int, family: Fa
 def _align_columns(ink: np.ndarray, controls: list[Control], th: int) -> None:
     """Controls of one printed column share an x position. A control that strays from its column
     (a speck, a letter of a garbled label) is re-measured at the column position (R5).
-    Columns are clusters of control x positions; a lone stray snaps to the nearest real column."""
-    if len(controls) < 3:
+    Columns are defined by the controls that were actually found; fallback windows never define
+    a column, they only get pulled to one."""
+    found = [c for c in controls if c.found]
+    if len(found) < 2:
         return
     height, width = ink.shape
-    ordered = sorted(controls, key=lambda c: c.x0)
+    ordered = sorted(found, key=lambda c: c.x0)
     clusters: list[list[Control]] = []
     for c in ordered:
         if clusters and c.x0 - clusters[-1][-1].x0 <= th * 6:
             clusters[-1].append(c)
         else:
             clusters.append([c])
-    big = [g for g in clusters if len(g) >= 3]
-    if not big:
+    stats = []
+    for group in clusters:
+        if len(group) < 2:
+            continue
+        xs = sorted(c.x0 for c in group)
+        sides = sorted(c.x1 - c.x0 for c in group)
+        stats.append((xs[len(xs) // 2], sides[len(sides) // 2], len(group)))
+    if not stats:
         return
 
     def realign(c: Control, med_x0: int, med_w: int) -> None:
@@ -149,23 +180,14 @@ def _align_columns(ink: np.ndarray, controls: list[Control], th: int) -> None:
         c.reason = "realigned"
         _measure(ink, c, c.x1 + 1, 0, th)
 
-    stats = []
-    for group in big:
-        xs = sorted(c.x0 for c in group)
-        med_x0 = xs[len(xs) // 2]
-        sides = sorted(c.x1 - c.x0 for c in group if c.found) or [int(th * 1.1)]
-        med_w = sides[len(sides) // 2]
-        stats.append((med_x0, med_w))
-        for c in group:
-            if abs(c.x0 - med_x0) > th * 1.2:
-                realign(c, med_x0, med_w)
-    for group in clusters:
-        if len(group) >= 3:
+    for c in controls:
+        med_x0, med_w, size = min(stats, key=lambda s: abs(s[0] - c.x0))
+        if abs(c.x0 - med_x0) <= th * 1.2:
             continue
-        for c in group:
-            med_x0, med_w = min(stats, key=lambda s: abs(s[0] - c.x0))
-            if abs(c.x0 - med_x0) <= th * 15:
-                realign(c, med_x0, med_w)
+        if c.found and size < 3:
+            continue  # two found controls are not enough evidence to overrule a third
+        if abs(c.x0 - med_x0) <= th * 15:
+            realign(c, med_x0, med_w)
 
 
 def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) -> None:
@@ -193,11 +215,10 @@ def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) 
     c.extra["window"] = (gx0, gy0, gx1, gy1)
 
 
-def _ring(ink: np.ndarray, hit: LabelHit, th: int) -> float:
-    """Ink around the label words, excluding the printed glyph boxes (circled text, R6b).
-
-    A circle drawn around a label leaves ink above and below it (and usually on both sides); a
-    binder line or a neighbouring word touches one side only, so the score is the second-best band.
+def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = None) -> float:
+    """Ink around the label words, excluding every printed word box in the region (circled text,
+    R6b). A pen circle drawn around a label leaves ink on all four sides; an underline, a binder
+    line or the neighbouring row touches one or two sides, so the score is the weakest side.
     """
     height, width = ink.shape
     dx = int(th * 0.6)
@@ -209,7 +230,10 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int) -> float:
     if x1 <= x0 or y1 <= y0:
         return 0.0
     region = ink[y0:y1, x0:x1].copy()
-    for word in hit.words:
+    boxes = list(hit.words)
+    if words:
+        boxes += [w for w in words if w["x"] < x1 and w["x"] + w["w"] > x0 and w["y"] < y1 and w["y"] + w["h"] > y0]
+    for word in boxes:
         wx0 = _clip(word["x"] - 1 - x0, 0, region.shape[1])
         wx1 = _clip(word["x"] + word["w"] + 1 - x0, 0, region.shape[1])
         wy0 = _clip(word["y"] - 1 - y0, 0, region.shape[0])
@@ -219,8 +243,8 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int) -> float:
     bottom_band = region[min(region.shape[0] - 1, hit.y1 - y0) :, :]
     left_band = region[:, : max(1, hit.x0 - x0)]
     right_band = region[:, min(region.shape[1] - 1, hit.x1 - x0) :]
-    bands = sorted((float(b.mean()) if b.size else 0.0) for b in (top_band, bottom_band, left_band, right_band))
-    return bands[-2]
+    bands = [(float(b.mean()) if b.size else 0.0) for b in (top_band, bottom_band, left_band, right_band)]
+    return min(bands)
 
 
 def score_controls(controls: list[Control], family: Family) -> None:
@@ -261,8 +285,8 @@ def score_controls(controls: list[Control], family: Family) -> None:
             g = -9.0
             if c.found and c.side >= 1.3 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.05):
                 g = (c.side / med_side - 1.3) / 0.3
-        r = (c.ring - max(med_r, 0.02) - 0.08) / 0.08
-        if c.ring < 0.12 or c.ring < 2.5 * max(med_r, 0.02):
+        r = (c.ring - max(med_r, 0.02) - 0.05) / 0.06
+        if c.ring < 0.07 or c.ring < 2.5 * max(med_r, 0.015):
             r = min(r, -0.01)
         c.score = max(a, b, g, r)
         if c.extra.get("edge"):

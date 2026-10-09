@@ -71,7 +71,7 @@ jobs:
           $COMPOSE run --rm --no-deps -T $MOUNTS -e TESSDATA_PREFIX=/data/ocr/tessdata -e OMP_NUM_THREADS=1 scraper \
             python -u /app/deploy/scripts/intake_census_eval.py \
               --map "$V2/golden_map.json" --out "$V2/eval" --workers 6 --boards miss \
-            | tee "$V2/eval/eval_log.txt"
+            | tee "$RUNNER_TEMP/eval_log.txt"
 
       - name: Publish results to the intake-eval-results branch
         if: always()
@@ -80,6 +80,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/results/eval"
           sudo cp -r "$V2/eval/." "$RUNNER_TEMP/results/eval/" || true
           sudo cp "$V2/golden_map_check.json" "$RUNNER_TEMP/results/eval/" || true
+          cp "$RUNNER_TEMP/eval_log.txt" "$RUNNER_TEMP/results/eval/" 2>/dev/null || true
           sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/results"
           echo "${{ github.sha }}" > "$RUNNER_TEMP/results/eval/SOURCE_SHA"
           git config user.name "intake-eval-bot"

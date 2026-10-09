@@ -36,6 +36,9 @@ SAMPLES = (
     ("blank", "K", 1),
     ("unreadable", "R", 24),
 )
+# The audit drew walk_in/phone/website/blank with one `shuf -n 8` each and kept what came out,
+# so the draw must ask for 8 even when the bucket needs fewer codes.
+DRAW_N = {"W": 8, "P": 8, "B": 8, "K": 8}
 
 
 def shuf_sample(rows: Path, source: str, count: int) -> list[str]:
@@ -64,14 +67,19 @@ def meta_ids(case_dir: Path) -> set[str]:
     return ids
 
 
+# The first 40 rows with an intake in the Oct 5 workbook (its Patients sheet order), i.e. the rows
+# the user checked by hand. WebPT ids only; the files are resolved on the host.
+FIRST_ROWS = (
+    "45250965", "50823766", "51124090", "56206276", "56569736", "56720430", "56777174", "56783176",
+    "56795058", "56810038", "56820299", "56842821", "56864812", "56867655", "56871200", "56872833",
+    "56876890", "56881556", "56881766", "56882818", "56885623", "56887135", "56887530", "56895375",
+    "56897264", "56898501", "56901731", "56902404", "56906866", "56912533", "56916208", "56917667",
+    "56917772", "56920083", "56922487", "56923362", "56923823", "56926150", "56926200", "56926235",
+)
+
+
 def first_rows(patients_csv: Path, count: int) -> list[str]:
-    ids: list[str] = []
-    with patients_csv.open(encoding="utf-8", newline="") as handle:
-        rows = [row for row in csv.DictReader(handle) if row.get("has_intake") == "yes"]
-    rows.sort(key=lambda r: r["webpt_patient_id"])
-    for row in rows[:count]:
-        ids.append(row["webpt_patient_id"])
-    return ids
+    return list(FIRST_ROWS[:count])
 
 
 def main() -> int:
@@ -83,7 +91,7 @@ def main() -> int:
     holdout = json.loads((OLD / "sample_holdout" / "map.json").read_text(encoding="utf-8"))
     mapping.update({code: path for code, path in holdout.items() if code[0] in "UD"})
     for source, prefix, count in SAMPLES:
-        for index, path in enumerate(shuf_sample(rows, source, count)):
+        for index, path in enumerate(shuf_sample(rows, source, DRAW_N.get(prefix, count))[:count]):
             mapping[f"{prefix}{index:02d}"] = path
     # first 40 sheet rows -> first intake file of that patient
     wanted = first_rows(OLD / "patients.csv", 40)

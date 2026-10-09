@@ -186,9 +186,10 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
             block_cut = expect_last not in last_codes
     elif layout.end_line is None and expect_last not in last_codes and len(layout.hear) < 3:
         block_cut = True
-    ink = mask_lines(binarize(gray), th)
-    hear_controls = find_controls(ink, layout.hear, th, family)
-    booking_controls = find_controls(ink, layout.booking, th, family)
+    ink = mask_lines(binarize(gray, 165), th)
+    locate = mask_lines(binarize(gray, 200), th)
+    hear_controls = find_controls(ink, layout.hear, th, family, locate, words)
+    booking_controls = find_controls(ink, layout.booking, th, family, locate, words)
     score_controls(hear_controls, family)
     score_controls(booking_controls, family)
     writeins = []
@@ -262,8 +263,8 @@ def read_intake(path: str, lang: str = "eng+spa", max_pages: int = MAX_PAGES, wa
                     scan.quick_words = []
             reading = read_block(doc, scan, lang, want_debug)
             readings.append(reading)
-            if reading.source not in ("unreadable", "no_question") and not reading.needs_review:
-                break
+            if reading.source not in ("unreadable", "no_question"):
+                break  # the question was read on this page; later pages are other documents
             if len(readings) >= 2:
                 break
     finally:
