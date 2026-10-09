@@ -8,7 +8,7 @@ import logging
 import os
 import sys
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -319,6 +319,13 @@ class _PhaseTimer:
         self.phases[name] = round(dt, 2)
         log.info("phase %s %.1fs (elapsed %.1fs)", name, dt, now - self.t0)
         self.last = now
+
+    def span(self, name: str, started: float) -> None:
+        """Log a step without moving the parent phase clock."""
+        now = time.perf_counter()
+        dt = now - started
+        self.phases[name] = round(dt, 2)
+        log.info("phase %s %.1fs (elapsed %.1fs)", name, dt, now - self.t0)
 
 
 def _ensure_recon_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -665,20 +672,111 @@ def _load_inflight_scheduled(
     )
 
 
+def _replay_prior_open_ar(as_of: date) -> tuple[list[str], float | None, str]:
+    """Success runs already stored for this day, and the newest open AR."""
+    from cashflow_db.repository import client, connection
+    from cashflow_forecast.replay_history import open_ar_from_stage_rows
+
+    with connection() as conn:
+        client.execute(
+            conn,
+            """
+            UPDATE analytics.forecast_run
+            SET status = 'failed'
+            WHERE as_of_date = %s
+              AND status = 'running'
+              AND COALESCE(params->>'historical_replay', '') IN ('true', 'True')
+            """,
+            (as_of,),
+        )
+        runs = client.fetchall(
+            conn,
+            """
+            SELECT forecast_run_id
+            FROM analytics.forecast_run
+            WHERE status = 'success' AND as_of_date = %s
+            ORDER BY created_at DESC
+            """,
+            (as_of,),
+        )
+        ids = [str(row["forecast_run_id"]) for row in runs]
+        if not ids:
+            return [], None, ""
+        newest = ids[0]
+        rows = client.fetchall(
+            conn,
+            """
+            SELECT payload
+            FROM analytics.forecast_feature
+            WHERE forecast_run_id = %s::uuid
+              AND feature_kind = 'outcome_stage_counts'
+            """,
+            (newest,),
+        )
+    parsed = []
+    for row in rows:
+        payload = row.get("payload")
+        if isinstance(payload, str):
+            import json
+
+            payload = json.loads(payload)
+        if isinstance(payload, dict):
+            parsed.append(payload)
+    if not parsed:
+        return ids, None, newest
+    return ids, open_ar_from_stage_rows(parsed), newest
+
+
+def _delete_replay_replaced_runs(old_ids: list[str], *, keep: str) -> None:
+    from cashflow_db.repository import connection
+    from cashflow_db.repository.forecast import delete_forecast_run
+
+    for run_id in old_ids:
+        if not run_id or run_id == keep:
+            continue
+        with connection() as conn:
+            delete_forecast_run(conn, run_id)
+        log.info("Replay removed old forecast_run %s", run_id)
+
+
+def _append_replay_log(args: argparse.Namespace, **row) -> None:
+    import json
+
+    path = getattr(args, "replay_log", None)
+    if not path:
+        return
+    payload = {
+        "as_of": row["as_of"].isoformat() if hasattr(row["as_of"], "isoformat") else row["as_of"],
+        "old_run_id": row.get("old_run_id") or "",
+        "old_open_ar": row.get("old_open_ar"),
+        "new_open_ar": row.get("new_open_ar"),
+        "tolerance": row.get("tolerance"),
+        "decision": row.get("decision"),
+        "new_run_id": row.get("new_run_id") or "",
+        "seconds": round(time.perf_counter() - float(row["started"]), 1),
+    }
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, default=str) + "\n")
+
+
 def cmd_build(args: argparse.Namespace) -> int:
     from_db = getattr(args, "from_db", False)
-    backtest = bool(getattr(args, "backtest", False))
+    replay = bool(getattr(args, "replay", False))
+    no_persist = bool(getattr(args, "no_persist", False))
+    backtest = bool(getattr(args, "backtest", False)) or replay
     if backtest and not from_db:
         log.error("--backtest requires --from-db")
         return 2
-    emit_csv = getattr(args, "emit_csv", False) or not from_db or backtest
+    emit_csv = getattr(args, "emit_csv", False) or not from_db or (backtest and not replay)
     data_dir = _resolve_path(args.data_dir)
     as_of = _parse_as_of(args.as_of)
     fwd_start, fwd_end = _forward_window(as_of)
     ar_from, ar_to = _old_ar_window(as_of)
     disp_start, disp_end = _display_window(as_of, fwd_end)
     live_default = str(REPO_ROOT / "webpt_edco_scraper/output/jun_jul_2026/forecast")
-    if backtest and str(getattr(args, "output_dir", live_default)) == live_default:
+    if backtest and not replay and str(getattr(args, "output_dir", live_default)) == live_default:
         output_dir = Path("/data/exports") / f"backtest_{as_of.isoformat()}"
     else:
         output_dir = _resolve_path(args.output_dir)
@@ -769,13 +867,17 @@ def cmd_build(args: argparse.Namespace) -> int:
                 "Eligibility sheet overrides disabled (CASHFLOW_FORECAST_DISABLE_SHEET_OVERRIDES)"
             )
         else:
+            _t = time.perf_counter()
             sheet_overrides = load_sheet_visit_overrides(as_of=as_of, backtest=backtest)
+            timer.span("sheet_load", _t)
             sheet_n, sheet_paid, sheet_denied = sheet_override_counts(sheet_overrides)
             leakage_bits["sheet_n"] = sheet_n
             leakage_bits["sheet_paid"] = sheet_paid
             leakage_bits["sheet_denied"] = sheet_denied
             if sheet_overrides:
+                _t = time.perf_counter()
                 recon_lines = apply_sheet_visit_overrides(recon_lines, sheet_overrides)
+                timer.span("sheet_apply", _t)
                 recon_lines = _ensure_recon_columns(recon_lines)
             else:
                 log.info("No eligibility sheet paid/denied overrides")
@@ -785,13 +887,17 @@ def cmd_build(args: argparse.Namespace) -> int:
                 visits_df["visit_paid_total"], errors="coerce"
             ).fillna(0)
         if ar_to >= ar_from:
+            _t = time.perf_counter()
             may_lines = dbs.load_clinical_ar_lines_df(
                 service_from=ar_from,
                 service_to=ar_to,
+                exclude_reconciliation_run_id=recon_run_id or None,
             )
+            timer.span("old_ar_load", _t)
         else:
             may_lines = pd.DataFrame()
         log.info("Old AR window %s..%s rows=%d", ar_from, ar_to, len(may_lines))
+        _t = time.perf_counter()
         may_lines = _exclude_recon_covered_ar(
             may_lines,
             recon_lines,
@@ -799,6 +905,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             drop_paid_visits=not backtest,
             sheet_paid_visits=sheet_paid_visit_keys(sheet_overrides),
         )
+        timer.span("old_ar_dedupe", _t)
         may_lines = _ensure_recon_columns(may_lines) if not may_lines.empty else may_lines
         timer.mark("may_ar")
         patients = dbs.load_patients_df()
@@ -939,13 +1046,17 @@ def cmd_build(args: argparse.Namespace) -> int:
         if "eob_date" in recon_lines.columns:
             eob = pd.to_datetime(recon_lines["eob_date"], errors="coerce").dt.date
             train_pay = recon_lines[eob.isna() | (eob <= as_of)]
+        _t = time.perf_counter()
         pay_catalog = learn_payment_models(
             train_pay,
             payments_unified=payments if not payments.empty else None,
             visits=visits_df if not visits_df.empty else None,
             fee_estimator=fees,
         )
+        timer.span("learn_models", _t)
+        _t = time.perf_counter()
         lines = apply_visit_expected_amounts(lines, pay_catalog)
+        timer.span("apply_models", _t)
         actual_ins = (
             actual_cash_buckets_by_insurance(payments)
             if not payments.empty
@@ -1621,8 +1732,14 @@ def cmd_build(args: argparse.Namespace) -> int:
         "outcome_stage_counts": outcome_stage_counts(outcomes),
         "kpi_summary": kpi,
     }
-    if from_db and not backtest:
+    if from_db and ((not backtest and not no_persist) or replay):
         from cashflow_forecast.db_source import write_forecast_run
+        from cashflow_forecast.replay_history import (
+            close_tolerance,
+            forecasts_close,
+            open_ar_from_stage_rows,
+            replay_created_at,
+        )
 
         feature_tables = {
             "payer_sla": sla,
@@ -1641,26 +1758,71 @@ def cmd_build(args: argparse.Namespace) -> int:
                 risk if risk is not None else pd.DataFrame()
             ),
         }
-        run_id = write_forecast_run(
-            algorithm_version="forecast-build-tue-pierce" if pierce_batch else "forecast-build",
-            as_of_date=as_of,
-            outcome_df=outcomes,
-            feature_tables=feature_tables,
-            rules_version="business_rules",
-            params={
-                "as_of": as_of.isoformat(),
-                "pierce_batch": pierce_batch,
-                "sheet_n": int(leakage_bits.get("sheet_n") or 0),
-                "sheet_paid": int(leakage_bits.get("sheet_paid") or 0),
-                "sheet_denied": int(leakage_bits.get("sheet_denied") or 0),
-            },
-        )
-        log.info("Wrote forecast_run %s to DB", run_id)
+        stage_rows = feature_tables["outcome_stage_counts"].to_dict(orient="records")
+        new_open = open_ar_from_stage_rows(stage_rows)
+        params = {
+            "as_of": as_of.isoformat(),
+            "pierce_batch": pierce_batch,
+            "sheet_n": int(leakage_bits.get("sheet_n") or 0),
+            "sheet_paid": int(leakage_bits.get("sheet_paid") or 0),
+            "sheet_denied": int(leakage_bits.get("sheet_denied") or 0),
+        }
+        write_run = True
+        old_ids: list[str] = []
+        old_open = None
+        old_run_id = ""
+        if replay:
+            params["historical_replay"] = True
+            old_ids, old_open, old_run_id = _replay_prior_open_ar(as_of)
+            tolerance = close_tolerance(old_open) if old_open is not None else None
+            if old_open is not None and forecasts_close(new_open, old_open):
+                write_run = False
+                _append_replay_log(
+                    args,
+                    as_of=as_of,
+                    old_run_id=old_run_id,
+                    old_open_ar=old_open,
+                    new_open_ar=new_open,
+                    tolerance=tolerance,
+                    decision="keep-old",
+                    started=timer.t0,
+                )
+                log.info(
+                    "Replay keep-old as_of=%s old=%s new=%.2f tolerance=%.2f",
+                    as_of,
+                    old_open,
+                    new_open,
+                    tolerance,
+                )
+        if write_run:
+            run_id = write_forecast_run(
+                algorithm_version="forecast-build-tue-pierce" if pierce_batch else "forecast-build",
+                as_of_date=as_of,
+                outcome_df=outcomes,
+                feature_tables=feature_tables,
+                rules_version="business_rules",
+                params=params,
+                created_at=replay_created_at(as_of) if replay else None,
+            )
+            log.info("Wrote forecast_run %s to DB", run_id)
+            if replay:
+                _delete_replay_replaced_runs(old_ids, keep=run_id)
+                _append_replay_log(
+                    args,
+                    as_of=as_of,
+                    old_run_id=old_run_id,
+                    old_open_ar=old_open,
+                    new_open_ar=new_open,
+                    tolerance=close_tolerance(old_open) if old_open is not None else None,
+                    decision="replace" if old_ids else "insert",
+                    started=timer.t0,
+                    new_run_id=run_id,
+                )
         timer.mark("persist")
-    elif backtest:
+    elif backtest or no_persist:
         log.info("Backtest mode: skipped write_forecast_run")
 
-    if backtest:
+    if backtest and not replay:
         dates = eval_dates(as_of, horizon_days)
         holdout = None
         if holdout_path:
@@ -2889,7 +3051,33 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Live one-shot: lumpy Tuesday EWMA after day_norm. Default off. Refuses --backtest.",
     )
+    build.add_argument(
+        "--replay",
+        action="store_true",
+        help="Point-in-time build that may replace the stored run for this as_of only",
+    )
+    build.add_argument(
+        "--no-persist",
+        action="store_true",
+        help="Compute the forecast and print totals without writing forecast_run",
+    )
+    build.add_argument(
+        "--replay-log",
+        default=None,
+        help="JSONL path for replay keep/replace decisions",
+    )
     build.set_defaults(func=cmd_build)
+
+    replay = sub.add_parser(
+        "replay",
+        help="Replay 2026-08-01 through 2026-10-05 without touching the live forecast",
+    )
+    replay.add_argument(
+        "--log",
+        default="/data/logs/forecast-replay-decisions.jsonl",
+        help="Resume log of keep-old / replace decisions",
+    )
+    replay.set_defaults(func=cmd_replay)
 
     packv = sub.add_parser(
         "pack-variants",
@@ -2998,6 +3186,92 @@ def build_parser() -> argparse.ArgumentParser:
     spine.set_defaults(func=cmd_spine_conservation)
 
     return p
+
+
+def cmd_replay(args: argparse.Namespace) -> int:
+    """Day loop. Never takes the nightly lock and never writes the sheet."""
+    import shutil
+
+    from cashflow_forecast.replay_history import (
+        cairo_pause_seconds,
+        iter_replay_days,
+        load_done_dates,
+    )
+    from cashflow_forecast.sheet_visit_overrides import (
+        load_forecast_sheet_rows,
+        prime_forecast_sheet_rows,
+    )
+
+    lock_path = Path("/data/logs/forecast_replay.lock")
+    lock_handle = None
+    try:
+        import fcntl
+
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        lock_handle = lock_path.open("a", encoding="utf-8")
+        fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except ImportError:
+        log.warning("Replay lock unavailable on this platform")
+    except OSError as exc:
+        log.error("Replay already running (%s)", exc)
+        return 2
+
+    log_path = Path(getattr(args, "log", "/data/logs/forecast-replay-decisions.jsonl"))
+    done: set[str] = set()
+    if log_path.exists():
+        done = load_done_dates(log_path.read_text(encoding="utf-8"))
+    log.info("Replay priming eligibility sheet rows (read only)")
+    prime_forecast_sheet_rows(load_forecast_sheet_rows())
+    data_dir = str(REPO_ROOT / "webpt_edco_scraper/output/jun_jul_2026")
+    output_dir = str(REPO_ROOT / "webpt_edco_scraper/output/jun_jul_2026/forecast")
+    failures = 0
+    try:
+        for day in iter_replay_days():
+            key = day.isoformat()
+            if key in done:
+                log.info("Replay skip %s (already decided)", key)
+                continue
+            pause = cairo_pause_seconds(datetime.now(timezone.utc))
+            if pause > 0:
+                log.info("Replay waiting %.0fs so nightly can run", pause)
+                time.sleep(pause)
+            free = shutil.disk_usage("/").free if Path("/").exists() else shutil.disk_usage(".").free
+            if free < 40 * 1024 ** 3:
+                log.error("Free disk %.1f GB is under 40 GB — stop replay", free / 1024 ** 3)
+                return 2
+            ns = argparse.Namespace(
+                from_db=True,
+                backtest=True,
+                replay=True,
+                emit_csv=False,
+                no_persist=False,
+                data_dir=data_dir,
+                output_dir=output_dir,
+                as_of=key,
+                horizon_days=14,
+                holdout_csv=None,
+                pack_variants=False,
+                rejections=None,
+                denials=None,
+                transaction_tracker=None,
+                packing_grain="plan",
+                pierce_batch=False,
+                replay_log=str(log_path),
+            )
+            try:
+                rc = cmd_build(ns)
+            except Exception:
+                log.exception("Replay failed for %s; stored run left in place", key)
+                failures += 1
+                continue
+            if rc:
+                log.error("Replay build rc=%s for %s; stored run left in place", rc, key)
+                failures += 1
+    finally:
+        prime_forecast_sheet_rows(None)
+        if lock_handle is not None:
+            lock_handle.close()
+    return 1 if failures else 0
 
 
 def main(argv: list[str] | None = None) -> int:

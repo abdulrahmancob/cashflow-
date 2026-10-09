@@ -1,0 +1,92 @@
+name: Intake reader eval
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/scripts/intake_reader/**"
+      - "deploy/scripts/intake_census.py"
+      - "deploy/scripts/intake_census_eval.py"
+      - "deploy/scripts/intake_census_golden_map.py"
+      - ".github/workflows/intake_eval.yml"
+
+concurrency:
+  group: intake-eval
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  eval:
+    runs-on: [self-hosted, cashflow]
+    timeout-minutes: 180
+    env:
+      V2: /data/exports/intake_census_v2
+      COMPOSE: >-
+        docker compose
+        --project-directory /opt/cashflow/deploy
+        -f /opt/cashflow/deploy/docker-compose.yml
+        --env-file /opt/cashflow/deploy/.env
+        --profile tools
+      MOUNTS: >-
+        -v ${{ github.workspace }}/deploy/scripts/intake_census.py:/app/deploy/scripts/intake_census.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_census_eval.py:/app/deploy/scripts/intake_census_eval.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_census_golden_map.py:/app/deploy/scripts/intake_census_golden_map.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_reader:/app/deploy/scripts/intake_reader:ro
+        -v ${{ github.workspace }}/intake_test:/app/intake_test:ro
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare data folders
+        run: |
+          set -euo pipefail
+          sudo mkdir -p "$V2/eval" /data/ocr/tessdata
+          sudo rm -rf "$V2/eval"/*
+          sudo chown -R 10001:10001 "$V2" /data/ocr/tessdata
+
+      - name: Self-check (synthetic rule tests)
+        run: |
+          set -euo pipefail
+          $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
+            python -u /app/deploy/scripts/intake_census.py --self-check
+
+      - name: Four sample intakes
+        run: |
+          set -euo pipefail
+          $COMPOSE run --rm --no-deps -T $MOUNTS -e INTAKE_TESSDATA_DIR=/data/ocr/tessdata scraper \
+            python -u /app/deploy/scripts/intake_census.py --check-pdfs /app/intake_test
+
+      - name: Rebuild the golden map on the host
+        run: |
+          set -euo pipefail
+          $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
+            python -u /app/deploy/scripts/intake_census_golden_map.py --out "$V2/golden_map.json"
+
+      - name: Golden eval
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          $COMPOSE run --rm --no-deps -T $MOUNTS -e TESSDATA_PREFIX=/data/ocr/tessdata -e OMP_NUM_THREADS=1 scraper \
+            python -u /app/deploy/scripts/intake_census_eval.py \
+              --map "$V2/golden_map.json" --out "$V2/eval" --workers 6 --boards miss \
+            | tee "$V2/eval/eval_log.txt"
+
+      - name: Publish results to the intake-eval-results branch
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/results/eval"
+          sudo cp -r "$V2/eval/." "$RUNNER_TEMP/results/eval/" || true
+          sudo cp "$V2/golden_map_check.json" "$RUNNER_TEMP/results/eval/" || true
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/results"
+          echo "${{ github.sha }}" > "$RUNNER_TEMP/results/eval/SOURCE_SHA"
+          git config user.name "intake-eval-bot"
+          git config user.email "intake-eval-bot@users.noreply.github.com"
+          git checkout --orphan intake-eval-results
+          git rm -rf -q . || true
+          rm -rf eval && cp -r "$RUNNER_TEMP/results/eval" eval
+          git add eval
+          git commit -q -m "Intake eval results for ${{ github.sha }}"
+          git push -f origin intake-eval-results

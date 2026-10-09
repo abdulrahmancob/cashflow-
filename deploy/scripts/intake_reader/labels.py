@@ -1,0 +1,505 @@
+"""OCR words → lines → option labels (R2, R3, R4).
+
+Labels are matched against the family vocabulary with a spacing-insensitive edit distance, so
+"WordofMouth_", "Cliniestaff", "@oogie" and "QZocdoc" still land on the right option.
+"""
+
+from __future__ import annotations
+
+import re
+import unicodedata
+from dataclasses import dataclass, field
+
+from .anchors import (
+    BOOKING_PHRASES,
+    BOOKING_RE,
+    Family,
+    INSTRUCTION_RE,
+    Option,
+    QUESTION_PHRASES,
+    QUESTION_RE,
+    SECTION_END_RE,
+)
+
+
+@dataclass
+class Line:
+    words: list[dict]
+    cy: float
+    y0: int
+    y1: int
+    text: str
+    segments: list[list[dict]] = field(default_factory=list)
+
+
+@dataclass
+class LabelHit:
+    code: str
+    option: Option
+    words: list[dict]
+    line_index: int
+    group: str  # "hear" | "booking"
+    score: float
+    left_limit: int  # x where the previous word on the line ends (0 when none)
+    right_limit: int  # x where the next word starts (segment end when none)
+    glyph: dict | None = None  # a leading OCR glyph word ("O", "@", "(Y") that sits on the control
+    prefix_px: int = 0  # width of junk glued to the first word ("Qcoctor" -> the Q)
+    anchor: int | None = None  # explicit label start (inferred labels use the column position)
+    inferred: bool = False
+    line_cy: float = 0.0  # centre and typical height of the printed line the label sits on
+    line_h: int = 0
+
+    @property
+    def x0(self) -> int:
+        return min(w["x"] for w in self.words)
+
+    @property
+    def anchor_x(self) -> int:
+        """Where the printed label really starts (after any glued glyph)."""
+        if self.anchor is not None:
+            return self.anchor
+        return self.x0 + self.prefix_px
+
+    @property
+    def x1(self) -> int:
+        return max(w["x"] + w["w"] for w in self.words)
+
+    def _raw_box(self) -> tuple[int, int]:
+        return min(w["y"] for w in self.words), max(w["y"] + w["h"] for w in self.words)
+
+    @property
+    def y0(self) -> int:
+        raw0, raw1 = self._raw_box()
+        if self.line_h and raw1 - raw0 > self.line_h * 1.6:
+            return int(self.line_cy - self.line_h * 0.55)  # a word box stretched by scanner debris
+        return raw0
+
+    @property
+    def y1(self) -> int:
+        raw0, raw1 = self._raw_box()
+        if self.line_h and raw1 - raw0 > self.line_h * 1.6:
+            return int(self.line_cy + self.line_h * 0.55)
+        return raw1
+
+    @property
+    def cy(self) -> float:
+        return (self.y0 + self.y1) / 2
+
+    @property
+    def text_h(self) -> int:
+        if self.line_h:
+            return max(8, self.line_h)
+        return max(8, int(sorted(w["h"] for w in self.words)[len(self.words) // 2]))
+
+
+@dataclass
+class Layout:
+    lines: list[Line]
+    text_h: int
+    question_line: int | None
+    booking_line: int | None
+    end_line: int | None
+    hear: list[LabelHit]
+    booking: list[LabelHit]
+    block_text: str
+
+
+def normalize(text: str) -> str:
+    text = unicodedata.normalize("NFD", text.lower())
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"[^a-z0-9]", "", text)
+
+
+# Letter pairs tesseract swaps on scanned forms; substituting one for the other costs half.
+_CONFUSABLE = {
+    frozenset(p)
+    for p in ("cd", "ce", "oe", "o0", "li", "l1", "i1", "s5", "bh", "nm", "uv", "gq", "ao", "tf", "rn", "cg", "ea", "ij", "yv", "dq", "pb", "hk", "ou", "zs", "x4", "ad")
+}
+
+
+def _sub_cost(a: str, b: str) -> float:
+    if a == b:
+        return 0.0
+    if frozenset((a, b)) in _CONFUSABLE:
+        return 0.5
+    return 1.0
+
+
+def edit_distance(left: str, right: str, limit: int | None = None) -> float:
+    if left == right:
+        return 0
+    if not left or not right:
+        return len(left) + len(right)
+    if limit is not None and abs(len(left) - len(right)) > limit:
+        return limit + 1
+    prev = list(range(len(right) + 1))
+    for i, lch in enumerate(left, 1):
+        cur = [float(i)]
+        for j, rch in enumerate(right, 1):
+            cur.append(min(cur[-1] + 1, prev[j] + 1, prev[j - 1] + _sub_cost(lch, rch)))
+        prev = cur
+    return prev[-1]
+
+
+def similarity(window: str, key: str) -> float:
+    if not window or not key:
+        return 0.0
+    best = 1 - edit_distance(window, key) / max(len(window), len(key))
+    # OCR often glues a mark glyph to the first letter or drops it: "@oogie", "oogle", "qzocdoc".
+    stripped = re.sub(r"^[^a-z]+", "", window)
+    if stripped != window and stripped:
+        best = max(best, 1 - edit_distance(stripped, key) / max(len(stripped), len(key)))
+    if len(window) >= 3:
+        best = max(best, 1 - edit_distance(key[0] + window[1:], key) / max(len(window), len(key)) - 0.05)
+        best = max(best, 1 - edit_distance(key[0] + window, key) / max(len(window) + 1, len(key)) - 0.05)
+    # A label cut off by a binder line or the page edge ("Goog", "Zocd"): a clean prefix of the key.
+    if len(window) >= 4 and len(window) >= 0.6 * len(key) and key.startswith(window):
+        best = max(best, 0.76)
+    # ... or its first letters ("ne / Text" for "Phone / Text"); short keys only, long ones share tails.
+    if len(key) <= 12 and len(window) >= 4 and len(window) >= 0.6 * len(key) and key.endswith(window):
+        best = max(best, 0.76)
+    return best
+
+
+def _threshold(key: str) -> float:
+    if len(key) >= 12:
+        return 0.70
+    return 0.75
+
+
+def group_lines(words: list[dict], text_h: int) -> list[Line]:
+    """Cluster words into visual lines by vertical centre, then split each line into segments
+    separated by a horizontal gap of 3 text heights (two-column layouts)."""
+    ordered = sorted(words, key=lambda w: (w["y"] + w["h"] / 2, w["x"]))
+    lines: list[Line] = []
+    tol = max(5, int(text_h * 0.55))
+    for word in ordered:
+        center = word["y"] + word["h"] / 2
+        if lines and abs(center - lines[-1].cy) <= tol:
+            line = lines[-1]
+            line.words.append(word)
+            line.cy = sum(w["y"] + w["h"] / 2 for w in line.words) / len(line.words)
+        else:
+            lines.append(Line([word], center, word["y"], word["y"] + word["h"], ""))
+    for line in lines:
+        line.words.sort(key=lambda w: w["x"])
+        line.y0 = min(w["y"] for w in line.words)
+        line.y1 = max(w["y"] + w["h"] for w in line.words)
+        line.text = " ".join(w["text"] for w in line.words)
+        segments: list[list[dict]] = []
+        gap = max(12, int(text_h * 3))
+        for word in line.words:
+            if segments and word["x"] - (segments[-1][-1]["x"] + segments[-1][-1]["w"]) <= gap:
+                segments[-1].append(word)
+            else:
+                segments.append([word])
+        line.segments = segments
+    return lines
+
+
+def phrase_in_line(line_text: str, phrases: tuple[str, ...], regex: re.Pattern | None) -> bool:
+    if regex is not None and regex.search(line_text):
+        return True
+    key_line = normalize(line_text)
+    for phrase in phrases:
+        key = normalize(phrase)
+        if not key or len(key_line) < len(key) * 0.6:
+            continue
+        best = 0.0
+        step = max(1, len(key) // 6)
+        for start in range(0, max(1, len(key_line) - len(key) + 4), step):
+            window = key_line[start : start + len(key) + 2]
+            best = max(best, similarity(window, key))
+            if best >= 0.78:
+                return True
+    return False
+
+
+def match_options(segment: list[dict], options: tuple[Option, ...], used: set[int]) -> list[tuple[float, Option, list[dict]]]:
+    """Best non-overlapping option matches inside one segment."""
+    candidates: list[tuple[float, int, int, Option]] = []
+    for option in options:
+        for phrase in option.phrases:
+            key = normalize(phrase)
+            if not key:
+                continue
+            tokens = max(1, len(phrase.split()))
+            for start in range(len(segment)):
+                if id(segment[start]) in used:
+                    continue
+                acc = ""
+                for span in range(1, min(len(segment) - start, tokens + 2) + 1):
+                    word = segment[start + span - 1]
+                    if id(word) in used:
+                        break
+                    acc += normalize(word["text"])
+                    if len(acc) < 3 or len(acc) > len(key) + 6:
+                        continue
+                    score = similarity(acc, key)
+                    if score >= _threshold(key):
+                        candidates.append((score, start, span, option, len(acc)))
+    # Longest coverage of the key first, then score: "Doctor referral" beats the alias "referral".
+    candidates.sort(key=lambda c: (-min(c[4], len(normalize(c[3].phrases[0]))), -c[0], c[1]))
+    taken: set[int] = set()
+    hits: list[tuple[float, Option, list[dict]]] = []
+    for score, start, span, option, _chars in candidates:
+        indexes = set(range(start, start + span))
+        if indexes & taken:
+            continue
+        if any(hit[1].code == option.code for hit in hits):
+            continue
+        taken |= indexes
+        hits.append((score, option, segment[start : start + span]))
+    return hits
+
+
+def _question_match_words(line: Line) -> set[int]:
+    """Words that belong to the question phrase itself (so the tiny form's inline options stay)."""
+    used: set[int] = set()
+    match = QUESTION_RE.search(line.text)
+    if not match:
+        return used
+    cursor = 0
+    for word in line.words:
+        end = cursor + len(word["text"])
+        if cursor < match.end() and end > match.start():
+            used.add(id(word))
+        cursor = end + 1
+    return used
+
+
+def _line_stats(line: Line, th: int) -> tuple[float, int]:
+    """Centre and typical height of the real words on a line.
+
+    Word boxes stretched by scanner debris (a binder-line fragment glued to "Zocd") are ignored;
+    when every word is stretched, the text is assumed to sit at the top of the box, where
+    tesseract puts the letters and hangs the debris below.
+    """
+    texty = [w for w in line.words if len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) >= 2 and w["h"] <= th * 1.5]
+    if texty:
+        heights = sorted(w["h"] for w in texty)
+        h = heights[len(heights) // 2]
+        cy = sum(w["y"] + w["h"] / 2 for w in texty) / len(texty)
+        return cy, max(8, h)
+    top = min(w["y"] for w in line.words)
+    return top + th * 0.55, th
+
+
+def _nearest_line(lines: list[Line], y: float | None, th: int, prefer_above: bool = True) -> int | None:
+    """Line closest to a known position; the question sits above its options, so a line at or
+    above the hint wins a tie against one below."""
+    if y is None or not lines:
+        return None
+
+    def cost(i: int) -> float:
+        delta = lines[i].y0 - y
+        return abs(delta) + (th * 0.8 if (prefer_above and delta > th * 0.5) else 0)
+
+    index = min(range(len(lines)), key=cost)
+    return index if abs(lines[index].y0 - y) <= th * 2.5 else None
+
+
+def _glyph_prefix(first: dict, key: str) -> int:
+    """Pixels of junk glued before the label's first letter ("Qcoctor" -> width of "Q").
+
+    Leading non-letters always count. Leading letters count when dropping them makes the word
+    look clearly more like the start of the label (a check through the circle often turns the
+    circle plus the first letter into one or two stray letters).
+    """
+    raw = first["text"]
+    norm = normalize(raw)
+    if not norm or not key:
+        return 0
+    lead = len(raw) - len(raw.lstrip("".join(ch for ch in raw if not normalize(ch))))
+    token = key[: max(3, min(len(key), len(norm)))]
+    base = similarity(norm, token)
+    best_k = 0
+    best = base
+    for k in (1, 2):
+        if len(norm) - k < 3:
+            break
+        trimmed = norm[k:]
+        score = 1 - edit_distance(trimmed, key[: len(trimmed)]) / max(len(trimmed), 1)
+        if score >= best + 0.10:
+            best, best_k = score, k
+    chars = lead + best_k
+    if chars <= 0:
+        return 0
+    return int(round(first["w"] * chars / max(1, len(raw))))
+
+
+def analyse(
+    words: list[dict],
+    family: Family,
+    text_h: int | None = None,
+    max_lines: int = 18,
+    question_y: float | None = None,
+    booking_y: float | None = None,
+) -> Layout:
+    """Find the question, the booking question, the block end and every option label.
+
+    `question_y`/`booking_y` are positions known from an earlier scan; they rescue a block whose
+    question line OCR'd into garbage (R2).
+    """
+    from .page import median_text_height
+
+    th = text_h or median_text_height(words)
+    lines = group_lines(words, th)
+    q_index = next((i for i, line in enumerate(lines) if phrase_in_line(line.text, QUESTION_PHRASES, QUESTION_RE)), None)
+    b_index = next((i for i, line in enumerate(lines) if phrase_in_line(line.text, BOOKING_PHRASES, BOOKING_RE)), None)
+    if q_index is None:
+        q_index = _nearest_line(lines, question_y, th)
+    if b_index is None and booking_y is not None:
+        b_index = _nearest_line(lines, booking_y, th)
+        if b_index is not None and b_index == q_index:
+            b_index = None
+    end_index: int | None = None
+    if q_index is not None:
+        for i in range(q_index + 1, len(lines)):
+            if SECTION_END_RE.search(lines[i].text) and not INSTRUCTION_RE.search(lines[i].text):
+                end_index = i
+                break
+            if i - q_index > max_lines:
+                end_index = i
+                break
+    hear: list[LabelHit] = []
+    booking: list[LabelHit] = []
+    if q_index is None:
+        return Layout(lines, th, None, b_index, end_index, hear, booking, "")
+
+    def group_of(index: int) -> str | None:
+        if index == q_index:
+            return "hear"
+        if end_index is not None and index >= end_index:
+            return None
+        if b_index is None:
+            return "hear" if index > q_index else None
+        if b_index < q_index:
+            if index > q_index:
+                return "hear"
+            if index > b_index:
+                return "booking"
+            return None
+        if index > b_index:
+            return "booking"
+        if index > q_index:
+            return "hear"
+        return None
+
+    block_lines: list[str] = []
+    for index, line in enumerate(lines):
+        group = group_of(index)
+        if group is None:
+            continue
+        if group == "hear":
+            block_lines.append(line.text)
+        used = _question_match_words(line) if index == q_index else set()
+        if index == b_index:
+            used |= set(id(w) for w in line.words)
+        options = family.options if group == "hear" else family.booking
+        if not options:
+            continue
+        for segment in line.segments:
+            for score, option, matched in match_options(segment, options, used):
+                glyph = None
+                key0 = normalize(option.phrases[0])
+                while len(matched) > 1:
+                    lead = normalize(matched[0]["text"])
+                    # "", "O", "e", "0", "fe)", "rot" in front of a label are the control or a mark, not text
+                    if len(lead) <= 1 or (len(lead) <= 3 and not key0.startswith(lead[:2])):
+                        glyph = matched[0]
+                        matched = matched[1:]
+                    else:
+                        break
+                # a trailing scrap ("�", "|") stretches the label box over the next row; drop it
+                while len(matched) > 1 and len(normalize(matched[-1]["text"])) <= 1:
+                    matched = matched[:-1]
+                first = matched[0]
+                last = matched[-1]
+                # Glyph-like words ("O", "@", "(Y") are controls or marks, not text that bounds the label.
+                texty = [w for w in line.words if len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) >= 2]
+                prev = [w for w in texty if w["x"] + w["w"] <= first["x"] and id(w) not in {id(m) for m in matched}]
+                nxt = [w for w in texty if w["x"] >= last["x"] + last["w"] and id(w) not in {id(m) for m in matched}]
+                left_limit = max((w["x"] + w["w"] for w in prev), default=0)
+                if first["x"] - left_limit < th * 3:
+                    left_limit = 0  # a scrap of "text" that close is the control or scanner noise
+                right_limit = min((w["x"] for w in nxt), default=segment[-1]["x"] + segment[-1]["w"])
+                prefix = _glyph_prefix(first, normalize(option.phrases[0]))
+                hit = LabelHit(option.code, option, matched, index, group, score, left_limit, right_limit, glyph, prefix)
+                hit.line_cy, hit.line_h = _line_stats(line, th)
+                (hear if group == "hear" else booking).append(hit)
+    hear = _dedupe(hear)
+    booking = _dedupe(booking)
+    hear = _infer_missing(lines, hear, family, th, group_of)
+    return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
+
+
+def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of) -> list[LabelHit]:
+    """Fill gaps by row order (R4): when the unlabelled text segments inside a gap between two
+    matched labels of a column are exactly as many as the options missing from that gap, take
+    them in order. The control of an inferred label is looked up at the column position."""
+    if family.id in ("tiny", "generic") or len(family.options) < 5 or not hits:
+        return hits
+    found = {h.code: h for h in hits}
+    taken = {id(w) for h in hits for w in h.words}
+    for column in sorted({o.column for o in family.options}):
+        order = [o for o in family.options if o.column == column]
+        col_hits = [found[o.code] for o in order if o.code in found]
+        if not col_hits or all(o.code in found for o in order):
+            continue
+        col_x = sorted(h.x0 for h in col_hits)[len(col_hits) // 2]
+        col_anchor = sorted(h.anchor_x for h in col_hits)[len(col_hits) // 2]
+        other_cols = [h.x0 for h in hits if h.option.column != column]
+        # gaps: (y_lo, y_hi, missing options in order)
+        gaps: list[tuple[float, float, list[Option]]] = []
+        pending: list[Option] = []
+        prev_hit: LabelHit | None = None
+        for option in order:
+            if option.code in found:
+                if pending:
+                    lo = prev_hit.y1 if prev_hit is not None else found[option.code].y0 - th * 2.6 * len(pending)
+                    gaps.append((lo, found[option.code].y0, pending))
+                    pending = []
+                prev_hit = found[option.code]
+            else:
+                pending.append(option)
+        if pending and prev_hit is not None:
+            gaps.append((prev_hit.y1, prev_hit.y1 + th * 2.6 * len(pending) + th, pending))
+        for lo_y, hi_y, missing in gaps:
+            candidates = []
+            for index, line in enumerate(lines):
+                if group_of(index) != "hear":
+                    continue
+                if line.y1 <= lo_y - th * 0.3 or line.y0 >= hi_y + th * 0.3:
+                    continue
+                for segment in line.segments:
+                    texty = [w for w in segment if len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) >= 2 and id(w) not in taken]
+                    if not texty:
+                        continue
+                    x0 = texty[0]["x"]
+                    if abs(x0 - col_x) > th * 4:
+                        continue
+                    if other_cols and min(abs(x0 - x) for x in other_cols) < abs(x0 - col_x):
+                        continue
+                    candidates.append((line.cy, index, texty))
+            if len(candidates) != len(missing):
+                continue
+            candidates.sort()
+            for option, (_cy, index, words) in zip(missing, candidates):
+                hit = LabelHit(option.code, option, words, index, "hear", 0.5, 0, words[-1]["x"] + words[-1]["w"], None, 0, col_anchor, True)
+                hit.line_cy, hit.line_h = _line_stats(lines[index], th)
+                hits.append(hit)
+                found[option.code] = hit
+                taken |= {id(w) for w in words}
+    return sorted(hits, key=lambda h: (h.line_index, h.x0))
+
+
+def _dedupe(hits: list[LabelHit]) -> list[LabelHit]:
+    """One hit per code: keep the best score; a second copy of the same code (duplicate scan
+    region) is dropped so sibling statistics are not skewed."""
+    best: dict[str, LabelHit] = {}
+    for hit in hits:
+        cur = best.get(hit.code)
+        if cur is None or hit.score > cur.score or (hit.score == cur.score and hit.line_index < cur.line_index):
+            best[hit.code] = hit
+    return sorted(best.values(), key=lambda h: (h.line_index, h.x0))

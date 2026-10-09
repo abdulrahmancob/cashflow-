@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Iterable
 
 import psycopg
@@ -89,30 +89,41 @@ def create_forecast_run(
     reconciliation_run_id: str | None = None,
     rules_version: str | None = None,
     status: str = "running",
+    created_at: datetime | None = None,
 ) -> str:
     merged = dict(params or {})
     merged["source_etl_run_ids"] = source_etl_run_ids or []
     merged["rules_version"] = rules_version
-    row = client.fetchone(
-        conn,
-        """
+    values = (
+        algorithm_version,
+        json.dumps(merged, default=str),
+        as_of_date,
+        status,
+        reconciliation_run_id,
+        rules_version,
+        json.dumps(source_etl_run_ids or []),
+    )
+    if created_at is None:
+        sql = """
         INSERT INTO analytics.forecast_run (
             algorithm_version, params, as_of_date, status,
             reconciliation_run_id, rules_version, source_etl_run_ids
         )
         VALUES (%s, %s::jsonb, %s, %s, %s::uuid, %s, %s::jsonb)
         RETURNING forecast_run_id
-        """,
-        (
-            algorithm_version,
-            json.dumps(merged, default=str),
-            as_of_date,
-            status,
-            reconciliation_run_id,
-            rules_version,
-            json.dumps(source_etl_run_ids or []),
-        ),
-    )
+        """
+    else:
+        sql = """
+        INSERT INTO analytics.forecast_run (
+            algorithm_version, params, as_of_date, status,
+            reconciliation_run_id, rules_version, source_etl_run_ids,
+            created_at
+        )
+        VALUES (%s, %s::jsonb, %s, %s, %s::uuid, %s, %s::jsonb, %s)
+        RETURNING forecast_run_id
+        """
+        values = (*values, created_at)
+    row = client.fetchone(conn, sql, values)
     assert row
     return str(row["forecast_run_id"])
 
@@ -183,34 +194,51 @@ def _prediction_params(run_id: str, r: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
+_PREDICTION_COPY_SQL = """
+COPY analytics.forecast_prediction (
+    forecast_run_id, visit_id, outcome_stage, expected_amount,
+    expected_pay_date, overdue_days, denied_amount, denial_category,
+    sla_lag_days, forecast_shift_days, risk_flags, risk_score,
+    webpt_patient_id, case_id, cpt_code, date_of_service, payload
+) FROM STDIN
+"""
+
+
 def insert_predictions(
     conn: psycopg.Connection,
     run_id: str,
     rows: Iterable[dict[str, Any]],
 ) -> int:
-    sql = """
-        INSERT INTO analytics.forecast_prediction (
-            forecast_run_id, visit_id, outcome_stage, expected_amount,
-            expected_pay_date, overdue_days, denied_amount, denial_category,
-            sla_lag_days, forecast_shift_days, risk_flags, risk_score,
-            webpt_patient_id, case_id, cpt_code, date_of_service, payload
-        ) VALUES (
-            %s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s,
-            %s, %s, %s, %s, %s::jsonb
-        )
-    """
-    batch: list[tuple[Any, ...]] = []
+    """Stream prediction rows with COPY. Same columns as the old batched insert."""
+    def _cell(value: Any) -> Any:
+        if hasattr(value, "item"):
+            try:
+                return value.item()
+            except Exception:  # noqa: BLE001
+                return value
+        return value
+
     n = 0
-    for r in rows:
-        batch.append(_prediction_params(run_id, r))
-        if len(batch) >= _INSERT_BATCH:
-            client.executemany(conn, sql, batch)
-            n += len(batch)
-            batch.clear()
-    if batch:
-        client.executemany(conn, sql, batch)
-        n += len(batch)
+    with conn.cursor() as cur:
+        with cur.copy(_PREDICTION_COPY_SQL) as copy:
+            for record in rows:
+                copy.write_row(tuple(_cell(value) for value in _prediction_params(run_id, record)))
+                n += 1
     return n
+
+
+def delete_forecast_run(conn: psycopg.Connection, run_id: str) -> None:
+    """Drop one run. Predictions have no cascade; features do."""
+    client.execute(
+        conn,
+        "DELETE FROM analytics.forecast_prediction WHERE forecast_run_id = %s::uuid",
+        (run_id,),
+    )
+    client.execute(
+        conn,
+        "DELETE FROM analytics.forecast_run WHERE forecast_run_id = %s::uuid",
+        (run_id,),
+    )
 
 
 def replace_feature_table(

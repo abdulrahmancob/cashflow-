@@ -144,12 +144,40 @@ class PaymentModelCatalog:
         )
 
 
-def _visit_paid_total(group: pd.DataFrame) -> float:
+class _VisitAgg:
+    """One paid visit, with the same totals the row-wise model used."""
+
+    __slots__ = ("paid_total", "billed", "allowed", "paid_by_cpt")
+
+    def __init__(
+        self,
+        paid_total: float,
+        billed: float,
+        allowed: float,
+        paid_by_cpt: dict[str, float],
+    ) -> None:
+        self.paid_total = paid_total
+        self.billed = billed
+        self.allowed = allowed
+        self.paid_by_cpt = paid_by_cpt
+
+
+def _visit_paid_total(group: pd.DataFrame | _VisitAgg) -> float:
+    if isinstance(group, _VisitAgg):
+        return group.paid_total
     if "visit_paid_total" in group.columns:
         vals = pd.to_numeric(group["visit_paid_total"], errors="coerce").dropna()
         if not vals.empty:
             return float(vals.iloc[0])
     return float(pd.to_numeric(group.get("paid_amount"), errors="coerce").fillna(0).sum())
+
+
+def _billed_allowed(group: pd.DataFrame | _VisitAgg) -> tuple[float, float]:
+    if isinstance(group, _VisitAgg):
+        return group.billed, group.allowed
+    billed = float(pd.to_numeric(group.get("billed_amount"), errors="coerce").fillna(0).sum())
+    allowed = float(pd.to_numeric(group.get("allowed_amount"), errors="coerce").fillna(0).sum())
+    return billed, allowed
 
 
 def _mode_amount(values: list[float], tol: float = FLAT_VISIT_TOLERANCE) -> tuple[float, float]:
@@ -163,12 +191,23 @@ def _mode_amount(values: list[float], tol: float = FLAT_VISIT_TOLERANCE) -> tupl
 
 
 def _detect_adders(
-    visit_groups: list[pd.DataFrame],
+    visit_groups: list[pd.DataFrame] | list[_VisitAgg],
     flat_amount: float,
 ) -> dict[str, float]:
     """Find CPT codes that systematically add ~constant amount above the flat visit fee."""
     extras: dict[str, list[float]] = defaultdict(list)
     for g in visit_groups:
+        if isinstance(g, _VisitAgg):
+            paid_map = g.paid_by_cpt
+            visit_total = sum(paid_map.values())
+            if visit_total <= flat_amount + FLAT_VISIT_TOLERANCE:
+                continue
+            for cpt, amt in paid_map.items():
+                if abs(amt - flat_amount) <= FLAT_VISIT_TOLERANCE:
+                    continue
+                if amt >= 10:
+                    extras[cpt].append(amt)
+            continue
         paid_by_cpt = (
             g.groupby(g["cpt_code"].astype(str).str.strip(), dropna=False)["paid_amount"]
             .sum()
@@ -265,8 +304,7 @@ def _infer_model_for_visits(
     ratios_allowed: list[float] = []
     for g in visit_groups:
         paid = _visit_paid_total(g)
-        billed = float(pd.to_numeric(g.get("billed_amount"), errors="coerce").fillna(0).sum())
-        allowed = float(pd.to_numeric(g.get("allowed_amount"), errors="coerce").fillna(0).sum())
+        billed, allowed = _billed_allowed(g)
         if paid > 0 and billed > 0:
             ratios_billed.append(paid / billed)
         if paid > 0 and allowed > 0:
@@ -349,12 +387,105 @@ def _group_paid_visits(lines: pd.DataFrame) -> dict[str, list[pd.DataFrame]]:
     return buckets
 
 
+def _group_paid_visit_aggs(lines: pd.DataFrame) -> dict[str, list[_VisitAgg]]:
+    """Same buckets as ``_group_paid_visits``, without a DataFrame per visit."""
+    if lines is None or lines.empty:
+        return {}
+    df = lines
+    if "status" in df.columns:
+        df = df.loc[df["status"].astype(str).str.lower() == "paid"]
+    if df.empty or "date_of_service" not in df.columns:
+        return {}
+    paid = pd.to_numeric(
+        df["paid_amount"] if "paid_amount" in df.columns else 0, errors="coerce"
+    ).fillna(0)
+    df = df.assign(_paid=paid)
+    df = df.loc[df["_paid"] > 0]
+    if df.empty:
+        return {}
+    if "webpt_patient_id" not in df.columns:
+        df = df.assign(webpt_patient_id="")
+    if "ins_name" not in df.columns:
+        df = df.assign(ins_name="")
+    df = df.copy()
+    df["_row"] = range(len(df))
+    df["_billed"] = (
+        pd.to_numeric(df["billed_amount"], errors="coerce").fillna(0)
+        if "billed_amount" in df.columns
+        else 0.0
+    )
+    df["_allowed"] = (
+        pd.to_numeric(df["allowed_amount"], errors="coerce").fillna(0)
+        if "allowed_amount" in df.columns
+        else 0.0
+    )
+    if "cpt_code" in df.columns:
+        df["_cpt"] = df["cpt_code"].map(lambda value: "" if pd.isna(value) else str(value).strip())
+    else:
+        df["_cpt"] = ""
+    keys = ["webpt_patient_id", "date_of_service", "ins_name"]
+    df["_gid"] = df.groupby(keys, dropna=False, sort=True).ngroup()
+    grouped = df.groupby("_gid", sort=True)
+    line_sum = grouped["_paid"].sum()
+    billed = grouped["_billed"].sum()
+    allowed = grouped["_allowed"].sum()
+    if "visit_paid_total" in df.columns:
+        df["_vpt"] = pd.to_numeric(df["visit_paid_total"], errors="coerce")
+        valid = df.dropna(subset=["_vpt"]).sort_values("_row")
+        first_vpt = valid.groupby("_gid", sort=True)["_vpt"].first()
+        paid_total = line_sum.copy()
+        paid_total.update(first_vpt)
+    else:
+        paid_total = line_sum
+    ordered = df.sort_values("_row")
+    first = ordered.groupby("_gid", sort=False).head(1).set_index("_gid")
+    rev_col = (
+        "insurance_revflow"
+        if "insurance_revflow" in df.columns
+        else ("payor" if "payor" in df.columns else "")
+    )
+    cpt_rows = df.loc[df["_cpt"].astype(str) != ""]
+    paid_maps: dict[int, dict[str, float]] = defaultdict(dict)
+    if not cpt_rows.empty:
+        cpt_sum = cpt_rows.groupby(["_gid", "_cpt"], sort=True)["_paid"].sum()
+        for (gid, cpt_code), amt in cpt_sum.items():
+            amount = float(amt)
+            if amount > 0:
+                paid_maps[int(gid)][str(cpt_code)] = amount
+
+    plan_cache: dict[tuple[str, str], tuple[str, ...]] = {}
+    buckets: dict[str, list[_VisitAgg]] = defaultdict(list)
+    for gid, total in paid_total.items():
+        gid_i = int(gid)
+        ins = str(first.at[gid, "ins_name"])
+        if rev_col:
+            rev_val = first.at[gid, rev_col]
+            rev = str(rev_val or "")
+        else:
+            rev = ""
+        cache_key = (ins, rev)
+        hierarchy = plan_cache.get(cache_key)
+        if hierarchy is None:
+            hierarchy = resolve_payer_plan(ins, insurance_revflow=rev).hierarchy
+            plan_cache[cache_key] = hierarchy
+        agg = _VisitAgg(
+            paid_total=float(total),
+            billed=float(billed.at[gid]),
+            allowed=float(allowed.at[gid]),
+            paid_by_cpt=paid_maps.get(gid_i, {}),
+        )
+        for hkey in hierarchy:
+            buckets[hkey].append(agg)
+    return buckets
+
+
 def learn_payment_models(
     recon_lines: pd.DataFrame,
     *,
     payments_unified: pd.DataFrame | None = None,
     visits: pd.DataFrame | None = None,
     fee_estimator: FeeEstimator | None = None,
+    grouper=None,
 ) -> PaymentModelCatalog:
     """Learn reimbursement models at plan/class/org grains.
 
@@ -420,7 +551,7 @@ def learn_payment_models(
                 how="left",
             )
 
-    buckets = _group_paid_visits(train)
+    buckets = (grouper or _group_paid_visit_aggs)(train)
     models: dict[str, PaymentModel] = {}
     counts: dict[str, int] = {k: len(v) for k, v in buckets.items()}
 
@@ -443,6 +574,70 @@ def learn_payment_models(
             models[grain_key] = model
 
     return PaymentModelCatalog(models=models, counts=counts, fee_estimator=fee)
+
+
+def learn_payment_models_reference(
+    recon_lines: pd.DataFrame,
+    *,
+    payments_unified: pd.DataFrame | None = None,
+    visits: pd.DataFrame | None = None,
+    fee_estimator: FeeEstimator | None = None,
+) -> PaymentModelCatalog:
+    """Row-wise learner. Tests compare the fast path against this."""
+    return learn_payment_models(
+        recon_lines,
+        payments_unified=payments_unified,
+        visits=visits,
+        fee_estimator=fee_estimator,
+        grouper=_group_paid_visits,
+    )
+
+
+def apply_visit_expected_amounts_reference(
+    lines: pd.DataFrame,
+    catalog: PaymentModelCatalog,
+) -> pd.DataFrame:
+    """Row-wise expected amounts. Tests compare the fast path against this."""
+    if lines is None or lines.empty:
+        return lines
+
+    out = lines.copy()
+    if "precomputed_expected" not in out.columns:
+        out["precomputed_expected"] = None
+
+    status = out["status"].astype(str).str.lower() if "status" in out.columns else pd.Series([""] * len(out))
+    open_mask = ~status.isin(["paid", "zero_pay", "denied", "patient_responsibility"])
+    pre = out["precomputed_expected"]
+    missing_pre = pre.isna() | (pre.astype(str).str.strip() == "") | (pre.astype(str) == "None")
+    work = out[open_mask & missing_pre].copy()
+    if work.empty:
+        return out
+
+    group_cols = ["webpt_patient_id", "date_of_service", "ins_name"]
+    for col in group_cols:
+        if col not in work.columns:
+            work[col] = ""
+
+    expected_by_idx: dict[object, float] = {}
+    for _, group in work.groupby(group_cols, dropna=False):
+        ins = str(group["ins_name"].iloc[0] or "")
+        rev = ""
+        if "insurance_revflow" in group.columns:
+            rev = str(group["insurance_revflow"].iloc[0] or "")
+        records = group.to_dict("records")
+        visit_amt = catalog.estimate_for_lines(records, ins_name=ins, insurance_revflow=rev)
+        weights: list[float] = []
+        for record in records:
+            cpt = str(record.get("cpt_code") or "")
+            units = float(record.get("units") or 1) or 1.0
+            weights.append(max(catalog.fee_estimator.estimate(cpt, ins) * units, 0.01))
+        wsum = sum(weights) or 1.0
+        for idx, weight in zip(group.index.tolist(), weights):
+            expected_by_idx[idx] = round(visit_amt * (weight / wsum), 2)
+
+    for idx, amt in expected_by_idx.items():
+        out.at[idx, "precomputed_expected"] = amt
+    return out
 
 
 def apply_visit_expected_amounts(
@@ -475,26 +670,77 @@ def apply_visit_expected_amounts(
         if c not in work.columns:
             work[c] = ""
 
-    expected_by_idx: dict[object, float] = {}
+    from cashflow_forecast.payer_plan import resolve_payer_plan
+
+    model_cache: dict[tuple[str, str], PaymentModel] = {}
+    fee_cache: dict[tuple[str, str], float] = {}
+    fee = catalog.fee_estimator
+
+    def fee_of(cpt: str, ins_name: str) -> float:
+        key = (cpt, ins_name)
+        hit = fee_cache.get(key)
+        if hit is None:
+            hit = fee.estimate(cpt, ins_name)
+            fee_cache[key] = hit
+        return hit
+
+    indexes: list[object] = []
+    amounts: list[float] = []
     for _, group in work.groupby(group_cols, dropna=False):
         ins = str(group["ins_name"].iloc[0] or "")
         rev = ""
         if "insurance_revflow" in group.columns:
             rev = str(group["insurance_revflow"].iloc[0] or "")
-        records = group.to_dict("records")
-        visit_amt = catalog.estimate_for_lines(records, ins_name=ins, insurance_revflow=rev)
-        # Distribute across lines proportional to fee_estimator CPT weights (for drill-down)
-        weights: list[float] = []
-        for r in records:
-            cpt = str(r.get("cpt_code") or "")
-            units = float(r.get("units") or 1) or 1.0
-            weights.append(max(catalog.fee_estimator.estimate(cpt, ins) * units, 0.01))
+        cache_key = (ins, rev)
+        model = model_cache.get(cache_key)
+        if model is None:
+            model, _grain = catalog.resolve_model(resolve_payer_plan(ins, insurance_revflow=rev))
+            model_cache[cache_key] = model
+        if "cpt_code" in group.columns:
+            cpts = [str(value or "") for value in group["cpt_code"].tolist()]
+        else:
+            cpts = [""] * len(group)
+        if "units" in group.columns:
+            raw_units = group["units"].tolist()
+        else:
+            raw_units = [1] * len(group)
+        units: list[float] = []
+        for value in raw_units:
+            try:
+                units.append(float(value or 1) or 1.0)
+            except (TypeError, ValueError):
+                units.append(1.0)
+        units_by_cpt: dict[str, float] = {}
+        for cpt, unit in zip(cpts, units):
+            cpt_s = cpt.strip()
+            if cpt_s:
+                units_by_cpt[cpt_s] = unit
+        billed = (
+            float(pd.to_numeric(group["billed_amount"], errors="coerce").fillna(0).sum())
+            if "billed_amount" in group.columns
+            else 0.0
+        )
+        allowed = (
+            float(pd.to_numeric(group["allowed_amount"], errors="coerce").fillna(0).sum())
+            if "allowed_amount" in group.columns
+            else 0.0
+        )
+        visit_amt = model.estimate_visit(
+            cpt_codes=cpts,
+            billed_total=billed,
+            allowed_total=allowed,
+            fee_estimator=fee,
+            ins_name=ins,
+            units_by_cpt=units_by_cpt,
+        )
+        weights = [max(fee_of(cpt, ins) * unit, 0.01) for cpt, unit in zip(cpts, units)]
         wsum = sum(weights) or 1.0
-        for idx, w in zip(group.index.tolist(), weights):
-            expected_by_idx[idx] = round(visit_amt * (w / wsum), 2)
+        for idx, weight in zip(group.index.tolist(), weights):
+            indexes.append(idx)
+            amounts.append(round(visit_amt * (weight / wsum), 2))
 
-    for idx, amt in expected_by_idx.items():
-        out.at[idx, "precomputed_expected"] = amt
+    if indexes:
+        out.loc[indexes, "precomputed_expected"] = amounts
     return out
 
 

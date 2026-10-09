@@ -1,0 +1,394 @@
+# code	truth	note
+# truth: source code | multi:a+b | unmarked | upside_down | no_question | ? (unknown) ; trailing ? = low confidence (reported, not gated)
+# prefixes = bucket claimed by the Oct 5 sheet: U unmarked_options, D doctor, G google, F friend_family, Z zocdoc, I insurance, E event, O other, S social_media, W walk_in, P phone, B website, K blank, R unreadable, T first 40 sheet rows
+U000	google	
+U001	other	flyer-text
+U002	google	
+U003	friend_family	
+U004	other	neighborhood
+U005	unmarked?	
+U006	friend_family	mi-hijo
+U007	zocdoc	
+U008	other	no-text
+U009	friend_family	spouse
+U010	google	
+U011	google	tiny
+U012	other	no-text
+U013	unmarked?	
+U014	?	
+U015	google	es-new
+U016	walk_in	walk-by
+U017	insurance	
+U018	insurance	
+U019	google	
+U020	unmarked	es-new
+U021	doctor	es
+U022	google	
+U023	walk_in	text-on-doctor-line
+U024	unmarked	
+U025	doctor	another-PT-referred
+U026	google	
+U027	unmarked	
+U028	doctor	name-no-box
+U029	doctor?	name-on-other
+U030	doctor	
+U031	google	
+U032	friend_family	my-sister
+U033	google	
+U034	unmarked	faded
+U035	insurance	
+U036	unmarked	
+U037	walk_in	walk-pass
+U038	doctor	es-new
+U039	unmarked?	
+U040	doctor?	faint
+U041	flyer_doctor_office	
+U042	doctor	
+U043	flyer_street	
+U044	other	es-new-no-text
+U045	doctor	
+U046	unmarked?	
+U047	google	ai-search
+U048	google	
+U049	google	
+U050	doctor	
+U051	insurance	
+U052	google	
+U053	doctor	name
+U054	doctor	es-name
+U055	doctor	bullet-name
+U056	google	
+U057	unmarked	
+U058	doctor	
+U059	doctor	
+U060	doctor	
+U061	other	no-text
+U062	unmarked	
+U063	google	faint
+U064	event	
+U065	unmarked	faded
+U066	doctor	
+U067	doctor	
+U068	doctor	es-new
+U069	other	text
+U070	friend_family	
+U071	doctor	
+U072	doctor	
+U073	other	no-text
+U074	unmarked	
+U075	google	es-new
+U076	walk_in	just-walked-in
+U077	doctor	es
+U078	other	in-my-area
+U079	friend_family	name
+U080	google	
+U081	google	
+U082	google	
+U083	friend_family	es-new
+U084	other	live-in-neighborhood
+U085	friend_family	
+U086	google	search
+U087	zocdoc	
+U088	google	es
+U089	google	es-new
+U090	google	es-new
+U091	walk_in	walk-in-text
+U092	google	es
+U093	zocdoc	bullet
+U094	google	
+U095	doctor	name
+U096	other	not-sure
+U097	google	
+U098	insurance	
+U099	google	
+D000	doctor	
+D001	event	marketing-table
+D002	doctor	es-old-name
+D003	multi:doctor+flyer_doctor_office	
+D004	doctor	
+D005	doctor	es-new
+D006	doctor	
+D007	doctor	
+D008	doctor	
+D009	doctor	
+D010	doctor	
+D011	multi:doctor+flyer_doctor_office	
+D012	doctor	
+D013	doctor	
+D014	doctor	
+D015	doctor	es-new
+D016	doctor	
+D017	doctor	es-new
+D018	doctor	
+D019	doctor	
+D020	doctor	
+D021	doctor	
+D022	doctor	
+D023	google	
+D024	doctor	
+D025	doctor	
+D026	insurance	
+D027	doctor	
+D028	doctor	
+D029	doctor	
+D030	doctor	
+D031	doctor	x-mark
+D032	doctor	filled
+D033	multi:insurance+flyer_doctor_office	
+D034	doctor	
+D035	doctor	
+D036	doctor	
+D037	flyer_street?	
+D038	doctor	
+D039	doctor	
+D040	doctor	
+D041	doctor	es
+D042	flyer_doctor_office	
+D043	doctor	
+D044	flyer_doctor_office	
+D045	doctor	
+D046	doctor	es-new
+D047	doctor	
+D048	doctor	es-new
+D049	doctor	
+D050	flyer_doctor_office	
+D051	doctor	
+D052	doctor	
+D053	multi:doctor+flyer_street	
+D054	doctor	
+D055	doctor	
+D056	doctor?	bullet
+D057	doctor	tiny
+D058	doctor	
+D059	doctor	es-new
+D060	google	
+D061	multi:doctor+flyer_doctor_office	
+D062	doctor	
+D063	doctor	
+D064	doctor	
+D065	doctor	es
+D066	doctor	
+D067	doctor	
+D068	doctor?	insurer-name-on-doctor-line
+D069	doctor	
+D070	multi:doctor+friend_family	
+D071	multi:doctor+google	
+D072	doctor	
+D073	doctor	
+D074	doctor	
+D075	doctor	
+D076	doctor	
+D077	doctor	
+D078	doctor	
+D079	doctor	
+D080	doctor	
+D081	doctor	
+D082	doctor	
+D083	doctor	
+D084	multi:doctor+flyer_doctor_office	
+D085	doctor	
+D086	doctor	
+D087	unmarked?	
+D088	doctor	
+D089	multi:doctor+google?	
+D090	doctor	
+D091	doctor	
+D092	multi:doctor+google	
+D093	doctor	es-new
+D094	doctor	
+D095	doctor	
+D096	zocdoc	
+D097	doctor	es
+D098	doctor	
+D099	doctor	
+G00	google?	line-through-3
+G01	google	
+G02	google	
+G03	google	
+G04	google	
+G05	google	
+G06	google	
+G07	google	es
+G08	google	
+G09	google	
+G10	google	
+G11	google	
+G12	google	
+G13	google	
+G14	google	
+G15	google	
+F00	multi:google+friend_family	
+F01	friend_family	
+F02	doctor	name
+F03	multi:doctor+friend_family	other-friend
+F04	friend_family	
+F05	multi:google+doctor	
+F06	friend_family	friend-told-me
+F07	friend_family	in-neighborhood
+F08	friend_family	bullet
+F09	multi:google+doctor	
+F10	google	
+F11	friend_family	name
+F12	friend_family	
+F13	multi:doctor+friend_family	
+F14	friend_family	passing-by
+F15	google	
+Z00	zocdoc	
+Z01	zocdoc	
+Z02	zocdoc	
+Z03	other	location
+Z04	multi:doctor+flyer_doctor_office	
+Z05	multi:google+zocdoc	
+Z06	multi:google+zocdoc	
+Z07	multi:google+zocdoc	
+Z08	zocdoc	
+Z09	?	
+Z10	zocdoc	bullet
+Z11	zocdoc	
+Z12	zocdoc	
+Z13	zocdoc	tiny-other-online
+Z14	doctor	
+Z15	zocdoc	
+I00	multi:doctor+insurance	
+I01	insurance	
+I02	insurance	
+I03	insurance	
+I04	multi:doctor+insurance	
+I05	insurance	
+I06	insurance	
+I07	insurance	
+I08	insurance	
+I09	insurance	
+I10	unmarked?	
+I11	multi:insurance+friend_family	
+I12	insurance	bullet
+I13	unmarked	es-new
+I14	insurance	app
+I15	insurance	
+E00	google	
+E01	doctor	
+E02	doctor	
+E03	friend_family	other-friend
+E04	doctor	
+E05	insurance	
+E06	doctor	
+E07	google	
+E08	friend_family	my-husband
+E09	google	
+E10	doctor	
+E11	google	
+E12	other	no-text
+E13	doctor	
+E14	walk_in	walked-passed
+E15	doctor	other-ENT
+O00	doctor	name
+O01	other	lives-nearby-tiny
+O02	multi:doctor+clinic_staff	es
+O03	website	other-website
+O04	zocdoc	tiny-other-zocdoc
+O05	?	
+O06	multi:social_media+clinic_staff	
+O07	insurance	other-insurance-website
+O08	unmarked?	
+O09	other	allerton-location
+O10	doctor	name
+O11	multi:google+walk_in	tiny
+O12	multi:doctor+friend_family	bullet
+O13	google	tiny
+O14	doctor	name
+O15	friend_family	through-my-wife
+S00	?	
+S01	multi:google+social_media	
+S02	social_media	
+S03	google	
+S04	friend_family	
+S05	google	tiny
+S06	google	tiny
+S07	social_media	es
+S08	other	lives-nearby-tiny
+S09	doctor	tiny
+S10	social_media	es
+S11	friend_family	tiny
+S12	friend_family	tiny
+S13	multi:social_media+friend_family	text-on-doctor-line
+S14	multi:social_media+insurance+friend_family	es
+S15	other	tiny-text
+W00	walk_in	tiny
+W01	walk_in	bullet-other-text
+W02	unmarked?	
+W03	multi:doctor+walk_in	other-walk-by
+W04	walk_in	tiny
+W05	multi:doctor+walk_in	tiny
+W06	walk_in	tiny
+W07	walk_in	tiny
+P00	friend_family	tiny-other-spouse
+P01	multi:event+other	
+P02	unmarked	digital
+P03	doctor	
+B00	doctor	
+B01	unmarked	
+K00	no_question	digital
+R00	upside_down	
+R01	upside_down	
+R02	upside_down	
+R03	upside_down	
+R04	?	older-form
+R05	upside_down	doctor-name
+R06	upside_down	
+R07	upside_down	doctor
+R08	upside_down	
+R09	upside_down	
+R10	doctor	es-new
+R11	upside_down	doctor-name
+R12	multi:doctor+google	es
+R13	upside_down	google+doctor
+R14	upside_down	
+R15	upside_down	old-form
+R16	upside_down	
+R17	upside_down	
+R18	upside_down	es-new
+R19	upside_down	
+R20	upside_down	
+R21	upside_down	walk-in-text
+R22	upside_down	google
+R23	upside_down	doctor-name
+T00	event	
+T01	google	
+T02	walk_in	other-walking-on-the-block
+T03	doctor	es-new
+T04	doctor	
+T05	upside_down	
+T06	doctor	
+T07	upside_down	
+T08	?	crop cut
+T09	insurance	
+T10	unmarked?	no visible mark
+T11	upside_down	
+T12	other	i-live-next-door
+T13	upside_down	
+T14	other	prior-patient
+T15	google	
+T16	other	question
+T17	insurance	approved-providers
+T18	insurance	
+T19	doctor	
+T20	google	
+T21	google	
+T22	zocdoc	
+T23	doctor	
+T24	doctor	
+T25	unmarked?	
+T26	doctor	
+T27	insurance	
+T28	doctor	
+T29	walk_in	other-walk-in
+T30	doctor	
+T31	google	
+T32	insurance	
+T33	insurance	
+T34	upside_down	
+T35	upside_down	
+T36	unmarked?	
+T37	google	
+T38	friend_family	
+T39	unmarked	

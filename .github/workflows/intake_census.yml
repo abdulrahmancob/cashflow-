@@ -2,27 +2,107 @@ name: Intake census
 
 on:
   workflow_dispatch:
+    inputs:
+      max_files:
+        description: "Read only the first N intake files (0 = all). Use 200 for a smoke run."
+        default: "0"
+      workers:
+        description: "OCR worker processes"
+        default: "6"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/scripts/intake_census.trigger"
+
+concurrency:
+  group: intake-census
+  cancel-in-progress: false
+
+permissions:
+  contents: write
 
 jobs:
   census:
     runs-on: [self-hosted, cashflow]
-    timeout-minutes: 360
+    timeout-minutes: 720
+    env:
+      V2: /data/exports/intake_census_v2
+      MAX_FILES: ${{ github.event.inputs.max_files || '0' }}
+      WORKERS: ${{ github.event.inputs.workers || '6' }}
+      COMPOSE: >-
+        docker compose
+        --project-directory /opt/cashflow/deploy
+        -f /opt/cashflow/deploy/docker-compose.yml
+        --env-file /opt/cashflow/deploy/.env
+        --profile tools
+      MOUNTS: >-
+        -v ${{ github.workspace }}/deploy/scripts/intake_census.py:/app/deploy/scripts/intake_census.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_census_eval.py:/app/deploy/scripts/intake_census_eval.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_census_workbook.py:/app/deploy/scripts/intake_census_workbook.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_reader:/app/deploy/scripts/intake_reader:ro
+        -v ${{ github.workspace }}/intake_test:/app/intake_test:ro
     steps:
       - uses: actions/checkout@v4
+
+      - name: Run settings from the trigger file (push) or inputs (manual)
+        run: |
+          set -euo pipefail
+          if [ -f deploy/scripts/intake_census.trigger ]; then
+            # the trigger file may set MAX_FILES=... and WORKERS=... one per line
+            while IFS='=' read -r key value; do
+              case "$key" in
+                MAX_FILES|WORKERS) echo "$key=$value" >> "$GITHUB_ENV" ;;
+              esac
+            done < deploy/scripts/intake_census.trigger
+          fi
+
+      - name: Prepare data folders
+        run: |
+          set -euo pipefail
+          sudo mkdir -p "$V2" /data/ocr/tessdata
+          sudo chown -R 10001:10001 "$V2" /data/ocr/tessdata
+
+      - name: Self-check (synthetic rule tests + the four sample intakes)
+        run: |
+          set -euo pipefail
+          # The scraper image bakes deploy/ at build time; mount the checked-out reader over it.
+          $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
+            python -u /app/deploy/scripts/intake_census.py --self-check
+          $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
+            python -u /app/deploy/scripts/intake_census.py --check-pdfs /app/intake_test
 
       - name: Classify intake forms
         run: |
           set -euo pipefail
-          sudo mkdir -p /data/exports/intake_census/text /data/ocr/tessdata
-          sudo chown -R 10001:10001 /data/exports/intake_census /data/ocr/tessdata
-          # The scraper image bakes deploy/ at build time. This push does not
-          # rebuild that image, so mount the checked-out script over it.
-          docker compose \
-            --project-directory /opt/cashflow/deploy \
-            -f /opt/cashflow/deploy/docker-compose.yml \
-            --env-file /opt/cashflow/deploy/.env \
-            --profile tools \
-            run --rm --no-deps \
-            -v "${GITHUB_WORKSPACE}/deploy/scripts/intake_census.py:/app/deploy/scripts/intake_census.py:ro" \
-            scraper \
-            python -u /app/deploy/scripts/intake_census.py
+          $COMPOSE run --rm --no-deps -T $MOUNTS \
+            -e INTAKE_CENSUS_DIR="$V2" \
+            -e INTAKE_CENSUS_WORKERS="$WORKERS" \
+            -e INTAKE_CENSUS_MAX_FILES="$MAX_FILES" \
+            -e INTAKE_CENSUS_NICE=10 \
+            scraper python -u /app/deploy/scripts/intake_census.py | tee "$RUNNER_TEMP/census_log.txt"
+
+      - name: Build the workbook (patient names come from the database)
+        run: |
+          set -euo pipefail
+          $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
+            python -u /app/deploy/scripts/intake_census_workbook.py --dir "$V2"
+
+      - name: Publish results to the intake-census-results branch
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/results/census"
+          for f in summary.json patients.csv intake_census_stats.xlsx; do
+            sudo cp "$V2/$f" "$RUNNER_TEMP/results/census/" 2>/dev/null || true
+          done
+          cp "$RUNNER_TEMP/census_log.txt" "$RUNNER_TEMP/results/census/" 2>/dev/null || true
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/results"
+          echo "${{ github.sha }}" > "$RUNNER_TEMP/results/census/SOURCE_SHA"
+          git config user.name "intake-census-bot"
+          git config user.email "intake-census-bot@users.noreply.github.com"
+          git checkout --orphan intake-census-results
+          git rm -rf -q . || true
+          rm -rf census && cp -r "$RUNNER_TEMP/results/census" census
+          git add census
+          git commit -q -m "Intake census results for ${{ github.sha }}"
+          git push -f origin intake-census-results

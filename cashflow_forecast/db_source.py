@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 import pandas as pd
@@ -77,11 +77,15 @@ def load_clinical_ar_lines_df(
     service_from: date | None = None,
     service_to: date | None = None,
     database_url: str | None = None,
+    exclude_reconciliation_run_id: str | None = None,
 ) -> pd.DataFrame:
-    """Service lines as AR-like rows for Jan–May style pending volume."""
+    """Service lines as AR-like rows for Jan-May style pending volume."""
     with connection(database_url) as conn:
         rows = visit_repo.get_service_lines_for_reconcile(
-            conn, service_from=service_from, service_to=service_to
+            conn,
+            service_from=service_from,
+            service_to=service_to,
+            exclude_reconciliation_run_id=exclude_reconciliation_run_id,
         )
     df = _rows_to_df(rows)
     if df.empty:
@@ -137,6 +141,7 @@ def write_forecast_run(
     rules_version: str | None = None,
     params: dict[str, Any] | None = None,
     database_url: str | None = None,
+    created_at: datetime | None = None,
 ) -> str:
     with connection(database_url) as conn:
         etl_ids = recon_repo.latest_etl_run_ids(conn)
@@ -151,6 +156,7 @@ def write_forecast_run(
             reconciliation_run_id=reconciliation_run_id,
             rules_version=rules_version,
             status="running",
+            created_at=created_at,
         )
         try:
             pred_rows: list[dict[str, Any]] = []

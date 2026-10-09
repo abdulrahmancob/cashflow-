@@ -60,8 +60,14 @@ def get_service_lines_for_reconcile(
     *,
     service_from: date | None = None,
     service_to: date | None = None,
+    exclude_reconciliation_run_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """WebPT billed lines grain for matching (replaces extracted CPT+notes CSV)."""
+    """WebPT billed lines grain for matching (replaces extracted CPT+notes CSV).
+
+    ``exclude_reconciliation_run_id`` drops lines already on that recon run
+    for the same patient, date of service, and CPT. The forecast still runs
+    its own dedupe afterwards, so this only skips rows that dedupe would drop.
+    """
     clauses = ["1=1"]
     params: list[Any] = []
     if service_from:
@@ -70,6 +76,24 @@ def get_service_lines_for_reconcile(
     if service_to:
         clauses.append("v.service_date <= %s")
         params.append(service_to)
+    if exclude_reconciliation_run_id:
+        clauses.append(
+            """
+            NOT EXISTS (
+                SELECT 1
+                FROM billing.reconciliation_line rl
+                WHERE rl.reconciliation_run_id = %s::uuid
+                  AND rl.date_of_service = v.service_date
+                  AND rl.webpt_patient_id IS NOT NULL
+                  AND btrim(rl.webpt_patient_id) <> ''
+                  AND btrim(rl.webpt_patient_id) = btrim(p.webpt_patient_id)
+                  AND rl.cpt_code IS NOT NULL
+                  AND sl.cpt_code IS NOT NULL
+                  AND btrim(rl.cpt_code) = btrim(sl.cpt_code)
+            )
+            """
+        )
+        params.append(exclude_reconciliation_run_id)
     return client.fetchall(
         conn,
         f"""

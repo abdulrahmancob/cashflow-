@@ -6,6 +6,7 @@ import pandas as pd
 
 from cashflow_forecast.sheet_visit_overrides import (
     apply_sheet_visit_overrides,
+    apply_sheet_visit_overrides_reference,
     load_sheet_visit_overrides,
     remember_sheet_override,
     sheet_override_from_row,
@@ -84,6 +85,18 @@ def _lines():
             },
         ]
     )
+
+
+def test_fast_sheet_apply_matches_reference():
+    overrides = {
+        ("100", date(2026, 6, 1)): ("paid", 100.0, date(2026, 6, 10)),
+        ("200", date(2026, 6, 2)): ("denied", 0.0, None),
+        ("300", date(2026, 6, 3)): ("denied", 0.0, None),
+        ("400", date(2026, 6, 4)): ("paid", 10.0, None),
+    }
+    fast = apply_sheet_visit_overrides(_lines(), overrides)
+    slow = apply_sheet_visit_overrides_reference(_lines(), overrides)
+    pd.testing.assert_frame_equal(fast.reset_index(drop=True), slow.reset_index(drop=True))
 
 
 def test_waystar_paid_untouched_when_sheet_says_denied():
