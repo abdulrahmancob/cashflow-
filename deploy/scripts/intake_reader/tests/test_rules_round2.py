@@ -692,9 +692,11 @@ class RoundFiveTests(unittest.TestCase):
         layout = analyse(words, OLD_CHECKBOX, block.text_h)
         ink = mask_lines(binarize(block.gray, 165), layout.text_h)
         locate = mask_lines(binarize(block.gray, 200), layout.text_h)
-        # pretend the doctor box is invisible on the locate mask
+        # the doctor box lost its corners (skew, faint print): it is there but not box-like
         doc_box = next(box for spec, box in block.rows if spec.label.startswith("Doctor"))
-        locate[doc_box[1] - 2 : doc_box[3] + 2, doc_box[0] - 2 : doc_box[2] + 2] = False
+        bx0, by0, bx1, by1 = doc_box
+        for cy, cx in ((by0, bx0), (by0, bx1), (by1, bx0), (by1, bx1)):
+            locate[max(0, cy - 4) : cy + 5, max(0, cx - 4) : cx + 5] = False
         controls = find_controls(ink, layout.hear, layout.text_h, OLD_CHECKBOX, locate, words)
         score_controls(controls, OLD_CHECKBOX)
         doctor = next(c for c in controls if c.code == "doctor")
