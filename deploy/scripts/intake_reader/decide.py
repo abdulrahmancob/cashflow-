@@ -106,9 +106,15 @@ def decide(
             texts.append(f"doctor: {label}")
             reading.reasons.append("doctor_line_writein")
         else:
-            # Word of Mouth ___ / Clinic staff ___ / De boca en boca ___: text on the line is that option.
-            if item.code not in marks:
-                marks[item.code] = 0.4
+            # Word of Mouth ___ / Clinic staff ___ / De boca en boca ___: text on the line is that
+            # option; when its box is not checked and the words name another source ("Sent by a
+            # doctor" on the Word of Mouth line) the words win
+            if item.code in marks:
+                texts.append(f"{item.code}: {label}")
+                continue
+            code = item.mapped if item.mapped not in (None, "phone", item.code) else item.code
+            if code not in marks:
+                marks[code] = 0.4 if code == item.code else 0.5
                 reading.reasons.append(f"{item.code}_line_writein")
             texts.append(f"{item.code}: {label}")
     reading.other_text = " | ".join(t for t in texts if t)[:200]

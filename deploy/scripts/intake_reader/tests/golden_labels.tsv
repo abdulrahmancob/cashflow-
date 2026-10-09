@@ -104,7 +104,7 @@ U099	google
 D000	doctor	
 D001	multi:doctor+marketing_table	board-shows-both
 D002	doctor	es-old-name
-D003	multi:doctor+flyer_doctor_office	
+D003	multi:doctor+insurance+flyer_doctor_office	board-shows-three
 D004	doctor	
 D005	doctor	es-new
 D006	doctor	
@@ -259,7 +259,7 @@ I06	insurance
 I07	insurance	
 I08	insurance	
 I09	insurance	
-I10	unmarked?	
+I10	doctor	board-shows-check
 I11	multi:insurance+friend_family	
 I12	insurance	bullet
 I13	unmarked	es-new
@@ -287,7 +287,7 @@ O02	multi:doctor+clinic_staff	es
 O03	website	other-website
 O04	zocdoc	tiny-other-zocdoc
 O05	?	
-O06	multi:social_media+clinic_staff	
+O06	multi:social_media+insurance+clinic_staff	board-shows-three
 O07	insurance	other-insurance-website
 O08	unmarked?	
 O09	other	allerton-location
