@@ -35,6 +35,8 @@ class Spec:
     mark: str = ""  # "", "check", "thin", "x", "slash", "dot", "spill", "scribble", "circle_label"
     writein: str = ""  # handwriting-like text after the label
     column: int = 0
+    indent: int = 0  # extra x offset of control and label (sub-options such as the flyer rows)
+    rule: str = ""  # "solid" | "dotted": a printed write-in line after the label, even when blank
 
 
 @dataclass
@@ -75,6 +77,8 @@ def draw_block(
     binder_line: bool = False,
     dotted_writein: bool = False,
     column_x: tuple[int, ...] = (60, 480),
+    gap: int = 12,
+    border_dashes: bool = False,
 ) -> Block:
     fnt = font(size)
     rows_total = len(specs) + 2 + (len(booking[1]) + 2 if booking else 0)
@@ -132,11 +136,14 @@ def draw_block(
                 x0 = min(w["x"] for w in ws) - 8
                 x1 = max(w["x"] + w["w"] for w in ws) + 8
                 draw.ellipse((x0, y - 6, x1, y + size + 8), outline=0, width=2)
-            if spec.writein:
+            if spec.writein or spec.rule:
                 wx = max(w["x"] + w["w"] for w in ws) + 14
-                if dotted_writein:
+                if dotted_writein or spec.rule == "dotted":
                     for dx in range(wx, min(width - 20, wx + 260), 6):
                         draw.line((dx, y + size, dx + 3, y + size), fill=0, width=1)
+                elif spec.rule == "solid":
+                    draw.line((wx, y + size + 2, min(width - 20, wx + 300), y + size + 2), fill=0, width=2)
+            if spec.writein:
                 hw = font(size + 4)
                 draw.text((wx + 6, y - 6), spec.writein, fill=0, font=hw)
         return ws
@@ -158,15 +165,18 @@ def draw_block(
             if i >= len(items):
                 continue
             spec = items[i]
-            x_ctrl = column_x[col]
+            x_ctrl = column_x[col] + spec.indent
             yy = y
             y = y_row
-            row(spec.label, spec, x_ctrl + side + 12, x_ctrl)
+            row(spec.label, spec, x_ctrl + side + gap, x_ctrl)
             y = yy
         y += line_h
         line_no += 1
     if binder_line:
         draw.line((column_x[0] - 14, 0, column_x[0] - 14, height), fill=0, width=3)
+    if border_dashes:
+        for dy in range(0, height, 26):
+            draw.line((width - 30, dy, width - 30, dy + 14), fill=0, width=2)
     if highlighter:
         band = Image.new("L", (width, line_h), 200)
         image.paste(Image.blend(image.crop((0, 10, width, 10 + line_h)), band, 0.45), (0, 10))

@@ -21,7 +21,7 @@ from .anchors import GENERIC, Family, QUESTION_RE, detect_family
 from .controls import find_controls, score_controls
 from .decide import Reading, decide, merge_readings
 from .labels import Layout, analyse, phrase_in_line
-from .page import binarize, clean_for_ocr, mask_lines, median_text_height, ocr_words, render, rotate, upright
+from .page import binarize, clean_for_ocr, mask_lines, median_text_height, normalize_contrast, ocr_words, render, rotate, upright
 from .writein import detect as detect_writein
 
 QUICK_ZOOM = 1.4
@@ -83,19 +83,38 @@ def _question_in(words: list[dict], text: str) -> tuple[int | None, int | None, 
     return q_y, b_y, th
 
 
-def quick_scan(doc, index: int, lang: str, angle_hint: int | None) -> PageScan:
+def _downscale_to(big: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
+    from PIL import Image
+
+    target = (shape[1], shape[0]) if big.shape[0] >= big.shape[1] else (shape[0], shape[1])
+    return np.asarray(Image.fromarray(big).resize(target, Image.BILINEAR))
+
+
+def quick_scan(doc, index: int, lang: str, angle_hint: int | None, force_words: bool = False) -> PageScan:
     page = doc[index]
     native = (page.get_text() or "").strip()
-    if len(native) >= 50:
+    if len(native) >= 50 and not force_words:
         has_q = bool(QUESTION_RE.search(native)) or len(OPTION_ANCHOR_RE.findall(native)) >= 2
         scan = PageScan(index, angle_hint or 0, "native", native, True, has_q)
         if not has_q:
             return scan
     gray = render(doc, index, QUICK_ZOOM)
-    if angle_hint is not None:
+    if force_words:
+        # second look for pages where OSD misled the first pass: decide by readable words only
+        big = render(doc, index, QUICK_ZOOM * 1.45)
+        big, angle, how = upright(big, lang, trust_osd=False)
+        gray = _downscale_to(big, gray.shape)
+        how = "retry:" + how
+    elif angle_hint is not None:
         gray, angle, how = rotate(gray, angle_hint), angle_hint, "hint"
     else:
         gray, angle, how = upright(gray, lang)
+        if how.startswith("words:") and max(float(v) for v in how[6:].split("/")) < 0.08:
+            # nothing readable at this size either way up: look again at twice the detail
+            big = render(doc, index, QUICK_ZOOM * 1.45)
+            big, angle, how = upright(big, lang)
+            gray = _downscale_to(big, gray.shape)
+            how = "big:" + how
     cleaned = clean_for_ocr(gray, 12)
     words = ocr_words(cleaned, lang)
     text = " ".join(w["text"] for w in words)
@@ -118,7 +137,7 @@ def _crop_bounds(scan: PageScan, scale: float, height: int, th_quick: int) -> tu
     top = q - th * 9
     if scan.booking_y is not None and scan.booking_y < scan.question_y:
         top = min(top, scan.booking_y * scale - th * 1.5)
-    bottom = q + th * 36
+    bottom = q + th * 48
     return int(max(0, top)), int(min(height, bottom))
 
 
@@ -163,6 +182,10 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
             reading.debug = {"ocr_lines": [ln.text[:100] for ln in layout.lines[:40]], "attempt": attempt, "top": top}
             return reading
         family = detect_family(layout.block_text, scan.text)
+        q_text = layout.lines[layout.question_line].text.lower()
+        inline = sum(1 for w in ("doctor", "google", "social", "zocdoc", "walk", "flyer", "nearby") if w in q_text)
+        if family.id in ("generic", "new_circle", "old_checkbox") and inline >= 2:
+            family = anchors.TINY
         if family.zoom > zoom and attempt == 0:
             zoom = family.zoom
             continue
@@ -186,18 +209,26 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
             block_cut = expect_last not in last_codes
     elif layout.end_line is None and expect_last not in last_codes and len(layout.hear) < 3:
         block_cut = True
-    ink = mask_lines(binarize(gray, 165), th)
-    locate = mask_lines(binarize(gray, 200), th)
-    hear_controls = find_controls(ink, layout.hear, th, family, locate, words)
-    booking_controls = find_controls(ink, layout.booking, th, family, locate, words)
+    level = normalize_contrast(gray)
+    raw_ink = binarize(level, 165)
+    ink = mask_lines(raw_ink, th)
+    erased = raw_ink & ~ink  # printed rules and binder lines, painted out before strip OCR
+    locate = mask_lines(binarize(level, 205), th)
+    # one search over both questions: the booking circles share the hear column, so a booking
+    # label whose own circle is hidden by a check still gets measured at the right place
+    all_controls = find_controls(ink, layout.hear + layout.booking, th, family, locate, words)
+    hear_controls = [c for c in all_controls if c.extra["hit"].group == "hear"]
+    booking_controls = [c for c in all_controls if c.extra["hit"].group == "booking"]
     score_controls(hear_controls, family)
     score_controls(booking_controls, family)
     writeins = []
+    all_hits = layout.hear + layout.booking
     for hit in layout.hear:
         kind = hit.option.writein
         if not kind:
             continue
-        found = detect_writein(ink, gray, words, hit, kind, th, lang)
+        bounds = _neighbour_bounds(hit, all_hits, th)
+        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased)
         if found is not None:
             writeins.append(found)
     reading = decide(
@@ -211,6 +242,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         block_cut=block_cut,
     )
     reading.debug = {
+        "block_text": layout.block_text[:300],
         "layout_lines": [(i, ("Q" if i == layout.question_line else "B" if i == layout.booking_line else "E" if i == layout.end_line else " "), ln.text[:90]) for i, ln in enumerate(layout.lines)],
         "zoom": zoom,
         "angle": scan.angle,
@@ -227,7 +259,27 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     }
     if want_debug:
         reading.debug["gray"] = gray
+        reading.debug["cands"] = [(c.code, c.extra.get("cands", [])) for c in hear_controls + booking_controls]
+        reading.debug["_hits"] = layout.hear + layout.booking
+        reading.debug["_level"] = level
     return reading
+
+
+def _neighbour_bounds(hit, hits, th: int) -> tuple[int | None, int | None]:
+    """Bottom of the printed label above and top of the one below in the same column."""
+    above = None
+    below = None
+    for other in hits:
+        if other is hit:
+            continue
+        same_column = abs(other.x0 - hit.x0) <= th * 8 or (other.x0 < hit.x1 and other.x1 > hit.x0)
+        if not same_column:
+            continue
+        if other.cy < hit.cy - th * 0.6:
+            above = other.y1 if above is None else max(above, other.y1)
+        elif other.cy > hit.cy + th * 0.6:
+            below = other.y0 if below is None else min(below, other.y0)
+    return above, below
 
 
 def read_intake(path: str, lang: str = "eng+spa", max_pages: int = MAX_PAGES, want_debug: bool = False) -> IntakeResult:
@@ -267,6 +319,19 @@ def read_intake(path: str, lang: str = "eng+spa", max_pages: int = MAX_PAGES, wa
                 break  # the question was read on this page; later pages are other documents
             if len(readings) >= 2:
                 break
+        if not readings and any(not s.native for s in scanned):
+            # R1 fallback: a weak OSD verdict may have turned the form upside down; look again at
+            # the first pages deciding the orientation by readable words only
+            for index in range(min(2, len(doc))):
+                scan = quick_scan(doc, index, lang, None, force_words=True)
+                if not scan.has_question:
+                    continue
+                scanned[index] = scan
+                texts.append(scan.text)
+                reading = read_block(doc, scan, lang, want_debug)
+                readings.append(reading)
+                if reading.source not in ("unreadable", "no_question"):
+                    break
     finally:
         doc.close()
     if readings:

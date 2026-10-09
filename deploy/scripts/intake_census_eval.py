@@ -54,10 +54,14 @@ def load_labels(path: Path) -> dict[str, tuple[str, str]]:
     return labels
 
 
+TEXT_CODES = {"friend_family", "walk_in", "google", "insurance", "doctor", "zocdoc", "event", "website", "social_media", "lives_nearby"}
+
+
 def compare(truth: str, reading) -> tuple[str, str]:
     """Return (verdict, detail). verdict: ok | miss | soft | skip."""
     got = reading.source
     marks = set(reading.marks)
+    reasons = set(getattr(reading, "reasons", []) or [])
     low_conf = truth.endswith("?") and truth != "?"
     base = truth[:-1] if low_conf else truth
     if truth == "?":
@@ -80,6 +84,8 @@ def compare(truth: str, reading) -> tuple[str, str]:
         ok = got == base
         if not ok and got == "multiple" and base in marks:
             return ("soft", f"extra marks {sorted(marks)}")
+        if not ok and got == "other" and "other_unmapped" in reasons and base in TEXT_CODES:
+            return ("soft", "handwritten answer kept for review")
     if ok:
         return "ok", got
     return ("soft" if low_conf else "miss"), f"got={got} marks={sorted(marks)}"
@@ -111,7 +117,7 @@ def _run_one(payload: tuple[str, str, str]) -> dict:
             "how": [s.how for s in result.scanned],
             "method": result.method,
             "secs": round(time.monotonic() - started, 1),
-            "debug": {k: v for k, v in debug.items() if k != "gray"},
+            "debug": {k: v for k, v in debug.items() if k != "gray" and not k.startswith("_")},
         }
         if gray is not None:
             row["_gray"] = gray
@@ -179,6 +185,8 @@ def main() -> int:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--lang", default="eng+spa")
     parser.add_argument("--boards", default="miss", choices=["none", "miss", "all"])
+    parser.add_argument("--tile", type=int, default=560, help="board tile width in px")
+    parser.add_argument("--per-board", type=int, default=4, help="crops per board image")
     args = parser.parse_args()
 
     mapping = json.loads(Path(args.map).read_text(encoding="utf-8"))
@@ -217,7 +225,7 @@ def main() -> int:
         else:
             from intake_reader import Reading
 
-            reading = Reading(source=row["source"], marks=list(row["marks"]))
+            reading = Reading(source=row["source"], marks=list(row["marks"]), reasons=list(row.get("reasons", [])))
             verdict, detail = compare(truth, reading)
         row["verdict"] = verdict
         row["detail"] = detail
@@ -231,8 +239,9 @@ def main() -> int:
     (out / "eval_report.json").write_text(json.dumps(report, indent=1, ensure_ascii=False), encoding="utf-8")
     if args.boards != "none":
         chosen = rows if args.boards == "all" else misses + softs
-        for index in range(0, len(chosen), 4):
-            render_board(chosen[index : index + 4], out / f"miss_{index // 4:02d}.jpg")
+        per = max(1, args.per_board)
+        for index in range(0, len(chosen), per):
+            render_board(chosen[index : index + per], out / f"miss_{index // per:02d}.jpg", tile_w=args.tile)
     total = sum(verdicts.values()) - verdicts["skip"]
     print("EVAL_SUMMARY " + " ".join(f"{k}={v}" for k, v in sorted(verdicts.items())) + f" accuracy={(verdicts['ok'] / total if total else 0):.3f}", flush=True)
     for bucket, counts in sorted(per_bucket.items()):

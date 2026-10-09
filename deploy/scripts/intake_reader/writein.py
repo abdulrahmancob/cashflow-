@@ -91,6 +91,38 @@ def map_text(text: str) -> str | None:
     for code, pattern in _KEYWORDS:
         if pattern.search(folded):
             return code
+    return _fuzzy_map(folded)
+
+
+# Stems (5+ letters) matched within one OCR error; "Eciend" is "friend", "hussband" is "husband".
+_STEMS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("zocdoc", ("zocdoc",)),
+    ("social_media", ("facebook", "instagram", "tiktok", "youtube", "social")),
+    ("insurance", ("insurance", "aetna", "fidelis", "healthfirst", "medicare", "medicaid", "cigna", "united", "emblem", "metroplus", "oxford", "seguro", "providers")),
+    (
+        "friend_family",
+        ("friend", "friends", "husband", "wife", "sister", "brother", "mother", "father", "daughter", "family", "spouse", "cousin", "neighbor", "neighbour", "coworker", "esposo", "esposa", "amigo", "amiga", "familia", "hermano", "hermana"),
+    ),
+    ("walk_in", ("walking", "walked", "passing", "passed", "nearby", "neighborhood", "block", "lives", "around")),
+    ("event", ("flyer", "flyers", "folleto", "event", "church", "school", "outreach")),
+    ("doctor", ("doctor", "referral", "referred", "clinic", "hospital", "physician", "surgeon", "medico", "ortho")),
+    ("google", ("google", "search", "internet", "online", "website", "yelp")),
+)
+_STOP = {"other", "otros", "otro", "please", "specify", "type", "name", "office", "staff", "clinic", "mouth", "word", "event", "outreach", "especifique"}
+
+
+def _fuzzy_map(folded: str) -> str | None:
+    from .labels import edit_distance
+
+    tokens = [t for t in re.findall(r"[a-z]+", folded) if len(t) >= 5 and t not in _STOP]
+    for code, stems in _STEMS:
+        for token in tokens:
+            for stem in stems:
+                if len(stem) < 5 or abs(len(token) - len(stem)) > 2:
+                    continue
+                limit = 1 if len(stem) < 6 else 2
+                if edit_distance(token, stem, limit) <= limit:
+                    return code
     return None
 
 
@@ -100,55 +132,100 @@ def looks_like_name(text: str) -> bool:
     return len(tokens) >= 1 and map_text(text) is None
 
 
-def writein_area(hit: LabelHit, kind: str, th: int, width: int, height: int) -> tuple[int, int, int, int]:
+def writein_area(
+    hit: LabelHit, kind: str, th: int, width: int, height: int, bounds: tuple[int | None, int | None] | None = None
+) -> tuple[int, int, int, int]:
+    """Where handwriting for this label would sit. `bounds` are the bottom of the printed line
+    above and the top of the printed line below, so the strip never reaches a neighbour's text."""
+    above, below = bounds if bounds else (None, None)
     if kind == "below":
         x0 = max(0, hit.x0 - int(th * 0.2))
         x1 = min(width, hit.x0 + int(th * 16))
         y0 = min(height, hit.y1 + int(th * 0.1))
         y1 = min(height, hit.y1 + int(th * 2.6))
+        if below is not None:
+            y1 = max(y0 + 1, min(y1, int(below - th * 0.15)))
     else:
         x0 = min(width, hit.x1 + int(th * 0.2))
         x1 = max(x0 + 1, min(width, hit.right_limit - int(th * 0.3) if hit.right_limit > hit.x1 + th else width - int(th * 0.3)))
-        y0 = max(0, int(hit.cy - th * 0.95))
-        y1 = min(height, int(hit.cy + th * 0.8))
+        x1 = min(x1, x0 + int(th * 20))  # handwriting stays near the label; page borders do not count
+        y0 = max(0, int(hit.cy - th * 0.8))
+        y1 = min(height, int(hit.cy + th * 0.95))
+        if above is not None:
+            y0 = min(y1 - 1, max(y0, int(above + th * 0.1)))
+        if below is not None:
+            y1 = max(y0 + 1, min(y1, int(below - th * 0.1)))
     return x0, y0, x1, y1
 
 
-def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: LabelHit) -> list[tuple[int, int, int, int]]:
-    """Word boxes inside the area that are printed helper text or the label itself."""
+def _tokens(phrases) -> set[str]:
+    out: set[str] = set()
+    for phrase in phrases:
+        for token in re.split(r"[^a-z']+", _fold(phrase)):
+            token = token.strip("'")
+            if len(token) >= 3:
+                out.add(token)
+    return out
+
+
+def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: LabelHit, kind: str = "inline", th: int = 0) -> list[tuple[int, int, int, int]]:
+    """Word boxes inside the area that are printed helper text or the label itself.
+
+    Only the helper phrases and this label's own words count as printed: a handwritten "friend"
+    on the Other line must survive even though "Friends/Family" is a label elsewhere.
+    """
     x0, y0, x1, y1 = area
     label_ids = {id(w) for w in hit.words}
     boxes: list[tuple[int, int, int, int]] = []
-    inside = [w for w in words if w["x"] < x1 and w["x"] + w["w"] > x0 and w["y"] < y1 and w["y"] + w["h"] > y0]
+    inside = sorted((w for w in words if w["x"] < x1 and w["x"] + w["w"] > x0 and w["y"] < y1 and w["y"] + w["h"] > y0), key=lambda w: w["x"])
     joined = normalize(" ".join(w["text"] for w in inside))
-    hint_hit = any(similarity(joined[: len(normalize(h)) + 4], normalize(h)) >= 0.72 for h in _PRINTED_HINTS) if joined else False
-    hint_tokens = {t for h in _PRINTED_HINTS for t in re.split(r"[^a-záéíóúñ']+", h.lower()) if len(t) >= 4}
+    hint_hit = any(similarity(joined[: len(normalize(h)) + 4], normalize(h)) >= 0.6 for h in _PRINTED_HINTS) if joined else False
+    tokens = _tokens(_PRINTED_HINTS) | _tokens(hit.option.phrases)
+    th = th or hit.text_h
+    printed_boxes_x1: list[int] = []
     for w in inside:
-        if id(w) in label_ids:
-            boxes.append((w["x"], w["y"], w["x"] + w["w"], w["y"] + w["h"]))
-            continue
         key = normalize(w["text"])
-        if not key:
-            continue
-        printed = any(key in normalize(h) and len(key) >= 4 for h in _PRINTED_HINTS)
+        printed = id(w) in label_ids
+        on_label_line = abs((w["y"] + w["h"] / 2) - hit.cy) <= th * 0.5
+        if not printed and kind == "inline" and on_label_line and w["x"] < hit.x1 + th * 0.35:
+            printed = True  # the rest of a label whose OCR split in two ("Clinic" | "staff")
         if not printed and len(key) >= 4:
-            printed = any(similarity(key, normalize(t)) >= 0.75 for t in hint_tokens)
-        if not printed and hint_hit and len(key) <= 3:
-            printed = True  # bracket and punctuation scraps of the printed helper line
+            printed = any((key in tk or tk in key) for tk in tokens if len(tk) >= 4) or any(similarity(key, tk) >= 0.75 for tk in tokens if len(tk) >= 4)
+        if not printed and len(key) == 3:
+            printed = key in tokens
+        if not printed and len(key) <= 3:
+            near_printed = any(abs(w["x"] - px1) <= th * 0.6 for px1 in printed_boxes_x1)
+            printed = hint_hit or near_printed  # bracket and punctuation scraps of the printed helper line
         if printed:
             boxes.append((w["x"], w["y"], w["x"] + w["w"], w["y"] + w["h"]))
+            printed_boxes_x1.append(w["x"] + w["w"])
     return boxes
 
 
-def detect(ink: np.ndarray, gray: np.ndarray, words: list[dict], hit: LabelHit, kind: str, th: int, lang: str) -> WriteIn | None:
-    """Return a WriteIn when real ink sits in the write-in area, else None."""
+def detect(
+    ink: np.ndarray,
+    gray: np.ndarray,
+    words: list[dict],
+    hit: LabelHit,
+    kind: str,
+    th: int,
+    lang: str,
+    bounds: tuple[int | None, int | None] | None = None,
+    erase: np.ndarray | None = None,
+) -> WriteIn | None:
+    """Return a WriteIn when real ink sits in the write-in area, else None.
+
+    Printed rules and their fragments (skewed scans defeat the long-run mask) never count;
+    an answer needs either readable letters or clearly handwriting-sized ink.
+    """
     height, width = ink.shape
-    area = writein_area(hit, kind, th, width, height)
+    area = writein_area(hit, kind, th, width, height, bounds)
     x0, y0, x1, y1 = area
     if x1 - x0 < th or y1 - y0 < th * 0.5:
         return None
     region = ink[y0:y1, x0:x1].copy()
-    for bx0, by0, bx1, by1 in _printed_boxes(words, area, hit):
+    boxes = _printed_boxes(words, area, hit, kind, th)
+    for bx0, by0, bx1, by1 in boxes:
         rx0 = max(0, bx0 - 2 - x0)
         rx1 = min(region.shape[1], bx1 + 2 - x0)
         ry0 = max(0, by0 - 2 - y0)
@@ -160,56 +237,138 @@ def detect(ink: np.ndarray, gray: np.ndarray, words: list[dict], hit: LabelHit, 
     labels, count, slices = components(region)
     tall = 0
     total = 0
+    # dashes of a dotted write-in line: small flat pieces whose centres share a row
+    dashes: list[tuple[int, int]] = []
     for index, sl in enumerate(slices, 1):
         if sl is None:
+            continue
+        h = sl[0].stop - sl[0].start
+        w = sl[1].stop - sl[1].start
+        if h <= max(4, th * 0.22) and w <= th * 1.2 and w >= 2:
+            dashes.append(((sl[0].start + sl[0].stop) // 2, index))
+    dotted: set[int] = set()
+    dashes.sort()
+    row: list[tuple[int, int]] = []
+    for cy, index in dashes + [(10**9, -1)]:
+        if row and cy - row[-1][0] > 3:
+            if len(row) >= 4:
+                dotted |= {i for _, i in row}
+            row = []
+        row.append((cy, index))
+    for index, sl in enumerate(slices, 1):
+        if sl is None:
+            continue
+        if index in dotted:
             continue
         h = sl[0].stop - sl[0].start
         w = sl[1].stop - sl[1].start
         pixels = int((labels[sl] == index).sum())
         if pixels < 4:
             continue
+        if (h <= max(4, 0.12 * w) and w >= 2.5 * th) or (h <= 3 and w >= th):
+            continue  # a printed rule or a fragment of one
         total += pixels
-        if h >= th * 0.45 or w >= th * 1.5:
+        if w <= 3 and h >= th * 0.45:
+            continue  # a dash of a printed border or a binder line, not a letter
+        if (h >= th * 0.45 and h >= 0.25 * w) or (w >= th * 1.5 and h >= th * 0.3):
             tall += 1
-    if tall == 0 or total < th * th * 1.0:
+    if tall == 0 or total < th * th * 0.6:
         return None
-    text, conf = ocr_strip(gray, area, lang)
+    text, conf = ocr_strip(gray, area, lang, erase, boxes)
+    if _is_printed_hint(text):
+        return None  # the strip read the printed helper line, not handwriting
     letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
-    if len(letters) < 2 and total < th * th * 1.5:
-        return None  # a stroke of the underline or a stray mark, not an answer
-    if conf < 20 and total < th * th * 3:
-        return None  # dotted line or scanner noise read as nonsense
+    strong = len(letters) >= 3 and conf >= 45
+    some = len(letters) >= 2 and conf >= 30
+    if strong:
+        pass
+    elif some and total >= th * th * 1.0:
+        pass
+    elif kind == "inline" and tall >= 2 and total >= th * th * 1.2:
+        pass
+    elif kind == "below" and tall >= 3 and total >= th * th * 2.0:
+        pass
+    else:
+        return None
     return WriteIn(hit.code, kind, text, conf, map_text(text), total, area)
 
 
-def ocr_strip(gray: np.ndarray, area: tuple[int, int, int, int], lang: str) -> tuple[str, float]:
+def _is_printed_hint(text: str) -> bool:
+    """True when OCR of the write-in strip is (mostly) the printed helper text itself."""
+    key = normalize(text)
+    if len(key) < 5:
+        return False
+    for hint in _PRINTED_HINTS:
+        h = normalize(hint)
+        if not h:
+            continue
+        window = key[: len(h) + 3]
+        if similarity(window, h) >= 0.6 or (len(key) >= 8 and h.endswith(key[-8:])):
+            return True
+        # a long helper tail like "ctorsname" or "nameoffice" inside the strip
+        for part in ("doctorsname", "nameoffice", "typedoctor", "nombredelmedico", "medicooficina"):
+            if part in key and len(key) <= len(part) + 10:
+                return True
+    return False
+
+
+def ocr_strip(
+    gray: np.ndarray,
+    area: tuple[int, int, int, int],
+    lang: str,
+    erase: np.ndarray | None = None,
+    boxes: list[tuple[int, int, int, int]] | None = None,
+) -> tuple[str, float]:
+    """OCR the handwriting strip. Printed rules (`erase`, pixels the line mask removed) and the
+    printed word boxes are painted out first so dots and helper text do not become letters."""
     import pytesseract
     from PIL import Image
 
     x0, y0, x1, y1 = area
-    crop = gray[y0:y1, x0:x1]
+    crop = gray[y0:y1, x0:x1].copy()
     if crop.size == 0:
         return "", 0.0
+    if erase is not None:
+        sub = erase[y0:y1, x0:x1]
+        if sub.shape == crop.shape:
+            crop[sub] = 255
+    for bx0, by0, bx1, by1 in boxes or ():
+        rx0, rx1 = max(0, bx0 - 1 - x0), min(crop.shape[1], bx1 + 1 - x0)
+        ry0, ry1 = max(0, by0 - 1 - y0), min(crop.shape[0], by1 + 1 - y0)
+        if rx1 > rx0 and ry1 > ry0:
+            crop[ry0:ry1, rx0:rx1] = 255
     image = Image.fromarray(np.where(crop < 165, 0, 255).astype(np.uint8))
     image = image.resize((image.width * 3, image.height * 3), Image.BICUBIC)
-    try:
-        data = pytesseract.image_to_data(image, lang=lang, config="--psm 7", output_type=pytesseract.Output.DICT)
-    except Exception:
+
+    def run(psm: int) -> tuple[str, float]:
         try:
-            data = pytesseract.image_to_data(image, lang="eng", config="--psm 7", output_type=pytesseract.Output.DICT)
+            data = pytesseract.image_to_data(image, lang=lang, config=f"--psm {psm}", output_type=pytesseract.Output.DICT)
         except Exception:
-            return "", 0.0
-    tokens: list[str] = []
-    confs: list[float] = []
-    for raw, conf in zip(data["text"], data["conf"]):
-        text = (raw or "").strip()
-        try:
-            value = float(conf)
-        except (TypeError, ValueError):
-            value = -1.0
-        if not text or value < 0:
-            continue
-        tokens.append(text)
-        confs.append(value)
-    text = re.sub(r"[_\-–—.]{2,}", " ", " ".join(tokens)).strip()
-    return text, (sum(confs) / len(confs) if confs else 0.0)
+            try:
+                data = pytesseract.image_to_data(image, lang="eng", config=f"--psm {psm}", output_type=pytesseract.Output.DICT)
+            except Exception:
+                return "", 0.0
+        tokens: list[str] = []
+        confs: list[float] = []
+        for raw, conf in zip(data["text"], data["conf"]):
+            text = (raw or "").strip()
+            try:
+                value = float(conf)
+            except (TypeError, ValueError):
+                value = -1.0
+            if not text or value < 0:
+                continue
+            tokens.append(text)
+            confs.append(value)
+        text = re.sub(r"[_\-–—.]{2,}", " ", " ".join(tokens)).strip()
+        return text, (sum(confs) / len(confs) if confs else 0.0)
+
+    def letters_of(text: str) -> int:
+        return len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text))
+
+    text, conf = run(7)
+    if conf < 40 or letters_of(text) < 3:
+        alt, alt_conf = run(8)
+        if alt_conf * min(letters_of(alt), 8) > conf * min(letters_of(text), 8):
+            text, conf = alt, alt_conf
+    return text, conf

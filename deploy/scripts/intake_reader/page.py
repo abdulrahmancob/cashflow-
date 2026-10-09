@@ -120,7 +120,7 @@ def ocr_words(gray: np.ndarray, lang: str, psm: int = 3) -> list[dict]:
     return words
 
 
-def upright(gray: np.ndarray, lang: str, quick_zoom_ratio: float = 0.7) -> tuple[np.ndarray, int, str]:
+def upright(gray: np.ndarray, lang: str, quick_zoom_ratio: float = 0.7, trust_osd: bool = True) -> tuple[np.ndarray, int, str]:
     """Return (upright image, applied clockwise angle, how it was decided).
 
     Intake forms are portrait pages: a landscape render means a 90/270 rotation, and only those
@@ -130,7 +130,7 @@ def upright(gray: np.ndarray, lang: str, quick_zoom_ratio: float = 0.7) -> tuple
     """
     height, width = gray.shape
     landscape = width > height * 1.1
-    osd = osd_angle(gray)
+    osd = osd_angle(gray) if trust_osd else None
     small = _downscale(gray, quick_zoom_ratio)
 
     def ratio(angle: int) -> float:
@@ -142,7 +142,7 @@ def upright(gray: np.ndarray, lang: str, quick_zoom_ratio: float = 0.7) -> tuple
             return rotate(gray, osd[0]), osd[0], f"osd:{osd[1]:.1f}"
         best = max(scores, key=scores.get)
         return rotate(gray, best), best, f"words90:{scores[90]:.2f}/{scores[270]:.2f}"
-    if osd is not None and osd[1] >= 1.0 and osd[0] in (0, 180):
+    if osd is not None and osd[1] >= 2.0 and osd[0] in (0, 180):
         return rotate(gray, osd[0]), osd[0], f"osd:{osd[1]:.1f}"
     scores = {a: ratio(a) for a in (0, 180)}
     best = max(scores, key=scores.get)
@@ -157,6 +157,26 @@ def _downscale(gray: np.ndarray, ratio: float) -> np.ndarray:
     image = Image.fromarray(gray)
     size = (max(1, int(image.width * ratio)), max(1, int(image.height * ratio)))
     return np.asarray(image.resize(size, Image.BILINEAR))
+
+
+def normalize_contrast(gray: np.ndarray) -> np.ndarray:
+    """Stretch a block so paper reads 255 and the darkest ink reads 0.
+
+    Faded scans put print and pen around 130-180; after stretching, the same thresholds that
+    work on a crisp scan work here too. Paper is the median value (most of a form is paper),
+    ink is the 1st percentile. A block that is already crisp is returned unchanged.
+    """
+    if gray.size == 0:
+        return gray
+    paper = float(np.percentile(gray, 60))
+    ink = float(np.percentile(gray, 1))
+    if paper - ink < 40:
+        return gray  # nearly blank crop, nothing to stretch
+    if ink <= 40 and paper >= 235:
+        return gray
+    scale = 255.0 / max(1.0, paper - ink)
+    out = (gray.astype(np.float32) - ink) * scale
+    return np.clip(out, 0, 255).astype(np.uint8)
 
 
 def binarize(gray: np.ndarray, threshold: int = 150) -> np.ndarray:
@@ -195,7 +215,7 @@ def mask_lines(ink: np.ndarray, text_h: int) -> np.ndarray:
             drop[index] = True
         elif w <= max(12, int(th * 0.6)) and h >= 8 * th:
             drop[index] = True
-        elif h <= 3 and 3 <= w <= th:
+        elif h <= max(3, int(th * 0.2)) and 2 <= w <= th:
             dashes.append(((sl[0].start + sl[0].stop) // 2, sl[1].start, sl[1].stop, index))
     dashes.sort()
     row: list[tuple[int, int, int, int]] = []
@@ -206,7 +226,7 @@ def mask_lines(ink: np.ndarray, text_h: int) -> np.ndarray:
                 drop[g[3]] = True
 
     for dash in dashes:
-        if row and dash[0] - row[-1][0] > 2:
+        if row and dash[0] - row[-1][0] > 3:
             flush(row)
             row = []
         row.append(dash)

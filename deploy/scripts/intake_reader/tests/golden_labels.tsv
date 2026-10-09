@@ -2,7 +2,7 @@
 # truth: source code | multi:a+b | unmarked | upside_down | no_question | ? (unknown) ; trailing ? = low confidence (reported, not gated)
 # prefixes = bucket claimed by the Oct 5 sheet: U unmarked_options, D doctor, G google, F friend_family, Z zocdoc, I insurance, E event, O other, S social_media, W walk_in, P phone, B website, K blank, R unreadable, T first 40 sheet rows
 U000	google	
-U001	other	flyer-text
+U001	event	flyer-text
 U002	google	
 U003	friend_family	
 U004	other	neighborhood
@@ -282,7 +282,7 @@ E13	doctor
 E14	walk_in	walked-passed
 E15	doctor	other-ENT
 O00	doctor	name
-O01	other	lives-nearby-tiny
+O01	lives_nearby	lives-nearby-tiny
 O02	multi:doctor+clinic_staff	es
 O03	website	other-website
 O04	zocdoc	tiny-other-zocdoc
@@ -291,7 +291,7 @@ O06	multi:social_media+clinic_staff
 O07	insurance	other-insurance-website
 O08	unmarked?	
 O09	other	allerton-location
-O10	doctor	name
+O10	multi:doctor+walk_in	name-and-walk-by
 O11	multi:google+walk_in	tiny
 O12	multi:doctor+friend_family	bullet
 O13	google	tiny
@@ -305,7 +305,7 @@ S04	friend_family
 S05	google	tiny
 S06	google	tiny
 S07	social_media	es
-S08	other	lives-nearby-tiny
+S08	lives_nearby	lives-nearby-tiny
 S09	doctor	tiny
 S10	social_media	es
 S11	friend_family	tiny

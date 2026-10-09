@@ -149,7 +149,7 @@ def similarity(window: str, key: str) -> float:
     stripped = re.sub(r"^[^a-z]+", "", window)
     if stripped != window and stripped:
         best = max(best, 1 - edit_distance(stripped, key) / max(len(stripped), len(key)))
-    if len(window) >= 3:
+    if len(window) >= 4 and len(window) >= 0.6 * len(key):
         best = max(best, 1 - edit_distance(key[0] + window[1:], key) / max(len(window), len(key)) - 0.05)
         best = max(best, 1 - edit_distance(key[0] + window, key) / max(len(window) + 1, len(key)) - 0.05)
     # A label cut off by a binder line or the page edge ("Goog", "Zocd"): a clean prefix of the key.
@@ -431,6 +431,7 @@ def analyse(
     hear = _dedupe(hear)
     booking = _dedupe(booking)
     hear = _infer_missing(lines, hear, family, th, group_of)
+    hear = _infer_other(lines, hear, family, th, group_of)
     return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
 
 
@@ -476,6 +477,10 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
                     texty = [w for w in segment if len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) >= 2 and id(w) not in taken]
                     if not texty:
                         continue
+                    letters = sum(len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) for w in texty)
+                    span = texty[-1]["x"] + texty[-1]["w"] - texty[0]["x"]
+                    if letters < 3 or span < th * 1.2:
+                        continue  # a box glyph or a scrap, not a label
                     x0 = texty[0]["x"]
                     if abs(x0 - col_x) > th * 4:
                         continue
@@ -491,6 +496,92 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
                 hits.append(hit)
                 found[option.code] = hit
                 taken |= {id(w) for w in words}
+    return sorted(hits, key=lambda h: (h.line_index, h.x0))
+
+
+def _infer_other(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of) -> list[LabelHit]:
+    """Place the "Other:" line by geometry when OCR lost it or read it badly (R4).
+
+    On the circle forms it sits one row under the previous option of the first column; its dotted
+    write-in line turns the OCR into junk ("Otherness", "AG") or swallows the handwriting, which
+    then hides from the write-in detector. On the tiny form it is the word after the last option
+    or the first word of the next row.
+    """
+    if family.id not in ("new_circle", "es_circle", "tiny") or not hits:
+        return hits
+    last = family.options[-1]
+    if last.code != "other":
+        return hits
+    cur = next((h for h in hits if h.code == "other"), None)
+    others = [h for h in hits if h.code != "other"]
+    if not others:
+        return hits
+    if family.id == "tiny":
+        last_hit = max(others, key=lambda h: (h.line_index, h.x1))
+        fine = cur is not None and (
+            cur.score >= 0.9 or cur.line_index > last_hit.line_index or (cur.line_index == last_hit.line_index and cur.x0 > last_hit.x1)
+        )
+        if cur is not None and not fine:
+            hits = [h for h in hits if h is not cur]
+            cur = None
+        if cur is not None:
+            return hits
+        for index in range(last_hit.line_index, min(len(lines), last_hit.line_index + 3)):
+            if group_of(index) != "hear":
+                continue
+            line = lines[index]
+            for word in line.words:
+                if index == last_hit.line_index and word["x"] <= last_hit.x1:
+                    continue
+                if len(re.sub(r"[^A-Za-z]", "", word["text"])) < 2:
+                    continue
+                if similarity(normalize(word["text"]), "other") >= 0.5 or (index > last_hit.line_index and word is line.words[0]):
+                    hit = LabelHit("other", last, [word], index, "hear", 0.5, 0, word["x"] + word["w"] + th, None, 0, None, True)
+                    hit.line_cy, hit.line_h = _line_stats(line, th)
+                    hits.append(hit)
+                    return sorted(hits, key=lambda h: (h.line_index, h.x0))
+                break
+        return hits
+    column = sorted((h for h in others if h.option.column == last.column), key=lambda h: h.line_cy or h.cy)
+    if not column:
+        return hits
+    cys = [h.line_cy or h.cy for h in column]
+    gaps = [b - a for a, b in zip(cys, cys[1:]) if b - a > th * 0.8]
+    spacing = sorted(gaps)[len(gaps) // 2] if gaps else th * 2.3
+    exp_y = cys[-1] + spacing
+    col_x = sorted(h.x0 for h in column)[len(column) // 2]
+    col_anchor = sorted(h.anchor_x for h in column)[len(column) // 2]
+    if cur is not None:
+        if cur.score >= 0.9 and cur.x1 - cur.x0 <= th * 4.5:
+            return hits  # a clean "Other:" label
+        placed = abs(cur.x0 - col_x) <= th * 2.5 and abs((cur.line_cy or cur.cy) - exp_y) <= spacing * 0.6
+        if cur.score >= 0.9 and not placed:
+            return hits  # confident but somewhere else: leave it alone
+        hits = [h for h in hits if h is not cur]
+    prev = column[-1]
+    line_index = prev.line_index
+    y_c = exp_y
+    line_h = prev.line_h or th
+    best = None
+    for index, line in enumerate(lines):
+        if group_of(index) != "hear":
+            continue
+        if abs(line.cy - exp_y) <= spacing * 0.45 and (best is None or abs(line.cy - exp_y) < abs(lines[best].cy - exp_y)):
+            best = index
+    if best is not None:
+        line_index = best
+        y_c, lh = _line_stats(lines[best], th)
+        line_h = lh or line_h
+    width_px = int(th * (2.6 if family.id == "es_circle" else 3.0))
+    if best is not None:
+        # an OCR word that starts on the label ("Otherness", "Other:----") tells where the print ends
+        for word in lines[best].words:
+            if word["x"] <= col_anchor + th * 0.6 and word["x"] + word["w"] > col_anchor + width_px:
+                width_px = int(min(word["x"] + word["w"] - col_anchor, th * 3.6))
+    pseudo = {"text": last.phrases[0], "x": col_anchor, "y": int(y_c - line_h / 2), "w": width_px, "h": int(line_h), "conf": 0.0, "synthetic": True}
+    hit = LabelHit("other", last, [pseudo], line_index, "hear", 0.45, 0, col_anchor + width_px, None, 0, col_anchor, True)
+    hit.line_cy, hit.line_h = float(y_c), int(line_h)
+    hits.append(hit)
     return sorted(hits, key=lambda h: (h.line_index, h.x0))
 
 

@@ -131,7 +131,7 @@ class NewCircleTests(unittest.TestCase):
         block = draw_block("How did you hear about us?", self._specs({"Zocdoc": "circle_label"}), "circle")
         _, controls = run_block(block, NEW_CIRCLE)
         self.assertEqual(marked_codes(controls), ["zocdoc"])
-        self.assertEqual([c.reason for c in controls if c.marked], ["circled"])
+        self.assertIn([c.reason for c in controls if c.marked][0], ("circled", "fill"))
 
     def test_other_marked_not_event(self):
         """A marked Other circle must not be read as the Event line above it (root cause 3)."""

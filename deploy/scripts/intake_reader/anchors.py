@@ -16,6 +16,7 @@ class Option:
     phrases: tuple[str, ...]
     writein: str = ""  # "" | "inline" (text after the label) | "below" (line under the label)
     column: int = 0  # printed column on two-column layouts
+    control: bool = True  # False when the option is a write-in line with no box ("Other: ___" on the tiny form)
 
 
 @dataclass(frozen=True)
@@ -256,7 +257,7 @@ TINY = Family(
         Option("event", ("flyers",)),
         Option("friend_family", ("friends/family", "friends family")),
         Option("lives_nearby", ("lives nearby",)),
-        Option("other", ("other:", "other"), "inline"),
+        Option("other", ("other:", "other"), "inline", 0, False),
     ),
     booking=(),
     control="box",
