@@ -259,16 +259,23 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     }
     if want_debug:
         reading.debug["gray"] = gray
-        reading.debug["cands"] = [(c.code, c.extra.get("cands", [])) for c in hear_controls + booking_controls]
+        reading.debug["cands"] = [(("hear:" if c in hear_controls else "booking:") + c.code, c.extra.get("cands", [])) for c in hear_controls + booking_controls]
         reading.debug["_hits"] = layout.hear + layout.booking
         reading.debug["_level"] = level
     return reading
 
 
-def _neighbour_bounds(hit, hits, th: int) -> tuple[int | None, int | None]:
-    """Bottom of the printed label above and top of the one below in the same column."""
+def _neighbour_bounds(hit, hits, th: int) -> tuple[int | None, int | None, int | None]:
+    """Bottom of the printed label above, top of the one below in the same column, and the start
+    of the next label on the same line."""
     above = None
     below = None
+    right_stop = None
+    for other in hits:
+        if other is hit:
+            continue
+        if abs(other.cy - hit.cy) <= th * 0.6 and other.x0 > hit.x1:
+            right_stop = other.x0 if right_stop is None else min(right_stop, other.x0)
     for other in hits:
         if other is hit:
             continue
@@ -279,7 +286,7 @@ def _neighbour_bounds(hit, hits, th: int) -> tuple[int | None, int | None]:
             above = other.y1 if above is None else max(above, other.y1)
         elif other.cy > hit.cy + th * 0.6:
             below = other.y0 if below is None else min(below, other.y0)
-    return above, below
+    return above, below, right_stop
 
 
 def read_intake(path: str, lang: str = "eng+spa", max_pages: int = MAX_PAGES, want_debug: bool = False) -> IntakeResult:
@@ -319,7 +326,7 @@ def read_intake(path: str, lang: str = "eng+spa", max_pages: int = MAX_PAGES, wa
                 break  # the question was read on this page; later pages are other documents
             if len(readings) >= 2:
                 break
-        if not readings and any(not s.native for s in scanned):
+        if all(r.source in ("unreadable", "no_question") for r in readings) and any(not s.native for s in scanned):
             # R1 fallback: a weak OSD verdict may have turned the form upside down; look again at
             # the first pages deciding the orientation by readable words only
             for index in range(min(2, len(doc))):
@@ -329,8 +336,8 @@ def read_intake(path: str, lang: str = "eng+spa", max_pages: int = MAX_PAGES, wa
                 scanned[index] = scan
                 texts.append(scan.text)
                 reading = read_block(doc, scan, lang, want_debug)
-                readings.append(reading)
                 if reading.source not in ("unreadable", "no_question"):
+                    readings = [reading]
                     break
     finally:
         doc.close()

@@ -290,6 +290,120 @@ class WriteInFalsePositiveTests(unittest.TestCase):
         self.assertLessEqual(x1 - x0, 20 * 20)
 
 
+class ColumnGeometryTests(unittest.TestCase):
+    """Round three: the OCR box of a label swallows the check, a dropped row on the circle grid,
+    indented boxes hidden by a check, bullets with a check, tiny neighbours."""
+
+    def test_label_box_swallowing_the_mark_still_uses_the_column(self):
+        block = draw_block("How did you hear about us?", _old_specs({"Google": "check"}), "box")
+        words = []
+        for w in block.words:
+            w = dict(w)
+            if w["text"] == "Google":
+                # tesseract merged the check into the word: the box starts over the control
+                w["x"] -= 40
+                w["w"] += 40
+            words.append(w)
+        layout = analyse(words, OLD_CHECKBOX, block.text_h)
+        ink = mask_lines(binarize(block.gray, 165), layout.text_h)
+        locate = mask_lines(binarize(block.gray, 200), layout.text_h)
+        controls = find_controls(ink, layout.hear, layout.text_h, OLD_CHECKBOX, locate, words)
+        score_controls(controls, OLD_CHECKBOX)
+        google = next(c for c in controls if c.code == "google")
+        zocdoc = next(c for c in controls if c.code == "zocdoc")
+        self.assertLessEqual(abs(google.x0 - zocdoc.x0), 4)
+        self.assertEqual(marked_codes(controls), ["google"])
+
+    def test_indented_box_with_check_measured_at_its_offset(self):
+        extra = {"From doctor office": {"indent": 36}, "From street distribution": {"indent": 36}}
+        block = draw_block("How did you hear about us?", _old_specs({"From doctor office": "x"}, **extra), "box")
+        _, controls = run_block(block, OLD_CHECKBOX)
+        flyer = next(c for c in controls if c.code == "flyer_doctor_office")
+        main = next(c for c in controls if c.code == "google")
+        self.assertGreater(flyer.x0, main.x0 + 20)
+        self.assertEqual(marked_codes(controls), ["flyer_doctor_office"])
+
+    def test_round_letters_are_not_square_boxes(self):
+        """'o' and 'e' of a tiny label are box-sized; corners tell them apart from a square."""
+        from intake_reader.controls import _cornered
+
+        canvas = np.zeros((60, 120), dtype=bool)
+        canvas[10:40, 10:40] = True
+        canvas[13:37, 13:37] = False  # hollow square
+        self.assertTrue(_cornered(canvas, 10, 10, 40, 40))
+        from PIL import Image, ImageDraw
+
+        image = Image.new("L", (120, 60), 255)
+        ImageDraw.Draw(image).ellipse((60, 10, 90, 40), outline=0, width=3)
+        circle = np.asarray(image) < 128
+        self.assertFalse(_cornered(circle, 60, 10, 91, 41))
+
+    def test_dropped_circle_row_is_placed_from_the_grid(self):
+        words = words_from_text(
+            [
+                "How did you hear about us?",
+                "O Doctor referral|O Google",
+                "O Zocdoc|O Social Media",
+                "|O Word of Mouth",
+                "O Event / Outreach",
+                "O Other:",
+            ]
+        )
+        layout = analyse(words, NEW_CIRCLE, 20)
+        insurance = next(h for h in layout.hear if h.code == "insurance")
+        zocdoc = next(h for h in layout.hear if h.code == "zocdoc")
+        event = next(h for h in layout.hear if h.code == "event")
+        self.assertTrue(insurance.inferred)
+        self.assertAlmostEqual(insurance.cy, (zocdoc.cy + event.cy) / 2, delta=4)
+        self.assertEqual(insurance.anchor_x, zocdoc.anchor_x)
+
+    def test_dropped_first_circle_row_is_placed_from_the_grid(self):
+        words = words_from_text(
+            [
+                "How did you hear about us?",
+                "ta|O Google",
+                "O Zocdoc|O Social Media",
+                "O Insurance|O Word of Mouth",
+                "O Event / Outreach",
+                "O Other:",
+            ]
+        )
+        layout = analyse(words, NEW_CIRCLE, 20)
+        doctor = next(h for h in layout.hear if h.code == "doctor")
+        zocdoc = next(h for h in layout.hear if h.code == "zocdoc")
+        self.assertTrue(doctor.inferred)
+        self.assertAlmostEqual(doctor.cy, zocdoc.cy - 34, delta=4)
+
+    def test_partial_form_gets_no_ghost_rows(self):
+        words = words_from_text(["How did you hear about us?", "O Doctor referral|O Google", "O Other:"])
+        layout = analyse(words, NEW_CIRCLE, 20)
+        self.assertEqual(sorted(h.code for h in layout.hear), ["doctor", "google", "other"])
+
+    def test_tiny_neighbour_inference(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? (Dtos O Google O Social Media O Zocdoc",
+                "NG} wantin O Flyers O Friends/Family Other:",
+            ]
+        )
+        layout = analyse(words, TINY, 14)
+        codes = {h.code: h for h in layout.hear}
+        self.assertIn("doctor", codes)
+        self.assertIn("walk_in", codes)
+        self.assertEqual(codes["doctor"].words[0]["text"], "(Dtos")
+        self.assertGreater(codes["doctor"].prefix_px, 0)
+        self.assertEqual(codes["walk_in"].words[0]["text"], "wantin")
+
+    def test_bullet_with_check_is_marked(self):
+        from intake_reader.anchors import OLD_BULLET
+
+        labels = ["Doctor's referral/recommendations", "Google", "Zocdoc", "Social Media", "Insurance recommendations", "Direct mail", "Word of Mouth", "Event or community outreach (flyers)", "Other (please specify)"]
+        specs = [Spec(label, "check" if label == "Zocdoc" else ("x" if label == "Google" else "")) for label in labels]
+        block = draw_block("How did you hear about us? Please check what applies", specs, "bullet")
+        _, controls = run_block(block, OLD_BULLET)
+        self.assertEqual(marked_codes(controls), ["google", "zocdoc"])
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")

@@ -431,6 +431,8 @@ def analyse(
     hear = _dedupe(hear)
     booking = _dedupe(booking)
     hear = _infer_missing(lines, hear, family, th, group_of, q_index)
+    hear = _infer_circle_rows(lines, hear, family, th, group_of)
+    hear = _infer_tiny(lines, hear, family, th, group_of)
     hear = _infer_other(lines, hear, family, th, group_of)
     return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
 
@@ -496,8 +498,17 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
             candidates.sort()
             if leading and len(candidates) > len(missing):
                 # the first option sits right under the question; a check glued to its box
-                # garbles the whole line, so the first text lines of the block are taken in order
-                candidates = candidates[: len(missing)]
+                # garbles the whole line (and OCR may split the row into a glyph line and a text
+                # line), so the first row's longest text is taken, then the next rows in order
+                chosen: list = []
+                rest = list(candidates)
+                while rest and len(chosen) < len(missing):
+                    top = rest[0][0]
+                    row = [c for c in rest if abs(c[0] - top) <= th * 0.7]
+                    best = max(row, key=lambda c: sum(len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) for w in c[2]))
+                    chosen.append(best)
+                    rest = [c for c in rest if c not in row]
+                candidates = chosen
             if len(candidates) != len(missing):
                 continue
             for option, (_cy, index, words) in zip(missing, candidates):
@@ -506,6 +517,116 @@ def _infer_missing(lines: list[Line], hits: list[LabelHit], family: Family, th: 
                 hits.append(hit)
                 found[option.code] = hit
                 taken |= {id(w) for w in words}
+    return sorted(hits, key=lambda h: (h.line_index, h.x0))
+
+
+def _infer_circle_rows(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of) -> list[LabelHit]:
+    """The circle forms print their options on a fixed grid, so an option OCR dropped (a check
+    through the circle often takes the whole line with it) is placed from its column neighbours."""
+    if family.id not in ("new_circle", "es_circle") or len(hits) < 2:
+        return hits
+    found = {h.code: h for h in hits}
+    added: list[LabelHit] = []
+    for column in sorted({o.column for o in family.options}):
+        order = [o for o in family.options if o.column == column and o.code != "other"]
+        known = [(i, found[o.code]) for i, o in enumerate(order) if o.code in found]
+        if len(known) < 1 or len(known) == len(order):
+            continue
+        if len(known) == 1 and not any(group_of(i) == "hear" for i in range(len(lines))):
+            continue
+        cys = [(i, h.line_cy or h.cy) for i, h in known]
+        gaps = [(cy2 - cy1) / (i2 - i1) for (i1, cy1), (i2, cy2) in zip(cys, cys[1:]) if i2 > i1 and cy2 > cy1]
+        other_cols = [h for h in hits if h.option.column != column]
+        if gaps:
+            spacing = sorted(gaps)[len(gaps) // 2]
+        else:
+            ocys = sorted(h.line_cy or h.cy for h in other_cols)
+            ogaps = [b - a for a, b in zip(ocys, ocys[1:]) if b - a > th * 0.8]
+            spacing = sorted(ogaps)[len(ogaps) // 2] if ogaps else th * 2.3
+        if not th * 1.2 <= spacing <= th * 4.0:
+            continue
+        col_anchor = sorted(h.anchor_x for _i, h in known)[len(known) // 2]
+        line_h = sorted(h.line_h or th for _i, h in known)[len(known) // 2]
+        for i, option in enumerate(order):
+            if option.code in found:
+                continue
+            ref_i, ref = min(known, key=lambda k: abs(k[0] - i))
+            if abs(ref_i - i) > 2:
+                continue
+            exp_y = (ref.line_cy or ref.cy) + (i - ref_i) * spacing
+            best = None
+            taken = {id(w) for h in hits + added for w in h.words}
+            for index, line in enumerate(lines):
+                if group_of(index) != "hear":
+                    continue
+                free = [w for w in line.words if id(w) not in taken and len(re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", w["text"])) >= 2]
+                if not free:
+                    continue  # that row's text belongs to another label
+                if abs(line.cy - exp_y) <= spacing * 0.4 and (best is None or abs(line.cy - exp_y) < abs(lines[best].cy - exp_y)):
+                    best = index
+            if best is None and (len(known) < 2 or abs(ref_i - i) > 1 or len(known) < 3 and not (known[0][0] < i < known[-1][0])):
+                continue  # no text at that row and too few siblings to trust the grid
+            line_index = best if best is not None else ref.line_index
+            y_c = exp_y
+            lh = line_h
+            if best is not None:
+                y_c, lh2 = _line_stats(lines[best], th)
+                lh = lh2 or lh
+            width_px = int(th * 0.55 * len(option.phrases[0]))
+            pseudo = {"text": option.phrases[0], "x": col_anchor, "y": int(y_c - lh / 2), "w": width_px, "h": int(lh), "conf": 0.0, "synthetic": True}
+            hit = LabelHit(option.code, option, [pseudo], line_index, "hear", 0.45, 0, col_anchor + width_px, None, 0, col_anchor, True)
+            hit.line_cy, hit.line_h = float(y_c), int(lh)
+            added.append(hit)
+            found[option.code] = hit
+    if not added:
+        return hits
+    return sorted(hits + added, key=lambda h: (h.line_index, h.x0))
+
+
+_TINY_NEIGHBOURS = (
+    # (missing, found neighbour, side of the neighbour the missing label sits on)
+    ("doctor", "google", "left"),
+    ("google", "doctor", "right"),
+    ("google", "social_media", "left"),
+    ("social_media", "google", "right"),
+    ("zocdoc", "social_media", "right"),
+    ("walk_in", "event", "left"),
+    ("event", "walk_in", "right"),
+    ("event", "friend_family", "left"),
+    ("friend_family", "event", "right"),
+)
+
+
+def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int, group_of) -> list[LabelHit]:
+    """On the one-row form a check glued to a box turns "Doctor" into "(Dtos": the label is the
+    text just beside a found neighbour, box glyph and all (R11)."""
+    if family.id != "tiny" or not hits:
+        return hits
+    found = {h.code: h for h in hits}
+    options = {o.code: o for o in family.options}
+    taken = {id(w) for h in hits for w in h.words}
+    for missing, neighbour, side in _TINY_NEIGHBOURS:
+        if missing in found or neighbour not in found:
+            continue
+        ref = found[neighbour]
+        line = lines[ref.line_index]
+        words = [w for w in line.words if id(w) not in taken and len(re.sub(r"[^A-Za-z]", "", w["text"])) >= 2]
+        if side == "left":
+            cands = [w for w in words if w["x"] + w["w"] <= ref.x0 - th * 0.8 and w["x"] >= ref.x0 - th * 9]
+            pick = max(cands, key=lambda w: w["x"]) if cands else None
+        else:
+            cands = [w for w in words if w["x"] >= ref.x1 + th * 0.8 and w["x"] <= ref.x1 + th * 9]
+            pick = min(cands, key=lambda w: w["x"]) if cands else None
+        if pick is None:
+            continue
+        # the printed box or its mark is often glued to the word ("(Dtos", "LAGcoote")
+        key = normalize(options[missing].phrases[0])
+        prefix = _glyph_prefix(pick, key)
+        hit = LabelHit(missing, options[missing], [pick], ref.line_index, "hear", 0.5, 0, pick["x"] + pick["w"], None, prefix, None, True)
+        hit.line_cy, hit.line_h = _line_stats(line, th)
+        hits.append(hit)
+        found[missing] = hit
+        taken.add(id(pick))
     return sorted(hits, key=lambda h: (h.line_index, h.x0))
 
 

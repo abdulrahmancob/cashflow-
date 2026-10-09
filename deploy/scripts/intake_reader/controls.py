@@ -74,13 +74,16 @@ def _refine_box(mask: np.ndarray, cx0: int, cy0: int, cx1: int, cy1: int, nomina
     return cx0, cy0 + int(rows[0]), cx0 + right + 1, cy0 + int(rows[-1]) + 1
 
 
-def _window(hit: LabelHit, th: int, words: list[dict] | None) -> tuple[float, float]:
+def _window(hit: LabelHit, th: int, words: list[dict] | None, family: Family | None = None) -> tuple[float, float]:
     """x range where this label's control can sit. When OCR attached only the tail of a label
     ("referral" without "Doctor"), the loose words just left of it on the same line are part of
-    the label and the window starts before them."""
+    the label and the window starts before them. On the one-row tiny form the box sits right
+    before its label, so the window is short and never reaches the previous option's box."""
     x_ref = hit.anchor_x
     if hit.prefix_px > 0:
         return hit.x0 - th * 0.6, hit.x0 + hit.prefix_px + th * 1.3
+    if family is not None and family.id == "tiny":
+        return x_ref - th * 2.5, x_ref - max(1, th * 0.05)
     start = x_ref
     if words and hit.left_limit == 0:
         same_line = [
@@ -99,7 +102,7 @@ def _candidates(source, labels, slices, hit: LabelHit, th: int, family: Family, 
     lo, hi = family.size
     x_ref = hit.anchor_x
     y_c = hit.cy
-    search_lo, search_hi = _window(hit, th, words)
+    search_lo, search_hi = _window(hit, th, words, family)
     nominal = int(round(th * (0.6 if bullet else 1.1)))
     out: list[_Cand] = []
     for index, sl in enumerate(slices, 1):
@@ -147,6 +150,8 @@ def _candidates(source, labels, slices, hit: LabelHit, th: int, family: Family, 
         real_side = max(0.3 if bullet else 0.7, lo) * th
         squarish = min(w, h) >= (0.55 if bullet else 0.72) * max(w, h)
         boxlike = bullet or _boxlike(source, cx0, cy0, cx1, cy1)
+        if boxlike and family.control == "box" and not merged:
+            boxlike = _cornered(source, cx0, cy0, cx1, cy1)
         real = side >= real_side and min(w, h) >= 0.6 * real_side and squarish and boxlike
         out.append(_Cand(cx0, cy0, cx1, cy1, real, merged, pixels))
     return out
@@ -183,17 +188,59 @@ def _column_vote(cands_list: list[list[_Cand]], th: int) -> list[tuple[int, int,
     return out
 
 
-def _cluster_for(hit: LabelHit, clusters: list[tuple[int, int, int]], th: int, words: list[dict] | None) -> tuple[int, int, int] | None:
-    lo, hi = _window(hit, th, words)
+def _offset_vote(hits: list[LabelHit], cands_list: list[list[_Cand]], th: int) -> tuple[int, int, int] | None:
+    """(offset, side, members): the distance from a label's text to its own box shared by at
+    least two labels. Used on the tiny form, where boxes sit in a row rather than a column."""
+    pairs: list[tuple[int, int]] = []
+    for hit, cands in zip(hits, cands_list):
+        real = [c for c in cands if c.real]
+        if not real:
+            continue
+        c = max(real, key=lambda c: c.x1)
+        pairs.append((hit.anchor_x - c.x0, max(c.x1 - c.x0, c.y1 - c.y0)))
+    if len(pairs) < 2:
+        return None
+    pairs.sort()
+    best: list[tuple[int, int]] = []
+    for i in range(len(pairs)):
+        group = [p for p in pairs if abs(p[0] - pairs[i][0]) <= th * 0.6]
+        if len(group) > len(best):
+            best = group
+    if len(best) < 2:
+        return None
+    offs = sorted(p[0] for p in best)
+    sides = sorted(p[1] for p in best)
+    return offs[len(offs) // 2], sides[len(sides) // 2], len(best)
+
+
+def _cluster_for(
+    hit: LabelHit, clusters: list[tuple[int, int, int]], th: int, words: list[dict] | None, family: Family | None = None
+) -> tuple[int, int, int] | None:
+    lo, hi = _window(hit, th, words, family)
     for cluster in clusters:
         if lo - th * 0.3 <= cluster[0] <= hi:
             return cluster
-    # a label whose first words OCR lost sits further right than its siblings: a column shared by
-    # three or more of them still applies when it is within reach
+    # a label whose first words OCR lost sits further right than its siblings, and a label whose
+    # OCR box swallowed the check mark starts left of its own box: a column shared by three or
+    # more labels still applies when it is within reach
     for cluster in clusters:
-        if cluster[2] >= 3 and lo - th * 4.5 <= cluster[0] <= hi:
+        if cluster[2] >= 3 and lo - th * 4.5 <= cluster[0] <= max(hi, hit.x0 + th * 1.2):
             return cluster
     return None
+
+
+def _cluster_offset(hits: list[LabelHit], cands_list: list[list[_Cand]], cluster: tuple[int, int, int], th: int) -> int | None:
+    """Median distance from the label text to the box for the labels that sit on this column."""
+    offs = []
+    for hit, cands in zip(hits, cands_list):
+        for c in cands:
+            if c.real and abs(c.x0 - cluster[0]) <= th * 0.8:
+                offs.append(hit.anchor_x - c.x0)
+                break
+    if not offs:
+        return None
+    offs.sort()
+    return offs[len(offs) // 2]
 
 
 def find_controls(
@@ -221,12 +268,26 @@ def find_controls(
     labels, count, slices = components(source) if source.any() else (None, 0, [])
     th = max(8, int(text_h))
     cands_list = [_candidates(source, labels, slices, hit, th, family, words) if labels is not None else [] for hit in hits]
-    # printed columns of controls voted over every label; the tiny form is one row and has none
-    clusters = _column_vote(cands_list, th) if family.id != "tiny" else []
+    # printed columns of controls voted over every label; the tiny form is one row, so its boxes
+    # are voted by their distance to the label instead
+    tiny = family.id == "tiny"
+    clusters = _column_vote(cands_list, th) if not tiny else []
+    offsets = {c: _cluster_offset(hits, cands_list, c, th) for c in clusters}
+    row_vote = _offset_vote(hits, cands_list, th) if tiny else None
+    main = clusters[0] if clusters else None
     used_cluster = False
     controls: list[Control | None] = []
+
+    def blank_at(x0: float, side: int, cy: float) -> bool:
+        ya = _clip(cy - side * 0.55, 0, height)
+        yb = _clip(cy + side * 0.55, 0, height)
+        xa = _clip(x0, 0, width)
+        xb = _clip(x0 + side, 0, width)
+        there = float(source[ya:yb, xa:xb].mean()) if yb > ya and xb > xa else 0.0
+        return there < 0.04
+
     for hit, cands in zip(hits, cands_list):
-        cluster = _cluster_for(hit, clusters, th, words)
+        cluster = _cluster_for(hit, clusters, th, words, family)
         used_cluster = used_cluster or cluster is not None
         chosen: _Cand | None = None
         reason = ""
@@ -235,19 +296,18 @@ def find_controls(
             cx, side, _members = cluster
             near = [c for c in real if abs(c.x0 - cx) <= th * 0.8]
             if near:
-                chosen = min(near, key=lambda c: (abs(c.x0 - cx), -c.x1))
-            elif real:
+                chosen = min(near, key=lambda c: (abs(c.x0 - cx), abs((c.y0 + c.y1) / 2 - hit.cy), abs(max(c.x1 - c.x0, c.y1 - c.y0) - side)))
+            elif real and blank_at(cx, side, hit.cy):
                 # an indented sub-option keeps its own box when nothing is printed at the column
-                y0 = _clip(hit.cy - side * 0.55, 0, height)
-                y1 = _clip(hit.cy + side * 0.55, 0, height)
-                x0 = _clip(cx, 0, width)
-                x1 = _clip(cx + side, 0, width)
-                there = float(source[y0:y1, x0:x1].mean()) if y1 > y0 and x1 > x0 else 0.0
-                if there < 0.04:
-                    chosen = max(real, key=lambda c: c.x1)
-                    reason = "off_column"
+                chosen = max(real, key=lambda c: c.x1)
+                reason = "off_column"
         elif real:
-            chosen = max(real, key=lambda c: c.x1)  # nearest to the label
+            if row_vote is not None:
+                off, side, _n = row_vote
+                near = [c for c in real if abs((hit.anchor_x - c.x0) - off) <= th * 0.8]
+                chosen = min(near, key=lambda c: abs((hit.anchor_x - c.x0) - off)) if near else None
+            else:
+                chosen = max(real, key=lambda c: c.x1)  # nearest to the label
         if chosen is not None:
             control = Control(hit.code, chosen.x0, chosen.y0, chosen.x1, chosen.y1, True)
             control.extra["merged"] = chosen.merged
@@ -265,15 +325,38 @@ def find_controls(
         y_c = hit.cy
         x_ref = hit.anchor_x
         glued = hit.prefix_px > 0
-        cluster = _cluster_for(hit, clusters, th, words)
+        cluster = _cluster_for(hit, clusters, th, words, family)
+        offset_window = None
         if cluster is not None:
             cx, side, _members = cluster
-            x0 = _clip(cx, 0, width)
-            x1 = _clip(cx + side, 0, width)
-            y0 = _clip(y_c - max(side, th) * 0.55, 0, height)
-            y1 = _clip(y_c + max(side, th) * 0.55, 0, height)
+            off = offsets.get(cluster)
+            if off is not None and blank_at(cx, side, y_c) and hit.anchor_x - off > cx + th * 0.8 and not glued:
+                # nothing printed at the column: an indented row keeps the column's label offset
+                offset_window = (hit.anchor_x - off, side, "offset")
+            else:
+                offset_window = (cx, side, "column")
+        elif main is not None and offsets.get(main) is not None and not glued:
+            # no column in reach, but the sheet has one: its label-to-box distance places the box
+            cx, side, _members = main
+            off = offsets[main]
+            if hit.anchor_x - off > hit.left_limit:
+                offset_window = (hit.anchor_x - off, side, "offset")
+        elif row_vote is not None and not glued:
+            off, side, _n = row_vote
+            if hit.anchor_x - off > hit.left_limit:
+                offset_window = (hit.anchor_x - off, side, "offset")
+        if offset_window is not None:
+            wx, side, reason = offset_window
+            x0 = _clip(wx, 0, width)
+            x1 = _clip(wx + side, 0, width)
+            half = max(side, th * 0.5) * 0.55  # a bullet column keeps bullet-sized windows
+            y0 = _clip(y_c - half, 0, height)
+            y1 = _clip(y_c + half, 0, height)
+            snapped = _snap(labels, slices, x0, y0, x1, y1, side) if labels is not None else None
+            if snapped is not None:
+                x0, y0, x1, y1 = snapped  # the printed control sits a little off the label's row
             control = Control(hit.code, x0, y0, x1, y1, False)
-            control.reason = "column"
+            control.reason = reason
         else:
             if glued:
                 x0 = _clip(hit.x0 - th * 0.1, 0, width)
@@ -372,6 +455,55 @@ def _boxlike(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
     return sum(1 for s in sides if s >= 0.6) >= 3
 
 
+def _snap(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int) -> tuple[int, int, int, int] | None:
+    """Move a window placed by column geometry onto the one control-sized component it overlaps,
+    so a hollow box or bullet is measured on its own bounds and its rim stays out of the interior."""
+    m = max(2, int(side * 0.45))
+    ya, yb = max(0, y0 - m), min(labels.shape[0], y1 + m)
+    xa, xb = max(0, x0 - m), min(labels.shape[1], x1 + m)
+    if yb <= ya or xb <= xa:
+        return None
+    ids = np.unique(labels[ya:yb, xa:xb])
+    best = None
+    best_overlap = 0
+    for index in ids:
+        if index == 0:
+            continue
+        sl = slices[index - 1]
+        if sl is None:
+            continue
+        cy0, cy1, cx0, cx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
+        w, h = cx1 - cx0, cy1 - cy0
+        if not (0.6 * side <= max(w, h) <= 1.5 * side) or min(w, h) < 0.55 * max(w, h):
+            continue
+        ox = max(0, min(x1, cx1) - max(x0, cx0))
+        oy = max(0, min(y1, cy1) - max(y0, cy0))
+        overlap = ox * oy
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best = (cx0, cy0, cx1, cy1)
+    if best is None or best_overlap < 0.3 * max(1, (x1 - x0) * (y1 - y0)):
+        return None
+    return best
+
+
+def _cornered(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
+    """A printed square has ink in at least three of its four corners; a circle or a round
+    letter leaves the corners of its bounding box empty."""
+    w = x1 - x0
+    h = y1 - y0
+    if w < 6 or h < 6:
+        return False
+    cell = max(2, min(w, h) // 5)
+    corners = (
+        mask[y0 : y0 + cell, x0 : x0 + cell].mean(),
+        mask[y0 : y0 + cell, x1 - cell : x1].mean(),
+        mask[y1 - cell : y1, x0 : x0 + cell].mean(),
+        mask[y1 - cell : y1, x1 - cell : x1].mean(),
+    )
+    return sum(1 for v in corners if v >= 0.2) >= 3
+
+
 def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) -> None:
     height, width = ink.shape
     w = max(1, c.x1 - c.x0)
@@ -453,12 +585,20 @@ def score_controls(controls: list[Control], family: Family) -> None:
                 b = (c.outside - 0.25) / 0.15
             g = -9.0
         elif bullet:
-            base = max(med_i, 0.12)
-            a = (c.interior - base - 0.25) / 0.25
-            b = -9.0
+            base = max(med_i, 0.05)
+            a = (c.interior - base - 0.15) / 0.20
+            if c.interior < 2.0 * max(med_i, 0.05):
+                a = min(a, -0.01)
+            b = (c.outside - med_o - 0.08) / 0.10
+            if c.outside < 2.0 * max(med_o, 0.03):
+                b = min(b, -0.01)
             g = -9.0
+            if c.found and not c.extra.get("merged") and c.side >= 1.35 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.03):
+                g = (c.side / med_side - 1.35) / 0.3  # a check drawn over a bullet grows the component
         else:
-            a = (c.interior - med_i - 0.06) / 0.12
+            tight = c.found or c.reason in ("column", "offset")
+            margin = 0.06 if tight else 0.12  # a loose window catches rim and neighbour ink
+            a = (c.interior - med_i - margin) / 0.12
             if c.interior < 2.5 * max(med_i, 0.02):
                 a = min(a, -0.01)
             b = (c.outside - med_o - 0.10) / 0.12

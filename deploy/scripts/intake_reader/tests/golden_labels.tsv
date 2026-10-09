@@ -326,7 +326,7 @@ P01	multi:event+other
 P02	unmarked	digital
 P03	doctor	
 B00	doctor	
-B01	unmarked	
+B01	website	other-website-text
 K00	no_question	digital
 R00	upside_down	
 R01	upside_down	

@@ -133,11 +133,13 @@ def looks_like_name(text: str) -> bool:
 
 
 def writein_area(
-    hit: LabelHit, kind: str, th: int, width: int, height: int, bounds: tuple[int | None, int | None] | None = None
+    hit: LabelHit, kind: str, th: int, width: int, height: int, bounds: tuple | None = None
 ) -> tuple[int, int, int, int]:
     """Where handwriting for this label would sit. `bounds` are the bottom of the printed line
-    above and the top of the printed line below, so the strip never reaches a neighbour's text."""
-    above, below = bounds if bounds else (None, None)
+    above, the top of the printed line below and (optionally) the start of the next label on the
+    same line, so the strip never reaches a neighbour's text."""
+    above, below = (bounds[0], bounds[1]) if bounds else (None, None)
+    right_stop = bounds[2] if bounds and len(bounds) > 2 else None
     if kind == "below":
         x0 = max(0, hit.x0 - int(th * 0.2))
         x1 = min(width, hit.x0 + int(th * 16))
@@ -147,7 +149,9 @@ def writein_area(
             y1 = max(y0 + 1, min(y1, int(below - th * 0.15)))
     else:
         x0 = min(width, hit.x1 + int(th * 0.2))
-        x1 = max(x0 + 1, min(width, hit.right_limit - int(th * 0.3) if hit.right_limit > hit.x1 + th else width - int(th * 0.3)))
+        x1 = max(x0 + 1, width - int(th * 0.3))
+        if right_stop is not None:
+            x1 = max(x0 + 1, min(x1, int(right_stop - th * 0.3)))
         x1 = min(x1, x0 + int(th * 20))  # handwriting stays near the label; page borders do not count
         y0 = max(0, int(hit.cy - th * 0.8))
         y1 = min(height, int(hit.cy + th * 0.95))
@@ -330,8 +334,19 @@ def ocr_strip(
         return "", 0.0
     if erase is not None:
         sub = erase[y0:y1, x0:x1]
-        if sub.shape == crop.shape:
-            crop[sub] = 255
+        if sub.shape == crop.shape and sub.any():
+            labels, count, slices = components(sub)
+            th_guess = max(8, (y1 - y0) // 2)
+            keep = np.zeros(count + 1, dtype=bool)
+            for index, sl in enumerate(slices, 1):
+                if sl is None:
+                    continue
+                h = sl[0].stop - sl[0].start
+                w = sl[1].stop - sl[1].start
+                if h <= max(4, th_guess * 0.22) and w <= th_guess * 1.2:
+                    keep[index] = True  # a dash of a dotted line
+            dashes = keep[labels]
+            crop[dashes] = 255
     for bx0, by0, bx1, by1 in boxes or ():
         rx0, rx1 = max(0, bx0 - 1 - x0), min(crop.shape[1], bx1 + 1 - x0)
         ry0, ry1 = max(0, by0 - 1 - y0), min(crop.shape[0], by1 + 1 - y0)
