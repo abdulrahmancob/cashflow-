@@ -116,3 +116,47 @@ def test_oversized_fields_are_rejected(monkeypatch):
     client, _events, _burned = _client(monkeypatch)
     res = client.post("/api/auth/login", json={"username": "a" * 300, "password": "pw"})
     assert res.status_code == 422
+
+
+class _MissingTableConn:
+    """A connection whose login_attempt table does not exist yet."""
+
+    def transaction(self):
+        class _Savepoint:
+            def __enter__(self_inner):
+                return self_inner
+
+            def __exit__(self_inner, *exc):
+                return False
+
+        return _Savepoint()
+
+
+def test_sign_in_keeps_working_before_the_migration(monkeypatch):
+    import psycopg
+
+    def _raise(*a, **k):
+        raise psycopg.errors.UndefinedTable("relation auth.login_attempt does not exist")
+
+    monkeypatch.setattr(lg.client, "fetchall", _raise)
+    monkeypatch.setattr(lg.client, "execute", _raise)
+    conn = _MissingTableConn()
+    assert lg.check(conn, "a@x.com", "1.2.3.4", NOW) == 0
+    lg.record(conn, "a@x.com", "1.2.3.4", ok=False, now=NOW)
+
+
+def test_migrate_gives_up_on_locks_and_deploy_retries(monkeypatch):
+    import inspect
+    from pathlib import Path
+
+    from cashflow_db import db
+
+    monkeypatch.delenv("CASHFLOW_MIGRATE_LOCK_TIMEOUT", raising=False)
+    assert db.migrate_lock_timeout() == "15s"
+    monkeypatch.setenv("CASHFLOW_MIGRATE_LOCK_TIMEOUT", "5s'; DROP TABLE x")
+    assert db.migrate_lock_timeout() == "15s"
+    assert "SET lock_timeout" in inspect.getsource(db.migrate)
+    script = (Path(__file__).resolve().parents[2] / "deploy" / "scripts" / "deploy_release.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "MIGRATE_ATTEMPTS" in script and "retrying in 60s" in script

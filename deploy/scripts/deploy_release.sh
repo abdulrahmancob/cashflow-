@@ -120,11 +120,25 @@ echo "copied ${copied} file(s); portal=${portal} api=${api} rebuild=${rebuild} m
 
 if [[ "${migrate}" -eq 1 ]]; then
   echo "==> apply SQL migrations"
-  (
-    cd "${DEST}/deploy"
-    docker compose --env-file .env --profile tools run --rm worker \
-      python -m cashflow_db migrate
-  )
+  # migrate() gives up on a lock after a few seconds (a long nightly transaction can hold
+  # one), so retry for a while instead of queueing behind it. The api is only recreated
+  # after this succeeds, so a failure leaves the running version untouched.
+  attempts="${MIGRATE_ATTEMPTS:-12}"
+  for attempt in $(seq 1 "${attempts}"); do
+    if (
+      cd "${DEST}/deploy"
+      docker compose --env-file .env --profile tools run --rm worker \
+        python -m cashflow_db migrate
+    ); then
+      break
+    fi
+    if [[ "${attempt}" -eq "${attempts}" ]]; then
+      echo "migrations still blocked after ${attempts} attempts; the running version was kept" >&2
+      exit 1
+    fi
+    echo "migrations blocked (attempt ${attempt}/${attempts}); retrying in 60s"
+    sleep 60
+  done
 fi
 
 if [[ "${rebuild}" -eq 1 ]]; then

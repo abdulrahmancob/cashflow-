@@ -1,4 +1,5 @@
 -- Login attempts, for lockout after repeated failures. Kept for 7 days.
+-- Sign-in keeps working without this table; the lockout starts once it exists.
 -- Idempotent: migrate() re-runs every SQL file.
 
 CREATE TABLE IF NOT EXISTS auth.login_attempt (

@@ -81,9 +81,21 @@ def run_sql_file(conn: psycopg.Connection, path: Path) -> None:
     conn.execute(sql)
 
 
+def migrate_lock_timeout() -> str:
+    """How long one migration waits for a table lock before the whole run gives up.
+
+    Every file replays on each run, so an old file can need a lock that a long nightly
+    transaction holds. Failing fast (and retrying later) beats queueing behind it.
+    """
+    value = os.environ.get("CASHFLOW_MIGRATE_LOCK_TIMEOUT", "15s").strip()
+    digits = value.rstrip("smin")
+    return value if digits.isdigit() else "15s"
+
+
 def migrate(url: str | None = None) -> list[str]:
     applied: list[str] = []
     with connect(url) as conn:
+        conn.execute(f"SET lock_timeout = '{migrate_lock_timeout()}'")
         for name in MIGRATIONS:
             path = SQL_DIR / name
             if not path.exists():
