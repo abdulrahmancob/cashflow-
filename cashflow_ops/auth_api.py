@@ -127,9 +127,30 @@ def log_user_change(conn: Any, actor: AuthUser, **kwargs: Any) -> None:
 
 
 class LoginBody(BaseModel):
-    username: str
-    password: str
+    username: str = Field(max_length=254)
+    password: str = Field(max_length=200)
     remember_me: bool = False
+
+
+_DUMMY_HASH: str | None = None
+
+
+def _burn_password_check(password: str) -> None:
+    """Same cost as a real check, so response time does not reveal which usernames exist."""
+    global _DUMMY_HASH
+    from cashflow_db.services.bootstrap_admin import hash_password
+
+    if _DUMMY_HASH is None:
+        _DUMMY_HASH = hash_password("unused-account-placeholder")
+    verify_password(password, _DUMMY_HASH)
+
+
+def client_ip(request: Request) -> str | None:
+    """nginx overwrites X-Real-IP with the address it resolved from the load balancer."""
+    forwarded = (request.headers.get("x-real-ip") or "").strip()
+    if forwarded:
+        return forwarded[:64]
+    return request.client.host if request.client else None
 
 
 class UserCreateBody(BaseModel):
@@ -255,18 +276,40 @@ def _public_user(row: dict[str, Any], roles: list[str] | None = None) -> dict[st
 
 @router.post("/auth/login")
 def login(body: LoginBody, request: Request, response: Response) -> dict[str, Any]:
-    from cashflow_db.repository import auth_users, connection
+    from datetime import datetime, timezone
 
+    from cashflow_db.repository import auth_users, connection, login_guard
+    from cashflow_db.services.bootstrap_admin import is_system_login
+
+    now = datetime.now(timezone.utc)
+    ip = client_ip(request)
+    username = body.username.strip()
+    # Failures are written before the error is raised, so the rollback on error keeps them.
     with connection() as conn:
-        user = auth_users.get_user_by_username(conn, body.username.strip())
-        if not user or not user.get("is_active"):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        from cashflow_db.services.bootstrap_admin import is_system_login
-
-        if is_system_login(user.get("username"), user.get("display_name")):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
-        if not verify_password(body.password, user["password_hash"]):
-            raise HTTPException(status_code=401, detail="Invalid credentials")
+        wait = login_guard.check(conn, username, ip, now)
+        if wait:
+            failure = HTTPException(
+                status_code=429,
+                detail=f"Too many failed sign-ins. Try again in {max(1, round(wait / 60))} minutes.",
+            )
+        else:
+            user = auth_users.get_user_by_username(conn, username)
+            usable = (
+                bool(user)
+                and bool(user.get("is_active"))
+                and not is_system_login(user.get("username"), user.get("display_name"))
+            )
+            if usable and verify_password(body.password, user["password_hash"]):
+                failure = None
+                login_guard.record(conn, username, ip, ok=True, now=now)
+            else:
+                if not usable:
+                    _burn_password_check(body.password)
+                login_guard.record(conn, username, ip, ok=False, now=now)
+                failure = HTTPException(status_code=401, detail="Invalid credentials")
+    if failure is not None:
+        raise failure
+    with connection() as conn:
         roles = auth_users.get_user_roles(conn, str(user["user_id"]))
         auth_users.touch_last_login(conn, str(user["user_id"]))
         auth_users.record_login(

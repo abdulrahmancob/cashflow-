@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
 from cashflow_db.loaders.checks_deposits_xlsx import ALLOWED_YEARS
+from cashflow_ops.heavy import heavy_guard
 from cashflow_ops.security import (
     CHECKS_DEPOSITS_RESOURCE,
     AuthUser,
@@ -21,6 +22,8 @@ from cashflow_ops.security import (
 )
 
 router = APIRouter(prefix="/checks-deposits", tags=["checks-deposits"])
+
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
 def _ser(obj: Any) -> Any:
@@ -301,7 +304,7 @@ def row_history(
     return _ser({"items": items})
 
 
-@router.get("/export")
+@router.get("/export", dependencies=[Depends(heavy_guard)])
 def export_xlsx(
     date_from: date | None = Query(None, alias="from"),
     date_to: date | None = Query(None, alias="to"),
@@ -322,15 +325,17 @@ def export_xlsx(
     )
 
 
-@router.post("/upload/preview")
-async def upload_preview(
+@router.post("/upload/preview", dependencies=[Depends(heavy_guard)])
+def upload_preview(
     file: UploadFile = File(...),
     user: AuthUser = Depends(require_resource_perm(CHECKS_DEPOSITS_RESOURCE, "upload")),
 ) -> dict[str, Any]:
     from cashflow_db.loaders.checks_deposits_xlsx import parse_checks_deposits_workbook
     from cashflow_db.repository import checks_deposits, connection
 
-    content = await file.read()
+    content = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="The file is larger than 20 MB")
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
     parsed = parse_checks_deposits_workbook(content)

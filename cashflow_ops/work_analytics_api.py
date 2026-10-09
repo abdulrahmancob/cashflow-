@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from cashflow_ops.heavy import heavy_guard
 from cashflow_ops.security import (
     ROLE_ANALYTICS_VIEWER,
     ROLE_OPS_ADMIN,
@@ -227,7 +228,7 @@ def collection_root_causes(
         raise _analytics_error(exc) from exc
 
 
-@router.get("/export")
+@router.get("/export", dependencies=[Depends(heavy_guard)])
 def analytics_export(
     preset: str | None = Query("month"),
     date_from: date | None = Query(None),

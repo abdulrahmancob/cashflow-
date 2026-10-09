@@ -11,9 +11,12 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from cashflow_ops.heavy import heavy_guard
 from cashflow_ops.security import AuthUser, get_tracker_perms, require_tracker_perm
 
 router = APIRouter(prefix="/tracker", tags=["tracker"])
+
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 
 def _ser(obj: Any) -> Any:
@@ -146,6 +149,17 @@ def create_row(
     try:
         with connection() as conn:
             row = tracker.create_row(conn, data, actor_user_id=user.user_id)
+            _activity(
+                conn,
+                user,
+                action="created",
+                area="tracker",
+                entity_type="tracker_row",
+                entity_id=str(row.get("row_id") or ""),
+                entity_label=_row_label(row),
+                after=row,
+                fallback=f"Created tracker row {_row_label(row)}",
+            )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _ser(row)
@@ -162,6 +176,18 @@ def _handle_conflict(result: dict[str, Any] | None) -> dict[str, Any]:
     return result
 
 
+def _activity(conn, user, **kwargs):
+    from cashflow_ops.activity_api import log_write
+
+    log_write(conn, user, **kwargs)
+
+
+def _row_label(row: dict[str, Any] | None) -> str:
+    from cashflow_db.repository import portal_activity
+
+    return portal_activity.tracker_row_label(row)
+
+
 @router.patch("/rows/{row_id}")
 def patch_row(
     row_id: str,
@@ -173,9 +199,23 @@ def patch_row(
     data = body.model_dump(exclude_unset=True)
     version = int(data.pop("version"))
     with connection() as conn:
+        before = tracker.get_row(conn, row_id)
         result = tracker.update_row(
             conn, row_id, data, version=version, actor_user_id=user.user_id
         )
+        if result and not result.get("__conflict__"):
+            _activity(
+                conn,
+                user,
+                action="updated",
+                area="tracker",
+                entity_type="tracker_row",
+                entity_id=row_id,
+                entity_label=_row_label(result),
+                before=before,
+                after=result,
+                keys=list(data.keys()),
+            )
     return _ser(_handle_conflict(result))
 
 
@@ -188,9 +228,23 @@ def delete_row(
     from cashflow_db.repository import connection, tracker
 
     with connection() as conn:
+        before = tracker.get_row(conn, row_id)
         result = tracker.soft_delete_row(
             conn, row_id, version=body.version, actor_user_id=user.user_id
         )
+        if result and not result.get("__conflict__"):
+            _activity(
+                conn,
+                user,
+                action="deleted",
+                area="tracker",
+                entity_type="tracker_row",
+                entity_id=row_id,
+                entity_label=_row_label(result or before),
+                before=before,
+                after=result,
+                fallback="Deleted tracker row",
+            )
     return _ser(_handle_conflict(result))
 
 
@@ -204,9 +258,23 @@ def restore_row(
 
     try:
         with connection() as conn:
+            before = tracker.get_row(conn, row_id)
             result = tracker.restore_row(
                 conn, row_id, version=body.version, actor_user_id=user.user_id
             )
+            if result and not result.get("__conflict__"):
+                _activity(
+                    conn,
+                    user,
+                    action="restored",
+                    area="tracker",
+                    entity_type="tracker_row",
+                    entity_id=row_id,
+                    entity_label=_row_label(result or before),
+                    before=before,
+                    after=result,
+                    fallback="Restored tracker row",
+                )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return _ser(_handle_conflict(result))
@@ -224,7 +292,7 @@ def row_history(
     return _ser({"items": items})
 
 
-@router.get("/export")
+@router.get("/export", dependencies=[Depends(heavy_guard)])
 def export_xlsx(
     date_from: date | None = Query(None, alias="from"),
     date_to: date | None = Query(None, alias="to"),
@@ -247,15 +315,17 @@ def export_xlsx(
     )
 
 
-@router.post("/upload/preview")
-async def upload_preview(
+@router.post("/upload/preview", dependencies=[Depends(heavy_guard)])
+def upload_preview(
     file: UploadFile = File(...),
     user: AuthUser = Depends(require_tracker_perm("upload")),
 ) -> dict[str, Any]:
     from cashflow_db.loaders.tracker_xlsx import parse_tracker_workbook
     from cashflow_db.repository import connection, tracker
 
-    content = await file.read()
+    content = file.file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="The file is larger than 20 MB")
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
     parsed = parse_tracker_workbook(content)
@@ -322,7 +392,7 @@ def upload_commit(
         if expires < datetime.now(timezone.utc):
             tracker.delete_upload_preview(conn, body.preview_id)
             raise HTTPException(status_code=410, detail="Preview expired")
-        if str(preview["created_by"]) != user.user_id and not user.is_super_admin:
+        if str(preview["created_by"]) != user.user_id and not user.is_elevated_admin:
             raise HTTPException(status_code=403, detail="Preview belongs to another user")
         payload = preview["payload_json"]
         if isinstance(payload, str):
@@ -331,6 +401,22 @@ def upload_commit(
             payload = json.loads(payload)
         counts = tracker.apply_upload_payload(
             conn, payload, actor_user_id=user.user_id
+        )
+        n = int(counts.get("adds") or 0) + int(counts.get("updates") or 0) + int(
+            counts.get("soft_deletes") or 0
+        )
+        from cashflow_ops.activity_api import log_event
+
+        log_event(
+            conn,
+            user,
+            action="uploaded",
+            area="tracker",
+            entity_type="tracker_upload",
+            entity_id=str(body.preview_id),
+            entity_label="Tracker upload",
+            summary=f"Uploaded {n} tracker rows",
+            details={"counts": counts},
         )
         tracker.delete_upload_preview(conn, body.preview_id)
     return _ser({"ok": True, **counts})
@@ -367,6 +453,11 @@ def put_grant(
     from cashflow_db.repository import connection, tracker
 
     with connection() as conn:
+        from cashflow_db.repository import auth_users
+
+        before = tracker.get_grant(conn, user_id)
+        target = auth_users.get_user_by_id(conn, user_id) or {}
+        label = f"{target.get('display_name') or target.get('username') or user_id} · Tracker access"
         row = tracker.upsert_grant(
             conn,
             user_id=user_id,
@@ -375,6 +466,19 @@ def put_grant(
             can_upload=body.can_upload,
             can_admin=body.can_admin,
             granted_by=user.user_id,
+        )
+        _activity(
+            conn,
+            user,
+            action="updated" if before.get("grant_id") else "created",
+            area="tracker",
+            entity_type="tracker_grant",
+            entity_id=user_id,
+            entity_label=label,
+            before=before,
+            after=row,
+            keys=["can_view", "can_edit", "can_upload", "can_admin"],
+            fallback=f"Updated tracker access for {label}",
         )
     return _ser(row)
 
@@ -387,9 +491,26 @@ def delete_grant(
     from cashflow_db.repository import connection, tracker
 
     with connection() as conn:
+        from cashflow_db.repository import auth_users
+
+        before = tracker.get_grant(conn, user_id)
+        target = auth_users.get_user_by_id(conn, user_id) or {}
+        label = f"{target.get('display_name') or target.get('username') or user_id} · Tracker access"
         ok = tracker.delete_grant(
             conn, user_id=user_id, actor_user_id=user.user_id
         )
+        if ok:
+            _activity(
+                conn,
+                user,
+                action="deleted",
+                area="tracker",
+                entity_type="tracker_grant",
+                entity_id=user_id,
+                entity_label=label,
+                before=before,
+                fallback=f"Removed tracker access for {label}",
+            )
     if not ok:
         raise HTTPException(status_code=404, detail="Grant not found")
     return {"ok": True}

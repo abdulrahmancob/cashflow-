@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
+from cashflow_ops.heavy import heavy_guard
 from cashflow_ops.security import (
     ROLE_COLLECTOR,
     ROLE_FINANCE,
@@ -196,6 +197,8 @@ def _build_export_workbook(
             ws = wb.create_sheet(sheet_name)
             ws.append(eligibility.sheet_export_headers(queue))
             with connection() as conn:
+                # A full sheet can outlast the API's per-statement cap.
+                conn.execute("SET statement_timeout = 0")
                 for row in eligibility.iter_export_work_items(
                     conn,
                     q=q,
@@ -223,6 +226,22 @@ def _build_export_workbook(
     return path, _export_filename(queue)
 
 
+MAX_LIVE_EXPORT_JOBS = 3
+_STUCK_EXPORT_JOB_S = 3600
+
+
+def _live_export_jobs(now: datetime) -> list[dict[str, Any]]:
+    """Running jobs that started within the last hour. Caller holds `_export_jobs_lock`."""
+    live = []
+    for job in _export_jobs.values():
+        started = job.get("started_at")
+        if job["status"] != "running" or not isinstance(started, datetime):
+            continue
+        if (now - started).total_seconds() < _STUCK_EXPORT_JOB_S:
+            live.append(job)
+    return live
+
+
 def _launch_export_job(user_id: str, filters: dict[str, Any]) -> str:
     """Record a job and build it on a daemon thread. Returns before the file exists."""
     job_id = uuid.uuid4().hex
@@ -236,6 +255,17 @@ def _launch_export_job(user_id: str, filters: dict[str, Any]) -> str:
     }
     with _export_jobs_lock:
         _purge_finished_export_jobs()
+        live = _live_export_jobs(record["started_at"])
+        if any(job["user_id"] == user_id for job in live):
+            raise HTTPException(
+                status_code=429,
+                detail="Your previous sheet is still being prepared. Wait for it to finish.",
+            )
+        if len(live) >= MAX_LIVE_EXPORT_JOBS:
+            raise HTTPException(
+                status_code=429,
+                detail="The server is preparing other sheets. Try again in a minute.",
+            )
         _export_jobs[job_id] = record
     threading.Thread(
         target=_run_export_job,
@@ -609,7 +639,7 @@ def list_items(
     return _ser(data)
 
 
-@router.get("/items/export")
+@router.get("/items/export", dependencies=[Depends(heavy_guard)])
 def export_items(
     q: str | None = None,
     facility: list[str] | None = Query(None),
@@ -790,7 +820,7 @@ def list_secondary(
     return _ser(data)
 
 
-@router.get("/secondary/export")
+@router.get("/secondary/export", dependencies=[Depends(heavy_guard)])
 def export_secondary(
     q: str | None = None,
     facility: list[str] | None = Query(None),
@@ -908,7 +938,7 @@ def list_deductible(
     return _ser(data)
 
 
-@router.get("/deductible/export")
+@router.get("/deductible/export", dependencies=[Depends(heavy_guard)])
 def export_deductible(
     q: str | None = None,
     facility: list[str] | None = Query(None),
@@ -1014,7 +1044,7 @@ def list_pr100(
     return _ser(data)
 
 
-@router.get("/pr100/export")
+@router.get("/pr100/export", dependencies=[Depends(heavy_guard)])
 def export_pr100(
     q: str | None = None,
     facility: list[str] | None = Query(None),
@@ -1386,7 +1416,7 @@ def bulk_update_workload(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.get("/workload/export")
+@router.get("/workload/export", dependencies=[Depends(heavy_guard)])
 def export_workload(
     q: str | None = None,
     facility: list[str] | None = Query(None),

@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from cashflow_ops.heavy import heavy_guard
 from cashflow_ops.security import (
     ROLE_OPS_ADMIN,
     ROLE_REDTEAM_LEADER,
@@ -104,7 +105,7 @@ def away_end(user: AuthUser = Depends(get_current_user)) -> dict[str, Any]:
         raise _away_error(exc) from exc
 
 
-@router.get("/board/export")
+@router.get("/board/export", dependencies=[Depends(heavy_guard)])
 def away_board_export_view(
     user: AuthUser = Depends(require_roles(*BOARD_ROLES)),
 ) -> StreamingResponse:

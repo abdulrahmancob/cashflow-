@@ -14,6 +14,11 @@ import re
 import sys
 import threading
 import time
+
+# The API caps each statement and idle transaction so one runaway query cannot hold a
+# connection for good. Batch jobs run in other processes without these limits.
+os.environ.setdefault("CASHFLOW_PG_STATEMENT_TIMEOUT_MS", "300000")
+os.environ.setdefault("CASHFLOW_PG_IDLE_TX_TIMEOUT_MS", "120000")
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -260,9 +265,18 @@ def missing_auth_routes(mounted: bool | None = None) -> list[str]:
     return list(_AUTH_ROUTES)
 
 
+_READY_CACHE_S = 5.0
+_ready_ok_at = 0.0
+
+
 @app.get("/ready")
 def ready() -> dict[str, Any]:
-    """Readiness: auth routes plus PostgreSQL. Returns 503 when not ready."""
+    """Readiness: auth routes plus PostgreSQL. Returns 503 when not ready.
+
+    A passing database probe is reused for a few seconds, so a flood of /ready calls
+    does not open a database connection each.
+    """
+    global _ready_ok_at
     from fastapi import HTTPException
 
     missing = missing_auth_routes()
@@ -277,6 +291,11 @@ def ready() -> dict[str, Any]:
             },
         )
 
+    if time.monotonic() - _ready_ok_at < _READY_CACHE_S:
+        body_cached: dict[str, Any] = {"status": "ready"}
+        if _ROUTER_FAILURES:
+            body_cached["router_failures"] = _ROUTER_FAILURES
+        return body_cached
     try:
         from cashflow_db.repository import connection
 
@@ -292,6 +311,7 @@ def ready() -> dict[str, Any]:
                 conn.execute("SELECT 1 FROM ops.pipeline_run LIMIT 1")
             except Exception:
                 pass
+        _ready_ok_at = time.monotonic()
         body: dict[str, Any] = {"status": "ready"}
         if _ROUTER_FAILURES:
             body["router_failures"] = _ROUTER_FAILURES

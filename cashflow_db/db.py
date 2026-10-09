@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
@@ -44,12 +45,27 @@ MIGRATIONS = [
     "077_red_team_roles.sql",
     "078_user_presence.sql",
     "079_desk_devices.sql",
+    "080_login_attempts.sql",
 ]
+
+
+def session_limits() -> dict[str, object]:
+    """Per-process statement limits. The API sets them; batch jobs leave them unset."""
+    options = []
+    statement = os.environ.get("CASHFLOW_PG_STATEMENT_TIMEOUT_MS", "").strip()
+    idle = os.environ.get("CASHFLOW_PG_IDLE_TX_TIMEOUT_MS", "").strip()
+    if statement.isdigit():
+        options.append(f"-c statement_timeout={int(statement)}")
+    if idle.isdigit():
+        options.append(f"-c idle_in_transaction_session_timeout={int(idle)}")
+    if not options:
+        return {}
+    return {"options": " ".join(options), "connect_timeout": 10}
 
 
 @contextmanager
 def connect(url: str | None = None) -> Iterator[psycopg.Connection]:
-    conn = psycopg.connect(url or DATABASE_URL, row_factory=dict_row)
+    conn = psycopg.connect(url or DATABASE_URL, row_factory=dict_row, **session_limits())
     try:
         yield conn
         conn.commit()
