@@ -228,6 +228,8 @@ def detect(
     area = writein_area(hit, kind, th, width, height, bounds)
     x0, y0, x1, y1 = area
     if x1 - x0 < th or y1 - y0 < th * 0.5:
+        if trace is not None:
+            trace.append((hit.code, kind, area, 0, 0, 0.0, "", 0.0, False))
         return None
     region = ink[y0:y1, x0:x1].copy()
     boxes = _printed_boxes(words, area, hit, kind, th)
@@ -239,6 +241,8 @@ def detect(
         if rx1 > rx0 and ry1 > ry0:
             region[ry0:ry1, rx0:rx1] = False
     if not region.any():
+        if trace is not None:
+            trace.append((hit.code, kind, area, 0, 0, 0.0, "", 0.0, False))
         return None
     labels, count, slices = components(region)
     tall = 0

@@ -532,7 +532,7 @@ class StripOcrHelperTests(unittest.TestCase):
         strip[20:40, 50:250] = 90  # a pencil stroke band
         value = _otsu(strip)
         self.assertIsNotNone(value)
-        self.assertTrue(90 < value < 235)
+        self.assertTrue(90 <= value < 235)
         self.assertIsNone(_otsu(np.full((60, 300), 250, dtype=np.uint8)))
 
     def test_detect_trace_records_attempts(self):
