@@ -137,7 +137,10 @@ def _hints(layout: Layout) -> set[str]:
     hints: set[str] = set()
     for hit in layout.hear:
         first = hit.words[0]
-        if hit.prefix_px > 0 or _MARK_GLYPH_RE.search(first["text"]) or (hit.glyph is not None and _MARK_GLYPH_RE.search(hit.glyph["text"])):
+        # a glued "O", "D" or "[" is the printed box itself; only check-like glyphs are hints
+        lead = re.sub(r"^[^A-Za-z]+", "", first["text"])[: max(0, len(first["text"]) - len(first["text"].lstrip()))]
+        prefix_text = first["text"][: max(1, len(first["text"]) - len(hit.option.phrases[0]))] if hit.prefix_px > 0 else ""
+        if _MARK_GLYPH_RE.search(first["text"]) or (hit.glyph is not None and _MARK_GLYPH_RE.search(hit.glyph["text"])) or (prefix_text and re.match(r"^[\(\[]?[xXvVyY✓✔]", prefix_text)):
             hints.add(hit.code)
             continue
         line = layout.lines[hit.line_index]

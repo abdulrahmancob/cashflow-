@@ -613,6 +613,96 @@ class BlockReachTests(unittest.TestCase):
         self.assertEqual(insurance[0].line_index, 3)
 
 
+class RoundFiveTests(unittest.TestCase):
+    def test_question_hint_on_an_option_row_moves_above_the_options(self):
+        words = words_from_text(
+            [
+                "check what applies",
+                "O Doctor's referral/recommendations",
+                "(Type doctor's name/office)",
+                "O Google",
+                "O Zocdoc",
+                "O Social Media",
+                "O Insurance Recommendations",
+                "O Direct Mail",
+                "O Word of Mouth",
+                "O Marketing Table",
+                "O Event or community outreach",
+                "O Clinic staff",
+                "O From doctor office",
+                "O From street distribution",
+                "O Other (please specify)",
+            ]
+        )
+        # the hint points at the Zocdoc row (the real question line did not OCR)
+        zocdoc_y = next(w["y"] for w in words if w["text"] == "Zocdoc")
+        layout = analyse(words, OLD_CHECKBOX, 20, question_y=zocdoc_y)
+        codes = sorted(h.code for h in layout.hear)
+        self.assertIn("doctor", codes)
+        self.assertIn("google", codes)
+        self.assertEqual(len(codes), 13)
+
+    def test_box_glyph_is_not_a_mark_hint(self):
+        from intake_reader.reader import _hints
+
+        words = words_from_text(
+            [
+                "¿Cómo nos conoció? Marque lo que corresponda",
+                "O Remisión/recomendaciones del médico",
+                "O Google",
+                "O Zocdoc",
+                "(Redes sociales",
+                "OFolletos de la oficina del doctor",
+                "Dotros (especifique)",
+            ]
+        )
+        from intake_reader.anchors import ES_CHECKBOX
+
+        layout = analyse(words, ES_CHECKBOX, 20)
+        hints = _hints(layout)
+        self.assertNotIn("flyer_doctor_office", hints)
+        self.assertNotIn("other", hints)
+        self.assertNotIn("social_media", hints)
+
+    def test_check_glyph_is_a_mark_hint(self):
+        from intake_reader.reader import _hints
+
+        words = words_from_text(["How did you hear about us?", "O Doctor referral|O Google", "O Zocdoc|X Social Media", "O Insurance|O Word of Mouth", "O Event / Outreach", "O Other:"])
+        layout = analyse(words, NEW_CIRCLE, 20)
+        self.assertIn("social_media", _hints(layout))
+
+    def test_form_without_printed_controls_is_unreadable(self):
+        from intake_reader.decide import decide
+
+        words = words_from_text(["How did you hear about us?", "Doctor referral|Google", "Zocdoc|Social Media", "Insurance|Word of Mouth", "Event / Outreach", "Other:"])
+        layout = analyse(words, NEW_CIRCLE, 20)
+        ink = np.zeros((260, 900), dtype=bool)
+        controls = find_controls(ink, layout.hear, 20, NEW_CIRCLE, ink, words)
+        score_controls(controls, NEW_CIRCLE)
+        self.assertTrue(all(c.reason == "no_controls" for c in controls))
+        reading = decide("new_circle", 0, controls, [], [])
+        self.assertEqual(reading.source, "unreadable")
+        self.assertTrue(reading.needs_review)
+
+    def test_offset_window_never_lands_on_text(self):
+        """Doctor's box was not recognised and its label row is split: the window must stay on
+        the box column, not on the "(3 Doctor's" glyphs to its right."""
+        block = draw_block("How did you hear about us?", _old_specs({}), "box")
+        words = [w for w in block.words if w["text"] != "Doctor's"]
+        layout = analyse(words, OLD_CHECKBOX, block.text_h)
+        ink = mask_lines(binarize(block.gray, 165), layout.text_h)
+        locate = mask_lines(binarize(block.gray, 200), layout.text_h)
+        # pretend the doctor box is invisible on the locate mask
+        doc_box = next(box for spec, box in block.rows if spec.label.startswith("Doctor"))
+        locate[doc_box[1] - 2 : doc_box[3] + 2, doc_box[0] - 2 : doc_box[2] + 2] = False
+        controls = find_controls(ink, layout.hear, layout.text_h, OLD_CHECKBOX, locate, words)
+        score_controls(controls, OLD_CHECKBOX)
+        doctor = next(c for c in controls if c.code == "doctor")
+        google = next(c for c in controls if c.code == "google")
+        self.assertLessEqual(abs(doctor.x0 - google.x0), 6, (doctor.x0, google.x0, doctor.extra.get("place")))
+        self.assertEqual(marked_codes(controls), [])
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")

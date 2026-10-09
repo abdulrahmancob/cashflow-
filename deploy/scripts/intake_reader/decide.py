@@ -80,9 +80,16 @@ def decide(
             marks[control.code] = max(marks.get(control.code, -9), control.score)
     near = [c for c in hear if not c.marked and c.score > _NEAR_MISS]
     # R12: OCR mark glyphs only break a near tie, never create a source alone.
-    if not marks and len(near) == 1 and near[0].code in hints:
+    if not marks and len(near) == 1 and near[0].code in hints and near[0].score > -0.15:
         marks[near[0].code] = near[0].score
         reading.reasons.append("text_hint")
+    if hear and all(c.reason == "no_controls" for c in hear):
+        reading.source = "unreadable"
+        reading.reasons.append("controls_not_found")
+        reading.confidence = 0.0
+        reading.needs_review = True
+        reading.booking = sorted({c.code for c in booking if c.marked})
+        return reading
 
     texts: list[str] = []
     for item in writeins:

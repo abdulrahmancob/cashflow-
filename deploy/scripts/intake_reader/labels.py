@@ -287,6 +287,17 @@ def _line_stats(line: Line, th: int) -> tuple[float, int]:
     return top + th * 0.55, th
 
 
+_OPTION_ROW_RE = re.compile(
+    r"^\W{0,3}(zocdoc|google|insurance|walk-?in|phone|website|social media|word of mouth|direct mail|marketing table|clinic staff|event|doctor|from (doctor|street)|other)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_option_row(text: str) -> bool:
+    bare = re.sub(r"^(\S{1,2}\s+)+", "", text.strip())  # drop the box glyph ("O", "[]", "_]")
+    return bool(OPTION_ANCHOR_RE.search(text) or _OPTION_ROW_RE.search(bare))
+
+
 def _nearest_line(lines: list[Line], y: float | None, th: int, prefer_above: bool = True) -> int | None:
     """Line closest to a known position; the question sits above its options, so a line at or
     above the hint wins a tie against one below."""
@@ -357,6 +368,8 @@ def analyse(
     b_index = next((i for i, line in enumerate(lines) if phrase_in_line(line.text, BOOKING_PHRASES, BOOKING_RE)), None)
     if q_index is None:
         q_index = _nearest_line(lines, question_y, th)
+        if q_index is not None and _looks_like_option_row(lines[q_index].text):
+            q_index = None  # the hint landed on an option row; place the question above the options
     if q_index is None:
         # the question text did not OCR but the options did: a virtual line just above the first
         # option row takes its place so the block still starts in the right place

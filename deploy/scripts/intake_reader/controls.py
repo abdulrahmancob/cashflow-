@@ -301,9 +301,13 @@ def find_controls(
             if near:
                 chosen = min(near, key=lambda c: (abs(c.x0 - cx), abs((c.y0 + c.y1) / 2 - hit.cy), abs(max(c.x1 - c.x0, c.y1 - c.y0) - side)))
             elif real and blank_at(cx, side, hit.cy):
-                # an indented sub-option keeps its own box when nothing is printed at the column
-                chosen = max(real, key=lambda c: c.x1)
-                reason = "off_column"
+                # an indented sub-option keeps its own box when nothing is printed at the column,
+                # provided the box sits at the column's label-to-box distance (a letter does not)
+                off = offsets.get(cluster)
+                fitting = [c for c in real if off is None or abs((hit.anchor_x - c.x0) - off) <= th * 0.8]
+                if fitting:
+                    chosen = max(fitting, key=lambda c: c.x1)
+                    reason = "off_column"
         elif real:
             if row_vote is not None:
                 off, side, _n = row_vote
@@ -332,10 +336,25 @@ def find_controls(
         glued = hit.prefix_px > 0
         cluster = _cluster_for(hit, clusters, th, words, family)
         offset_window = None
+
+        def on_text(wx: float, side: int) -> bool:
+            # a window placed by the label offset must not sit on printed words
+            if not words:
+                return False
+            for w in words:
+                if len(w.get("text", "").strip()) < 2:
+                    continue
+                ox = max(0, min(wx + side, w["x"] + w["w"]) - max(wx, w["x"]))
+                oy = max(0, min(y_c + side * 0.5, w["y"] + w["h"]) - max(y_c - side * 0.5, w["y"]))
+                if ox * oy > 0.3 * side * side:
+                    return True
+            return False
+
         if cluster is not None:
             cx, side, _members = cluster
             off = offsets.get(cluster)
-            if off is not None and blank_at(cx, side, y_c) and hit.anchor_x - off > cx + th * 0.8 and not glued:
+            column_blank = blank_at(cx, side, y_c) and blank_at(cx, side, y_c - th * 0.5) and blank_at(cx, side, y_c + th * 0.5)
+            if off is not None and column_blank and hit.anchor_x - off > cx + th * 0.8 and not glued and not on_text(hit.anchor_x - off, side):
                 # nothing printed at the column: an indented row keeps the column's label offset
                 offset_window = (hit.anchor_x - off, side, "offset")
             else:
@@ -344,11 +363,11 @@ def find_controls(
             # no column in reach, but the sheet has one: its label-to-box distance places the box
             cx, side, _members = main
             off = offsets[main]
-            if hit.anchor_x - off > hit.left_limit:
+            if hit.anchor_x - off > hit.left_limit and not on_text(hit.anchor_x - off, side):
                 offset_window = (hit.anchor_x - off, side, "offset")
         elif row_vote is not None and not glued:
             off, side, _n = row_vote
-            if hit.anchor_x - off > hit.left_limit:
+            if hit.anchor_x - off > hit.left_limit and not on_text(hit.anchor_x - off, side):
                 offset_window = (hit.anchor_x - off, side, "offset")
         if offset_window is not None:
             wx, side, reason = offset_window
@@ -408,6 +427,9 @@ def find_controls(
     for control in controls:
         if (control.y0 <= 1 or control.y1 >= height - 2) and (control.y1 - control.y0) < 0.8 * typical:
             control.extra["edge"] = True  # clipped by the crop: half a circle looks filled
+    if found_n == 0 and len(controls) >= 4 and family.id in ("new_circle", "es_circle", "old_checkbox", "es_checkbox"):
+        for control in controls:
+            control.extra["no_controls"] = True  # a typed or text-only copy of the form: nothing to measure
     return controls
 
 
@@ -698,6 +720,9 @@ def score_controls(controls: list[Control], family: Family) -> None:
         if c.extra.get("edge"):
             c.score = -9.0
             c.reason = "edge"
+        if c.extra.get("no_controls"):
+            c.score = -9.0
+            c.reason = "no_controls"
         c.marked = c.score >= 0
         if c.marked:
             c.reason = {a: "fill", b: "spill", g: "swollen", r: "circled"}[max((a, b, g, r), key=lambda v: v)]
