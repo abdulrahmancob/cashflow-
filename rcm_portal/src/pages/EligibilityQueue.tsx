@@ -508,8 +508,8 @@ export function EligibilityQueuePage({
 }: {
   queue?: 'sheet' | 'collection'
 }) {
-  const { user, hasRole } = useAuth()
-  const canEdit = true
+  const { user, hasRole, viewOnly } = useAuth()
+  const canEdit = !viewOnly
   const [meta, setMeta] = useState<Meta | null>(null)
   const [items, setItems] = useState<WorkItem[]>([])
   const [total, setTotal] = useState(0)
@@ -1155,7 +1155,7 @@ export function EligibilityQueuePage({
                               <span onClick={(e) => e.stopPropagation()}>
                                 <SearchableSelect
                                   value={row.collection_status || ''}
-                                  disabled={statusSavingId === row.work_item_id}
+                                  disabled={!canEdit || statusSavingId === row.work_item_id}
                                   className="w-full"
                                   placeholder={row.collection_tab || '—'}
                                   onChange={(v) => void patchCollectionStatus(row, v)}
@@ -1231,6 +1231,7 @@ export function EligibilityQueuePage({
       >
         {detail && (
           <div className="space-y-5">
+            {!canEdit && <Alert tone="info">View only. You can read this visit but not change it.</Alert>}
             {detail.item.locked_by_name && detail.item.locked_by !== user?.user_id && (
               <Alert tone="warning">Editing by {detail.item.locked_by_name}…</Alert>
             )}
@@ -1256,76 +1257,92 @@ export function EligibilityQueuePage({
               </div>
             </div>
 
-            {drawerGroups.map((group) => (
-              <div key={group.title}>
-                <h4 className="font-display mb-2 font-semibold">{group.title}</h4>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {group.keys.map((key) => {
-                    const col = colByKey(key)
-                    if (!col) return null
-                    const fieldLabel = col.label
-                    if (col.readonly) {
-                      const raw = itemField(detail.item, key)
+            <fieldset disabled={!canEdit} className="min-w-0 space-y-5">
+              {drawerGroups.map((group) => (
+                <div key={group.title}>
+                  <h4 className="font-display mb-2 font-semibold">{group.title}</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {group.keys.map((key) => {
+                      const col = colByKey(key)
+                      if (!col) return null
+                      const fieldLabel = col.label
+                      if (col.readonly) {
+                        const raw = itemField(detail.item, key)
+                        return (
+                          <Field key={key} label={fieldLabel}>
+                            <Input
+                              readOnly
+                              value={col.kind === 'money' ? money2(raw as number | null) : String(raw ?? '—')}
+                            />
+                          </Field>
+                        )
+                      }
+                      if (key === 'source_visit_status') {
+                        return (
+                          <Field key={key} label={col.label}>
+                            <Select
+                              value={edits.source_visit_status || ''}
+                              onChange={(e) =>
+                                setEdits((prev) => ({ ...prev, source_visit_status: e.target.value }))
+                              }
+                            >
+                              <option value="">—</option>
+                              {drawerStatusOptions.map((s) => (
+                                <option key={s} value={s}>
+                                  {visitLabel(s)}
+                                </option>
+                              ))}
+                            </Select>
+                          </Field>
+                        )
+                      }
+                      if (key === 'collection_status') {
+                        return (
+                          <Field key={key} label={col.label}>
+                            <Select
+                              value={edits.collection_status || ''}
+                              onChange={(e) =>
+                                setEdits((prev) => ({ ...prev, collection_status: e.target.value }))
+                              }
+                            >
+                              <option value="">—</option>
+                              {collectionStatusOptions(collectionStatuses, edits.collection_status)
+                                .filter((opt) => opt.value)
+                                .map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                            </Select>
+                            {!edits.collection_status && detail.item.collection_tab ? (
+                              <p className="mt-1 text-xs text-gray-500">
+                                Collection tab: {detail.item.collection_tab}
+                              </p>
+                            ) : null}
+                          </Field>
+                        )
+                      }
+                      const isNotes = key === 'details'
+                      if (isNotes) {
+                        return (
+                          <Field key={key} label={col.label}>
+                            <TextArea
+                              rows={2}
+                              value={edits[key] || ''}
+                              onChange={(e) =>
+                                setEdits((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                            />
+                          </Field>
+                        )
+                      }
                       return (
                         <Field key={key} label={fieldLabel}>
                           <Input
-                            readOnly
-                            value={col.kind === 'money' ? money2(raw as number | null) : String(raw ?? '—')}
-                          />
-                        </Field>
-                      )
-                    }
-                    if (key === 'source_visit_status') {
-                      return (
-                        <Field key={key} label={col.label}>
-                          <Select
-                            value={edits.source_visit_status || ''}
-                            onChange={(e) =>
-                              setEdits((prev) => ({ ...prev, source_visit_status: e.target.value }))
+                            type={
+                              col.kind === 'date' ? 'date' : col.kind === 'money' ? 'number' : 'text'
                             }
-                          >
-                            <option value="">—</option>
-                            {drawerStatusOptions.map((s) => (
-                              <option key={s} value={s}>
-                                {visitLabel(s)}
-                              </option>
-                            ))}
-                          </Select>
-                        </Field>
-                      )
-                    }
-                    if (key === 'collection_status') {
-                      return (
-                        <Field key={key} label={col.label}>
-                          <Select
-                            value={edits.collection_status || ''}
-                            onChange={(e) =>
-                              setEdits((prev) => ({ ...prev, collection_status: e.target.value }))
-                            }
-                          >
-                            <option value="">—</option>
-                            {collectionStatusOptions(collectionStatuses, edits.collection_status)
-                              .filter((opt) => opt.value)
-                              .map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                          </Select>
-                          {!edits.collection_status && detail.item.collection_tab ? (
-                            <p className="mt-1 text-xs text-gray-500">
-                              Collection tab: {detail.item.collection_tab}
-                            </p>
-                          ) : null}
-                        </Field>
-                      )
-                    }
-                    const isNotes = key === 'details'
-                    if (isNotes) {
-                      return (
-                        <Field key={key} label={col.label}>
-                          <TextArea
-                            rows={2}
+                            step={col.kind === 'money' ? '0.01' : undefined}
                             value={edits[key] || ''}
                             onChange={(e) =>
                               setEdits((prev) => ({ ...prev, [key]: e.target.value }))
@@ -1333,140 +1350,126 @@ export function EligibilityQueuePage({
                           />
                         </Field>
                       )
-                    }
-                    return (
-                      <Field key={key} label={fieldLabel}>
-                        <Input
-                          type={
-                            col.kind === 'date' ? 'date' : col.kind === 'money' ? 'number' : 'text'
-                          }
-                          step={col.kind === 'money' ? '0.01' : undefined}
-                          value={edits[key] || ''}
-                          onChange={(e) =>
-                            setEdits((prev) => ({ ...prev, [key]: e.target.value }))
-                          }
-                        />
-                      </Field>
-                    )
-                  })}
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            <Field label="Collector (queue assignment)">
-              <Select
-                value={editCollector}
-                onChange={(e) => setEditCollector(e.target.value)}
-              >
-                <option value="">Unassigned</option>
-                {assignees.map((a) => (
-                  <option key={a.user_id} value={a.user_id}>
-                    {a.collector_code
-                      ? `${a.collector_code} — ${a.display_name}`
-                      : a.display_name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Notes">
-              <TextArea
-                rows={3}
-                value={edits.notes || ''}
-                onChange={(e) => setEdits((prev) => ({ ...prev, notes: e.target.value }))}
-              />
-            </Field>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Change reason (optional)">
-                <Select value={reasonKey} onChange={(e) => setReasonKey(e.target.value)}>
-                  <option value="">None</option>
-                  {(meta?.reasons || []).map((r) => (
-                    <option key={r.reason_key} value={r.reason_key}>
-                      {r.display_name}
+              <Field label="Collector (queue assignment)">
+                <Select
+                  value={editCollector}
+                  onChange={(e) => setEditCollector(e.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {assignees.map((a) => (
+                    <option key={a.user_id} value={a.user_id}>
+                      {a.collector_code
+                        ? `${a.collector_code} — ${a.display_name}`
+                        : a.display_name}
                     </option>
                   ))}
                 </Select>
               </Field>
-              {reasonNeedsText && (
-                <Field label="Reason detail">
-                  <Input value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
-                </Field>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" disabled={busy} onClick={() => void saveEdits()}>
-                Save changes
-              </Button>
-              <Button variant="secondary" type="button" onClick={() => void selfAssign()}>
-                Assign to me
-              </Button>
-            </div>
-
-            <div>
-              <h4 className="font-display mb-2 font-semibold">Add adjustment</h4>
-              <p className="mb-3 text-sm text-gray-500">
-                Positive amount is added; negative is deducted. This updates the column and the ledger.
-              </p>
+              <Field label="Notes">
+                <TextArea
+                  rows={3}
+                  value={edits.notes || ''}
+                  onChange={(e) => setEdits((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </Field>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Column">
-                  <Select value={adjustColumn} onChange={(e) => setAdjustColumn(e.target.value)}>
-                    {ADJUST_COLUMNS.map((c) => (
-                      <option key={c.key} value={c.key}>
-                        {c.label}
+                <Field label="Change reason (optional)">
+                  <Select value={reasonKey} onChange={(e) => setReasonKey(e.target.value)}>
+                    <option value="">None</option>
+                    {(meta?.reasons || []).map((r) => (
+                      <option key={r.reason_key} value={r.reason_key}>
+                        {r.display_name}
                       </option>
                     ))}
                   </Select>
                 </Field>
-                <Field label="Amount (+ add / − deduct)">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={adjustAmount}
-                    onChange={(e) => setAdjustAmount(e.target.value)}
-                  />
-                </Field>
-                <Field label="Check #">
-                  <Input value={adjustCheck} onChange={(e) => setAdjustCheck(e.target.value)} />
-                </Field>
-                <Field label="Check date">
-                  <Input
-                    type="date"
-                    value={adjustDate}
-                    onChange={(e) => setAdjustDate(e.target.value)}
-                  />
-                </Field>
-              </div>
-              <Field label="Note">
-                <Input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} />
-              </Field>
-              <Button type="button" disabled={busy} onClick={() => void saveAdjustment()}>
-                Save adjustment
-              </Button>
-              <ol className="mt-3 space-y-2">
-                {(detail.ledger || []).map((l) => (
-                  <li
-                    key={l.ledger_id}
-                    className="text-sm text-gray-700 dark:text-gray-200"
-                  >
-                    <span className={Number(l.amount) < 0 ? 'text-error-700' : 'text-success-700'}>
-                      {Number(l.amount) < 0 ? '' : '+'}
-                      {money2(l.amount)}
-                    </span>
-                    {' · '}
-                    {l.column_name}
-                    {l.check_number ? ` · ${l.check_number}` : ''}
-                    {l.note ? ` · ${l.note}` : ''}
-                    <div className="text-xs text-gray-400">
-                      {String(l.created_at || '').replace('T', ' ').slice(0, 19)}
-                      {l.created_by_name ? ` · ${l.created_by_name}` : ''}
-                      {l.source ? ` · ${l.source}` : ''}
-                    </div>
-                  </li>
-                ))}
-                {!detail.ledger?.length && (
-                  <li className="text-sm text-gray-500">No money movements yet.</li>
+                {reasonNeedsText && (
+                  <Field label="Reason detail">
+                    <Input value={reasonText} onChange={(e) => setReasonText(e.target.value)} />
+                  </Field>
                 )}
-              </ol>
-            </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" disabled={busy} onClick={() => void saveEdits()}>
+                  Save changes
+                </Button>
+                <Button variant="secondary" type="button" onClick={() => void selfAssign()}>
+                  Assign to me
+                </Button>
+              </div>
+
+              <div>
+                <h4 className="font-display mb-2 font-semibold">Add adjustment</h4>
+                <p className="mb-3 text-sm text-gray-500">
+                  Positive amount is added; negative is deducted. This updates the column and the ledger.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Column">
+                    <Select value={adjustColumn} onChange={(e) => setAdjustColumn(e.target.value)}>
+                      {ADJUST_COLUMNS.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Amount (+ add / − deduct)">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={adjustAmount}
+                      onChange={(e) => setAdjustAmount(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Check #">
+                    <Input value={adjustCheck} onChange={(e) => setAdjustCheck(e.target.value)} />
+                  </Field>
+                  <Field label="Check date">
+                    <Input
+                      type="date"
+                      value={adjustDate}
+                      onChange={(e) => setAdjustDate(e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field label="Note">
+                  <Input value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} />
+                </Field>
+                <Button type="button" disabled={busy} onClick={() => void saveAdjustment()}>
+                  Save adjustment
+                </Button>
+                <ol className="mt-3 space-y-2">
+                  {(detail.ledger || []).map((l) => (
+                    <li
+                      key={l.ledger_id}
+                      className="text-sm text-gray-700 dark:text-gray-200"
+                    >
+                      <span className={Number(l.amount) < 0 ? 'text-error-700' : 'text-success-700'}>
+                        {Number(l.amount) < 0 ? '' : '+'}
+                        {money2(l.amount)}
+                      </span>
+                      {' · '}
+                      {l.column_name}
+                      {l.check_number ? ` · ${l.check_number}` : ''}
+                      {l.note ? ` · ${l.note}` : ''}
+                      <div className="text-xs text-gray-400">
+                        {String(l.created_at || '').replace('T', ' ').slice(0, 19)}
+                        {l.created_by_name ? ` · ${l.created_by_name}` : ''}
+                        {l.source ? ` · ${l.source}` : ''}
+                      </div>
+                    </li>
+                  ))}
+                  {!detail.ledger?.length && (
+                    <li className="text-sm text-gray-500">No money movements yet.</li>
+                  )}
+                </ol>
+              </div>
+            </fieldset>
 
             <div>
               <h4 className="font-display mb-2 font-semibold">Attachments</h4>

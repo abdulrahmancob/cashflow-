@@ -35,6 +35,9 @@ TEAM_OTHER = "other"
 BOARD_TEAMS = (
     ("admins", "Admins", ("sub_admin", "ops_admin")),
     ("red_team", "Red team", ("redteam_leader", "red_agent")),
+    ("piu", "PIU", ("piu",)),
+    ("client_success", "Client Success", ("client_success",)),
+    ("product_owner", "Product Owner", ("product_owner",)),
     ("second_submission", "Second Submission", SS_BOARD_ROLES),
     ("eligibility", "Eligibility", ("posting_team",)),
     ("collection", "Collection", ("collector",)),

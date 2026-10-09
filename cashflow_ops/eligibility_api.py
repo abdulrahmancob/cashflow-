@@ -23,6 +23,7 @@ from cashflow_ops.security import (
     ROLE_COLLECTOR,
     ROLE_FINANCE,
     ROLE_OPS_ADMIN,
+    ROLE_PIU,
     ROLE_POSTING,
     ROLE_SECOND_SUBMISSION,
     ROLE_SECOND_SUBMISSION_LEAD,
@@ -47,7 +48,10 @@ PR_ROLES = (
     ROLE_OPS_ADMIN,
     ROLE_SUB_ADMIN,
 )
-META_ROLES = tuple(dict.fromkeys((*VIEW_ROLES, *PR_ROLES)))
+# PIU sees the sheets but never edits them: writes stay on VIEW_ROLES / PR_ROLES.
+READ_ROLES = (*VIEW_ROLES, ROLE_PIU)
+PR_READ_ROLES = (*PR_ROLES, ROLE_PIU)
+META_ROLES = tuple(dict.fromkeys((*READ_ROLES, *PR_READ_ROLES)))
 PR_PAGE_ROLES = tuple(role for role in META_ROLES if role != ROLE_COLLECTOR)
 TFL_EDIT_ROLES = (
     ROLE_SECOND_SUBMISSION_LEAD,
@@ -66,7 +70,7 @@ def _require_medicare_medicaid_lead(user: AuthUser, enabled: bool) -> None:
 def _require_queue_view(queue: str, user: AuthUser) -> None:
     from cashflow_db.repository.eligibility import _is_pr3_queue
 
-    allowed = PR_PAGE_ROLES if _is_pr3_queue(queue) else VIEW_ROLES
+    allowed = PR_PAGE_ROLES if _is_pr3_queue(queue) else READ_ROLES
     if not user.is_super_admin and not user.has_role(*allowed):
         raise HTTPException(status_code=403, detail="Insufficient permissions")
 
@@ -571,7 +575,7 @@ def meta(_: AuthUser = Depends(require_roles(*META_ROLES))) -> dict[str, Any]:
 def kpis(
     facility: list[str] | None = Query(None),
     month: list[str] | None = Query(None),
-    _: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+    _: AuthUser = Depends(require_roles(*READ_ROLES)),
 ) -> dict[str, Any]:
     from cashflow_db.repository import connection, eligibility
 
@@ -583,7 +587,7 @@ def kpis(
 def charts(
     facility: list[str] | None = Query(None),
     month: list[str] | None = Query(None),
-    _: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+    _: AuthUser = Depends(require_roles(*READ_ROLES)),
 ) -> dict[str, Any]:
     from cashflow_db.repository import connection, eligibility
 
@@ -800,7 +804,7 @@ def list_secondary(
     sort_dir: str = "desc",
     page: int = 1,
     page_size: int = 100,
-    _: AuthUser = Depends(require_roles(*PR_ROLES)),
+    _: AuthUser = Depends(require_roles(*PR_READ_ROLES)),
 ) -> dict[str, Any]:
     """Visits with CARC PR-2 on the primary EOB — secondary payment queue."""
     from cashflow_db.repository import connection, eligibility
@@ -828,7 +832,7 @@ def export_secondary(
     paid: str = "all",
     sort_by: str = "dos",
     sort_dir: str = "desc",
-    _: AuthUser = Depends(require_roles(*PR_ROLES)),
+    _: AuthUser = Depends(require_roles(*PR_READ_ROLES)),
 ) -> StreamingResponse:
     from cashflow_db.repository import connection, eligibility
 
@@ -918,7 +922,7 @@ def list_deductible(
     sort_dir: str = "desc",
     page: int = 1,
     page_size: int = 100,
-    _: AuthUser = Depends(require_roles(*PR_ROLES)),
+    _: AuthUser = Depends(require_roles(*PR_READ_ROLES)),
 ) -> dict[str, Any]:
     """Visits with CARC PR-1 on the primary EOB — deductible queue."""
     from cashflow_db.repository import connection, eligibility
@@ -946,7 +950,7 @@ def export_deductible(
     paid: str = "all",
     sort_by: str = "dos",
     sort_dir: str = "desc",
-    _: AuthUser = Depends(require_roles(*PR_ROLES)),
+    _: AuthUser = Depends(require_roles(*PR_READ_ROLES)),
 ) -> StreamingResponse:
     from cashflow_db.repository import connection, eligibility
 
@@ -1226,7 +1230,7 @@ class WorkloadBulkBody(BaseModel):
 
 
 @router.get("/ss-today")
-def ss_today(user: AuthUser = Depends(require_roles(*PR_ROLES))) -> dict[str, Any]:
+def ss_today(user: AuthUser = Depends(require_roles(*PR_READ_ROLES))) -> dict[str, Any]:
     from cashflow_db.repository import connection, work_analytics
 
     with connection() as conn:
@@ -1291,7 +1295,7 @@ def list_workload(
 @router.get("/workload/visits")
 def search_workload_visits(
     q: str = "",
-    _: AuthUser = Depends(require_roles(*PR_ROLES)),
+    _: AuthUser = Depends(require_roles(*PR_READ_ROLES)),
 ) -> dict[str, Any]:
     from cashflow_db.repository import connection, eligibility
 
@@ -1534,7 +1538,7 @@ def export_workload(
 
 
 @router.get("/tfl-rules")
-def list_tfl_rules(_: AuthUser = Depends(require_roles(*PR_ROLES))) -> dict[str, Any]:
+def list_tfl_rules(_: AuthUser = Depends(require_roles(*PR_READ_ROLES))) -> dict[str, Any]:
     from cashflow_db.repository import connection, pr_tfl
 
     with connection() as conn:
@@ -1644,7 +1648,7 @@ def delete_tfl_rule(
 @router.get("/items/{work_item_id}")
 def get_item(
     work_item_id: str,
-    _: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+    _: AuthUser = Depends(require_roles(*READ_ROLES)),
 ) -> dict[str, Any]:
     from cashflow_db.repository import connection, eligibility
 
@@ -2051,7 +2055,7 @@ def add_comment(
 @router.get("/attachments/{attachment_id}/file")
 def open_attachment(
     attachment_id: str,
-    _: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+    _: AuthUser = Depends(require_roles(*READ_ROLES)),
 ) -> FileResponse:
     from cashflow_db.repository import connection, eligibility
 
@@ -2095,7 +2099,7 @@ def generate(
 @router.get("/posting-users")
 def posting_users(
     role: str | None = None,
-    _: AuthUser = Depends(require_roles(*VIEW_ROLES)),
+    _: AuthUser = Depends(require_roles(*READ_ROLES)),
 ) -> list[dict[str, Any]]:
     """Users that can be assignees (anyone who can open the sheet)."""
     from cashflow_db.repository import auth_users, connection

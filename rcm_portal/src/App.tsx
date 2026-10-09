@@ -71,7 +71,7 @@ export default function App() {
         <Route
           path="/eligibility"
           element={
-            <Protected roles={['posting_team', 'super_admin', 'sub_admin', 'collector', 'finance', 'ops_admin']}>
+            <Protected roles={['posting_team', 'super_admin', 'sub_admin', 'collector', 'finance', 'ops_admin', 'piu' as Role]}>
               <EligibilityQueuePage />
             </Protected>
           }
@@ -79,7 +79,7 @@ export default function App() {
         <Route
           path="/second-submission"
           element={
-            <Protected roles={['second_submission', 'second_submission_lead', 'super_admin', 'sub_admin', 'ops_admin']}>
+            <Protected roles={['second_submission', 'second_submission_lead', 'super_admin', 'sub_admin', 'ops_admin', 'piu' as Role]}>
               <SecondSubmissionPage />
             </Protected>
           }
@@ -96,6 +96,7 @@ export default function App() {
                 'sub_admin',
                 'ops_admin',
                 'finance',
+                'piu' as Role,
               ]}
             >
               <PatientResponsibilityPage />
@@ -105,7 +106,7 @@ export default function App() {
         <Route
           path="/collection"
           element={
-            <Protected roles={['posting_team', 'super_admin', 'sub_admin', 'collector', 'finance', 'ops_admin']}>
+            <Protected roles={['posting_team', 'super_admin', 'sub_admin', 'collector', 'finance', 'ops_admin', 'piu' as Role]}>
               <CollectionPage />
             </Protected>
           }
@@ -113,7 +114,7 @@ export default function App() {
         <Route
           path="/analytics"
           element={
-            <Protected roles={['super_admin', 'sub_admin', 'ops_admin', 'second_submission_lead', 'analytics_viewer']}>
+            <Protected roles={['super_admin', 'sub_admin', 'ops_admin', 'second_submission_lead', 'analytics_viewer', 'piu' as Role]}>
               <TeamAnalyticsPage />
             </Protected>
           }
@@ -129,7 +130,7 @@ export default function App() {
         <Route
           path="/cpt-guide"
           element={
-            <Protected roles={['posting_team', 'super_admin', 'sub_admin', 'finance', 'submission', 'ops_admin']}>
+            <Protected roles={['posting_team', 'super_admin', 'sub_admin', 'finance', 'submission', 'ops_admin', 'piu' as Role]}>
               <CptGuidePage />
             </Protected>
           }
@@ -137,7 +138,7 @@ export default function App() {
         <Route
           path="/cpt-audit"
           element={
-            <Protected roles={['medical_audit', 'super_admin', 'sub_admin', 'ops_admin']}>
+            <Protected roles={['medical_audit', 'super_admin', 'sub_admin', 'ops_admin', 'piu' as Role]}>
               <CptAuditQueuePage />
             </Protected>
           }

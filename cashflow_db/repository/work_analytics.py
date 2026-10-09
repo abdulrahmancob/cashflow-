@@ -399,7 +399,7 @@ def viewer_scope(roles: list[str] | None) -> str:
     keys = list(roles or [])
     if "super_admin" in keys or "sub_admin" in keys:
         return SCOPE_ALL
-    if "ops_admin" in keys or "analytics_viewer" in keys:
+    if "ops_admin" in keys or "analytics_viewer" in keys or "piu" in keys:
         return SCOPE_OPS
     if "second_submission_lead" in keys:
         return SCOPE_SS

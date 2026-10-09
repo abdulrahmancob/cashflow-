@@ -28,12 +28,23 @@ type AuthState = {
   login: (username: string, password: string, rememberMe?: boolean) => Promise<void>
   logout: () => Promise<void>
   hasRole: (...roles: Role[]) => boolean
+  /** PIU sees the work pages but cannot change anything; the server rejects its writes. */
+  viewOnly: boolean
   canTracker: (perm?: 'view' | 'edit' | 'upload' | 'admin') => boolean
   canChecks: (perm?: 'view' | 'edit' | 'upload' | 'admin') => boolean
   refresh: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
+
+const VIEW_ONLY_ROLES: string[] = [
+  'piu',
+  'client_success',
+  'product_owner',
+  'desk',
+  'red_agent',
+  'analytics_viewer',
+]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -112,6 +123,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   )
 
+  const viewOnly = useMemo(
+    () =>
+      !!user &&
+      user.roles.includes('piu' as Role) &&
+      user.roles.every((role) => VIEW_ONLY_ROLES.includes(role)),
+    [user],
+  )
+
   const canTracker = useCallback(
     (perm: 'view' | 'edit' | 'upload' | 'admin' = 'view') => {
       if (!user) return false
@@ -153,11 +172,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       hasRole,
+      viewOnly,
       canTracker,
       canChecks,
       refresh,
     }),
-    [user, loading, trackerPerms, checksPerms, login, logout, hasRole, canTracker, canChecks, refresh],
+    [
+      user,
+      loading,
+      trackerPerms,
+      checksPerms,
+      login,
+      logout,
+      hasRole,
+      viewOnly,
+      canTracker,
+      canChecks,
+      refresh,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

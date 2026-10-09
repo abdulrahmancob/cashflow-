@@ -16,6 +16,7 @@ from cashflow_ops.heavy import heavy_guard
 from cashflow_ops.security import (
     ROLE_ANALYTICS_VIEWER,
     ROLE_OPS_ADMIN,
+    ROLE_PIU,
     ROLE_SECOND_SUBMISSION_LEAD,
     ROLE_SUB_ADMIN,
     ROLE_SUPER,
@@ -33,6 +34,7 @@ VIEW_ROLES = (
     ROLE_SECOND_SUBMISSION_LEAD,
     ROLE_SUB_ADMIN,
     ROLE_ANALYTICS_VIEWER,
+    ROLE_PIU,
 )
 
 

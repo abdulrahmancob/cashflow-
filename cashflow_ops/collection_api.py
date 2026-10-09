@@ -13,6 +13,7 @@ from cashflow_ops.security import (
     ROLE_COLLECTOR,
     ROLE_FINANCE,
     ROLE_OPS_ADMIN,
+    ROLE_PIU,
     ROLE_POSTING,
     ROLE_SUB_ADMIN,
     ROLE_SUPER,
@@ -22,7 +23,15 @@ from cashflow_ops.security import (
 
 router = APIRouter(prefix="/collection", tags=["collection"])
 
-VIEW_ROLES = (ROLE_POSTING, ROLE_SUPER, ROLE_FINANCE, ROLE_COLLECTOR, ROLE_OPS_ADMIN, ROLE_SUB_ADMIN)
+VIEW_ROLES = (
+    ROLE_POSTING,
+    ROLE_SUPER,
+    ROLE_FINANCE,
+    ROLE_COLLECTOR,
+    ROLE_OPS_ADMIN,
+    ROLE_SUB_ADMIN,
+    ROLE_PIU,
+)
 EDIT_ROLES = (ROLE_OPS_ADMIN, ROLE_SUPER, ROLE_SUB_ADMIN)
 
 

@@ -375,7 +375,7 @@ function optionsFor(labels: string[], current?: string | null) {
 }
 
 export function CollectionQueueTab() {
-  const { hasRole } = useAuth()
+  const { hasRole, viewOnly } = useAuth()
   const canAssign = hasRole('ops_admin', 'sub_admin')
   const [bucket, setBucket] = useState<Bucket>('denied')
   const [q, setQ] = useState('')
@@ -898,7 +898,7 @@ export function CollectionQueueTab() {
               </thead>
               <tbody>
                 {items.map((row) => {
-                  const busy = savingId === row.work_item_id
+                  const busy = viewOnly || savingId === row.work_item_id
                   return (
                     <tr key={row.work_item_id}>
                       {canAssign ? (

@@ -46,6 +46,7 @@ MIGRATIONS = [
     "078_user_presence.sql",
     "079_desk_devices.sql",
     "080_login_attempts.sql",
+    "081_team_roles.sql",
 ]
 
 

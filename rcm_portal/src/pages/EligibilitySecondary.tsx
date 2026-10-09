@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowDown, ArrowUp, Download, Search } from 'lucide-react'
 import { api } from '../api/client'
+import { useAuth } from '../auth/AuthContext'
 import { EmrPatientLink } from '../components/EmrPatientLink'
 import { WaystarAccountLink } from '../components/WaystarAccountLink'
 import { EmptyState, Pagination } from '../components/table'
@@ -143,6 +144,7 @@ const SORTABLE = new Set([
 ])
 
 export function EligibilitySecondaryTab({ kind = 'pr2' }: { kind?: QueueKind }) {
+  const { viewOnly } = useAuth()
   const cfg = KIND[kind]
   const columns: Col[] = cfg.showPaid
     ? [
@@ -477,7 +479,7 @@ export function EligibilitySecondaryTab({ kind = 'pr2' }: { kind?: QueueKind }) 
                       <td onClick={(e) => e.stopPropagation()}>
                         <SearchableSelect
                           value={row.second_insurance || ''}
-                          disabled={savingKey === rowKey}
+                          disabled={viewOnly || savingKey === rowKey}
                           className="w-44"
                           placeholder="—"
                           onChange={(next) => {
@@ -512,7 +514,7 @@ export function EligibilitySecondaryTab({ kind = 'pr2' }: { kind?: QueueKind }) 
                           type="checkbox"
                           className="h-4 w-4 accent-blue-600"
                           checked={!!row.second_submission}
-                          disabled={savingKey === rowKey}
+                          disabled={viewOnly || savingKey === rowKey}
                           aria-label="Second Submission"
                           onChange={(e) => void toggleSecondSubmission(row, e.target.checked)}
                         />

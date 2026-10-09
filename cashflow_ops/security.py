@@ -37,6 +37,9 @@ ROLE_MEDICAL_AUDIT = "medical_audit"
 ROLE_DESK = "desk"
 ROLE_RED_AGENT = "red_agent"
 ROLE_REDTEAM_LEADER = "redteam_leader"
+ROLE_PIU = "piu"
+ROLE_CLIENT_SUCCESS = "client_success"
+ROLE_PRODUCT_OWNER = "product_owner"
 
 
 from cashflow_db.services.bootstrap_admin import (  # noqa: E402
