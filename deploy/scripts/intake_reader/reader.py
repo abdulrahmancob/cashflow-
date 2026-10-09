@@ -23,6 +23,7 @@ from .decide import Reading, decide, merge_readings
 from .labels import Layout, analyse, phrase_in_line
 from .page import binarize, clean_for_ocr, mask_lines, median_text_height, normalize_contrast, ocr_words, render, rotate, upright
 from .writein import detect as detect_writein
+from .writein import stray_ink
 
 QUICK_ZOOM = 1.4
 MAX_PAGES = 20
@@ -245,6 +246,19 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         block_found=True,
         block_cut=block_cut,
     )
+    stray = None
+    if layout.question_line is not None and reading.source not in ("unreadable", "no_question"):
+        q_line = layout.lines[layout.question_line]
+        last = max((h.y1 for h in layout.hear), default=int(q_line.y1))
+        region_ink = np.zeros_like(ink)
+        y_lo = max(0, int(q_line.y0))
+        y_hi = min(ink.shape[0], int(last + th * 1.5))
+        region_ink[y_lo:y_hi] = ink[y_lo:y_hi]
+        areas = [tuple(t[2]) for t in tries] if tries else []
+        stray = stray_ink(region_ink, words, hear_controls + booking_controls, areas, layout.hear + layout.booking, th)
+        if stray is not None:
+            reading.reasons.append("stray_ink")
+            reading.needs_review = True
     reading.debug = {
         "block_text": layout.block_text[:300],
         "layout_lines": [(i, ("Q" if i == layout.question_line else "B" if i == layout.booking_line else "E" if i == layout.end_line else " "), ln.text[:90]) for i, ln in enumerate(layout.lines)],
@@ -263,6 +277,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         "places": [(c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels")) for c in hear_controls + booking_controls],
         "writein_tries": tries,
         "notes": layout.notes[:20],
+        "stray": stray,
     }
     if want_debug:
         reading.debug["gray"] = gray

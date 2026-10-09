@@ -313,6 +313,54 @@ def detect(
     return WriteIn(hit.code, kind, text, conf, map_text(text), total, area)
 
 
+def stray_ink(ink: np.ndarray, words: list[dict], controls, areas: list[tuple[int, int, int, int]], hits, th: int) -> tuple[int, int] | None:
+    """Handwriting that sits nowhere the reader looks: not on a label, not in a control window,
+    not on a write-in line. Returns (tall components, ink pixels) when there is enough of it to
+    be an answer ("AI search" floating between the columns), else None (R14)."""
+    region = ink.copy()
+    height, width = region.shape
+    pad = max(2, int(th * 0.3))
+    for w in words:
+        if len(w.get("text", "").strip()) < 1:
+            continue
+        x0, y0 = max(0, w["x"] - pad), max(0, w["y"] - pad)
+        x1, y1 = min(width, w["x"] + w["w"] + pad), min(height, w["y"] + w["h"] + pad)
+        region[y0:y1, x0:x1] = False
+    for c in controls:
+        grow = int(th * 0.9)
+        region[max(0, c.y0 - grow) : min(height, c.y1 + grow), max(0, c.x0 - grow) : min(width, c.x1 + grow)] = False
+    for x0, y0, x1, y1 in areas:
+        region[max(0, y0 - pad) : min(height, y1 + pad), max(0, x0 - pad) : min(width, x1 + pad)] = False
+    for h in hits:
+        region[max(0, h.y0 - pad) : min(height, h.y1 + pad), max(0, h.x0 - pad) : min(width, h.x1 + int(th * 0.5))] = False
+    # the block's own margins carry binder holes, page edges and the question text's remnants
+    region[:, : int(th * 1.0)] = False
+    region[:, width - int(th * 1.0) :] = False
+    region[: int(th * 0.8), :] = False
+    region[height - int(th * 0.8) :, :] = False
+    if not region.any():
+        return None
+    labels, count, slices = components(region)
+    tall = 0
+    total = 0
+    for index, sl in enumerate(slices, 1):
+        if sl is None:
+            continue
+        h = sl[0].stop - sl[0].start
+        w = sl[1].stop - sl[1].start
+        pixels = int((labels[sl] == index).sum())
+        if pixels < 6:
+            continue
+        if (h <= max(4, 0.12 * w) and w >= 2.5 * th) or (w <= 3 and h >= th * 2) or h >= th * 6 or w >= th * 12:
+            continue  # rules, border dashes, frames
+        total += pixels
+        if th * 0.45 <= h <= th * 3 and h >= 0.25 * w:
+            tall += 1
+    if tall >= 4 and total >= th * th * 1.5:
+        return tall, total
+    return None
+
+
 def _is_printed_hint(text: str) -> bool:
     """True when OCR of the write-in strip is (mostly) the printed helper text itself."""
     key = normalize(text)

@@ -705,6 +705,30 @@ class RoundFiveTests(unittest.TestCase):
         self.assertEqual(marked_codes(controls), [])
 
 
+class StrayInkTests(unittest.TestCase):
+    def _run(self, floating: bool):
+        from PIL import ImageDraw
+
+        from intake_reader.writein import stray_ink
+        from .synth import font
+
+        block = draw_block("How did you hear about us?", _old_specs({"Google": "check"}), "box", width=1100)
+        image = block.image.copy()
+        if floating:
+            ImageDraw.Draw(image).text((700, 300), "AI search", fill=0, font=font(30))
+        gray = np.asarray(image)
+        layout = analyse(block.words, OLD_CHECKBOX, block.text_h)
+        ink = mask_lines(binarize(gray, 165), layout.text_h)
+        controls = find_controls(ink, layout.hear, layout.text_h, OLD_CHECKBOX, ink, block.words)
+        return stray_ink(ink, block.words, controls, [], layout.hear, layout.text_h)
+
+    def test_floating_handwriting_is_flagged(self):
+        self.assertIsNotNone(self._run(True))
+
+    def test_clean_block_is_not_flagged(self):
+        self.assertIsNone(self._run(False))
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")
