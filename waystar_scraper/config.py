@@ -10,13 +10,20 @@ BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"
 SCREENSHOTS_DIR = OUTPUT_DIR / "screenshots"
 PDFS_DIR = OUTPUT_DIR / "pdfs"
-STORAGE_STATE_PATH = BASE_DIR / "storage_state.json"
+_raw_storage = (os.getenv("WAYSTAR_STORAGE_STATE") or "").strip()
+if _raw_storage:
+    STORAGE_STATE_PATH = Path(_raw_storage)
+elif Path("/data/waystar").is_dir():
+    STORAGE_STATE_PATH = Path("/data/waystar/storage_state.json")
+else:
+    STORAGE_STATE_PATH = BASE_DIR / "storage_state.json"
 
 LOGIN_URL = "https://login.zirmed.com/UI/Login"
 CLAIMS_LISTING_URL = "https://claims.zirmed.com/Claims/Listing/Index?appid=1"
 PERFORM_SEARCH_URL = (
     "https://claims.zirmed.com/Claims/Listing/PerformSearch?explicitSearch=True"
 )
+DOWNLOAD_CSV_URL = "https://claims.zirmed.com/Claims/Listing/DownloadCsv"
 GET_CHILD_CUSTS_URL = "https://claims.zirmed.com/Dashboard/Overview/GetChildCusts"
 VIEW_CLAIM_PDF_URL = "https://claims.zirmed.com/Claims/History/ViewClaimPDF"
 

@@ -302,9 +302,13 @@ async def login(
     await password_input.wait_for(state="visible", timeout=15_000)
     log.debug("Login form fields found")
 
-    await human_type(username_input, config.username, human)
+    # fill() inserts the literal string (passwords contain @). press_sequentially
+    # can emit the wrong glyph under the container keyboard layout.
+    await username_input.click()
+    await username_input.fill(config.username)
     await human.delay()
-    await human_type(password_input, config.password, human)
+    await password_input.click()
+    await password_input.fill(config.password)
     await human.screenshot(page, "login_filled")
     log.debug("Credentials entered (not logged)")
 
