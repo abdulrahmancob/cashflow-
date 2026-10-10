@@ -730,6 +730,94 @@ class StrayInkTests(unittest.TestCase):
         self.assertIsNone(self._run(False))
 
 
+class RoundSixTests(unittest.TestCase):
+    def test_straight_sides_box_versus_letters(self):
+        from PIL import Image, ImageDraw
+
+        from intake_reader.controls import _straight_sides
+        from .synth import font
+
+        image = Image.new("L", (400, 80), 255)
+        d = ImageDraw.Draw(image)
+        d.rectangle((10, 20, 44, 54), outline=0, width=2)  # square box
+        d.rectangle((60, 20, 94, 54), outline=0, width=2)
+        d.line((60, 20, 94, 54), fill=0, width=2)  # box with a slash: still straight sides
+        d.text((120, 14), "D", fill=0, font=font(44))
+        d.text((170, 14), "O", fill=0, font=font(44))
+        mask = np.asarray(image) < 128
+        self.assertTrue(_straight_sides(mask, 10, 20, 45, 55))
+        self.assertTrue(_straight_sides(mask, 60, 20, 95, 55))
+        from intake_reader.page import components
+
+        labels, count, slices = components(mask)
+        letters = [sl for sl in slices if sl is not None and sl[1].start >= 115]
+        self.assertGreaterEqual(len(letters), 2)
+        for sl in letters:
+            self.assertFalse(_straight_sides(mask, sl[1].start, sl[0].start, sl[1].stop, sl[0].stop), sl)
+
+    def test_snap_ignores_pieces_of_a_control(self):
+        from intake_reader.controls import _snap
+        from intake_reader.page import components
+
+        mask = np.zeros((100, 100), dtype=bool)
+        mask[20:56, 20:30] = True  # a 10 px wide piece where a 36 px box is expected
+        labels, count, slices = components(mask)
+        self.assertIsNone(_snap(labels, slices, 18, 18, 54, 54, 36))
+        mask[20:56, 20:56] = True
+        mask[23:53, 23:53] = False
+        labels, count, slices = components(mask)
+        self.assertEqual(_snap(labels, slices, 18, 18, 54, 54, 36), (20, 20, 56, 56))
+
+    def test_grid_rows_keep_their_spacing(self):
+        """Handwriting lines between the rows must not pull the inferred rows together."""
+        words = words_from_text(
+            [
+                "How did you hear about us?",
+                "O Doctor referral|O Google",
+                "O Zocdoc|O Social Media",
+                "O Insurance|O Word of Mouth",
+                "nat sure",
+                "",
+            ]
+        )
+        for w in words:
+            if w["text"] in ("nat", "sure"):
+                w["y"] += 10  # floats between the insurance and event rows
+        layout = analyse(words, NEW_CIRCLE, 20)
+        event = next((h for h in layout.hear if h.code == "event"), None)
+        other = next((h for h in layout.hear if h.code == "other"), None)
+        insurance = next(h for h in layout.hear if h.code == "insurance")
+        self.assertIsNotNone(event)
+        self.assertIsNotNone(other)
+        self.assertAlmostEqual(event.cy, insurance.cy + 34, delta=5)
+        self.assertAlmostEqual(other.cy, insurance.cy + 68, delta=6)
+
+    def test_tiny_glued_word_gets_a_box_prefix(self):
+        words = words_from_text(
+            [
+                "How did you hear about us? O Doctor O Google O Social Media O Zocdoc",
+                "wate O Flyers O Friends/Family Other:",
+            ]
+        )
+        for w in words:
+            if w["text"] == "wate":
+                w["w"] = 170  # box + check + "Walk-in" read as one wide word
+            elif w["line"][2] == 1:
+                w["x"] += 115  # the rest of the row sits to the right of that wide word
+        layout = analyse(words, TINY, 14)
+        walk = next(h for h in layout.hear if h.code == "walk_in")
+        self.assertGreater(walk.prefix_px, 0)
+
+    def test_label_remainder_mask_stops_at_the_label(self):
+        """A word that runs from the label into the handwriting is masked only up to the label."""
+        words = [{"text": "Other:__hugi", "x": 55, "y": 360, "w": 363, "h": 39, "conf": 60.0, "line": (1, 1, 1)}]
+        short = {"text": "Other:", "x": 55, "y": 360, "w": 90, "h": 39, "conf": 60.0, "line": (1, 1, 1)}
+        hit = LabelHit("other", TINY.options[-1], [short], 1, "hear", 0.5, 0, 500, None, 0, None, True)
+        hit.line_cy, hit.line_h = 379, 39
+        boxes = _printed_boxes(words, (151, 360, 751, 413), hit, "inline", 30)
+        self.assertTrue(all(b[2] <= 145 + 11 for b in boxes), boxes)
+
+
 class FuzzyKeywordTests(unittest.TestCase):
     def test_one_ocr_error_still_maps(self):
         self.assertEqual(map_text("_Eciend fold me"), "friend_family")

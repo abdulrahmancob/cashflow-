@@ -590,19 +590,16 @@ def _straight_sides(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> boo
     h = y1 - y0
     if w < 6 or h < 6:
         return False
-    my0 = y0 + int(h * 0.15)
-    my1 = y1 - int(h * 0.15)
-    if my1 <= my0:
-        return False
     band = max(2, w // 8)
-    left = float(mask[my0:my1, x0 : x0 + band].any(axis=1).mean())
-    right = float(mask[my0:my1, x1 - band : x1].any(axis=1).mean())
+    # the full height: a box edge runs top to bottom, the bowl of a "D" or "O" only the middle
+    left = float(mask[y0:y1, x0 : x0 + band].any(axis=1).mean())
+    right = float(mask[y0:y1, x1 - band : x1].any(axis=1).mean())
     mx0 = x0 + int(w * 0.15)
     mx1 = x1 - int(w * 0.15)
     vband = max(2, h // 8)
     top = float(mask[y0 : y0 + vband, mx0:mx1].any(axis=0).mean()) if mx1 > mx0 else 0.0
     bottom = float(mask[y1 - vband : y1, mx0:mx1].any(axis=0).mean()) if mx1 > mx0 else 0.0
-    return left >= 0.75 and right >= 0.75 and top >= 0.6 and bottom >= 0.6
+    return left >= 0.85 and right >= 0.85 and top >= 0.6 and bottom >= 0.6
 
 
 def _cornered(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
