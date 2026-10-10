@@ -6,6 +6,7 @@ Labels are matched against the family vocabulary with a spacing-insensitive edit
 
 from __future__ import annotations
 
+import functools
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -127,6 +128,7 @@ def _sub_cost(a: str, b: str) -> float:
     return 1.0
 
 
+@functools.lru_cache(maxsize=400000)
 def edit_distance(left: str, right: str, limit: int | None = None) -> float:
     if left == right:
         return 0
@@ -143,9 +145,12 @@ def edit_distance(left: str, right: str, limit: int | None = None) -> float:
     return prev[-1]
 
 
+@functools.lru_cache(maxsize=400000)
 def similarity(window: str, key: str) -> float:
     if not window or not key:
         return 0.0
+    if len(window) > 2 * len(key) + 4 or len(key) > 3 * len(window) + 4:
+        return 0.0  # nothing that different can be the same label
     best = 1 - edit_distance(window, key) / max(len(window), len(key))
     # OCR often glues a mark glyph to the first letter or drops it: "@oogie", "oogle", "qzocdoc".
     stripped = re.sub(r"^[^a-z]+", "", window)
@@ -354,8 +359,12 @@ def analyse(
     max_lines: int = 18,
     question_y: float | None = None,
     booking_y: float | None = None,
+    match: bool = True,
 ) -> Layout:
     """Find the question, the booking question, the block end and every option label.
+
+    `match=False` stops after the block text (enough to tell the families apart) and skips the
+    option matching, which is the expensive part.
 
     `question_y`/`booking_y` are positions known from an earlier scan; they rescue a block whose
     question line OCR'd into garbage (R2).
@@ -425,6 +434,11 @@ def analyse(
         return None
 
     block_lines: list[str] = []
+    if not match:
+        for index, line in enumerate(lines):
+            if group_of(index) == "hear":
+                block_lines.append(line.text)
+        return Layout(lines, th, q_index, b_index, end_index, hear, booking, "\n".join(block_lines))
     for index, line in enumerate(lines):
         group = group_of(index)
         if group is None:
@@ -596,6 +610,7 @@ def _infer_circle_rows(lines: list[Line], hits: list[LabelHit], family: Family, 
     for column in sorted({o.column for o in family.options}):
         order = [o for o in family.options if o.column == column and o.code != "other"]
         known = [(i, found[o.code]) for i, o in enumerate(order) if o.code in found]
+        known_hits = [h for _i, h in known]
         if len(known) < 1 or len(known) == len(order):
             continue
         if len(known) == 1 and not any(group_of(i) == "hear" for i in range(len(lines))):
@@ -638,8 +653,12 @@ def _infer_circle_rows(lines: list[Line], hits: list[LabelHit], family: Family, 
             y_c = exp_y
             lh = line_h
             if best is not None:
-                y_c, lh2 = _line_stats(lines[best], th)
+                cy_line, lh2 = _line_stats(lines[best], th)
+                if abs(cy_line - exp_y) <= spacing * 0.25:
+                    y_c = cy_line  # the OCR line sits where the grid says; use its exact centre
                 lh = lh2 or lh
+            if any(abs((h.line_cy or h.cy) - y_c) < spacing * 0.7 for h in list(known_hits) + added if h.option.column == column):
+                continue  # a row that close to a sibling is not a new row
             width_px = int(th * 0.55 * len(option.phrases[0]))
             pseudo = {"text": option.phrases[0], "x": col_anchor, "y": int(y_c - lh / 2), "w": width_px, "h": int(lh), "conf": 0.0, "synthetic": True}
             hit = LabelHit(option.code, option, [pseudo], line_index, "hear", 0.45, 0, col_anchor + width_px, None, 0, col_anchor, True)
@@ -697,6 +716,9 @@ def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int
         # the printed box or its mark is often glued to the word ("(Dtos", "LAGcoote")
         key = normalize(options[missing].phrases[0])
         prefix = _glyph_prefix(pick, key)
+        expected_w = th * (0.6 * len(key) + 0.6)
+        if prefix == 0 and pick["w"] > expected_w + th * 1.0:
+            prefix = int(th * 1.1)  # "wate" spanning box + check + label: the box is glued in front
         line_index = next((i for i, ln in row_lines if pick in ln.words), ref.line_index)
         hit = LabelHit(missing, options[missing], [pick], line_index, "hear", 0.5, 0, pick["x"] + pick["w"], None, prefix, None, True)
         hit.line_cy, hit.line_h = _line_stats(lines[line_index], th)
@@ -811,7 +833,9 @@ def _infer_other(lines: list[Line], hits: list[LabelHit], family: Family, th: in
             best = index
     if best is not None:
         line_index = best
-        y_c, lh = _line_stats(lines[best], th)
+        cy_line, lh = _line_stats(lines[best], th)
+        if abs(cy_line - exp_y) <= spacing * 0.25:
+            y_c = cy_line
         line_h = lh or line_h
     width_px = int(th * (2.6 if family.id == "es_circle" else 3.0))
     if best is not None:

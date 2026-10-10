@@ -193,8 +193,13 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
         key = normalize(w["text"])
         printed = id(w) in label_ids
         on_label_line = abs((w["y"] + w["h"] / 2) - hit.cy) <= th * 0.5
+        clip_x1 = None
         if not printed and kind == "inline" and on_label_line and w["x"] < hit.x1 + th * 0.35:
             printed = True  # the rest of a label whose OCR split in two ("Clinic" | "staff")
+            if w["x"] + w["w"] > hit.x1 + th * 1.5:
+                clip_x1 = int(hit.x1 + th * 0.35)  # the word ran on into the handwriting
+        if not printed and kind == "below" and w["x"] > hit.x0 + th * 11:
+            continue  # right of the helper line: handwriting, never print
         if not printed and len(key) >= 4:
             printed = any((key in tk or tk in key) for tk in tokens if len(tk) >= 4) or any(similarity(key, tk) >= 0.75 for tk in tokens if len(tk) >= 4)
         if not printed and len(key) == 3:
@@ -205,8 +210,12 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
             near_printed = any(abs(w["x"] - px1) <= th * 0.6 for px1 in printed_boxes_x1)
             printed = hint_hit or near_printed  # bracket and punctuation scraps of the printed helper line
         if printed:
-            boxes.append((w["x"], w["y"], w["x"] + w["w"], w["y"] + w["h"]))
-            printed_boxes_x1.append(w["x"] + w["w"])
+            x_end = min(w["x"] + w["w"], clip_x1) if clip_x1 is not None else w["x"] + w["w"]
+            if kind == "below":
+                x_end = min(x_end, int(hit.x0 + th * 11))  # the helper line is at most this wide
+            if x_end > w["x"]:
+                boxes.append((w["x"], w["y"], x_end, w["y"] + w["h"]))
+                printed_boxes_x1.append(x_end)
     return boxes
 
 

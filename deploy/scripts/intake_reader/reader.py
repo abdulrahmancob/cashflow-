@@ -166,7 +166,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         words = ocr_words(clean_for_ocr(gray, 16), lang, psm=6)
         q_hint = scan.question_y * scale - top if scan.quick_words and scan.question_y is not None else None
         b_hint = scan.booking_y * scale - top if scan.quick_words and scan.booking_y is not None else None
-        layout = analyse(words, GENERIC, question_y=q_hint, booking_y=b_hint)
+        layout = analyse(words, GENERIC, question_y=q_hint, booking_y=b_hint, match=False)
         if layout.question_line is None:
             if attempt == 0 and scan.quick_words:
                 # the quick scan found it; widen to the whole page once

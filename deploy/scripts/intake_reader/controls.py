@@ -150,7 +150,7 @@ def _candidates(source, labels, slices, hit: LabelHit, th: int, family: Family, 
         squarish = min(w, h) >= (0.55 if bullet else 0.72) * max(w, h)
         boxlike = bullet or _boxlike(source, cx0, cy0, cx1, cy1)
         if boxlike and family.control == "box" and not merged:
-            boxlike = _cornered(source, cx0, cy0, cx1, cy1)
+            boxlike = _straight_sides(source, cx0, cy0, cx1, cy1)
         if merged and family.control == "circle":
             boxlike = False  # a circle glued to its label cannot be cut free; the column places it
         real = side >= real_side and min(w, h) >= 0.6 * real_side and squarish and boxlike
@@ -301,12 +301,29 @@ def find_controls(
         there = float(source[ya:yb, xa:xb].mean()) if yb > ya and xb > xa else 0.0
         return there < 0.04
 
+    def on_text_at(wx: float, side: int, y_c: float) -> bool:
+        # a window placed by geometry must not sit on printed words
+        if not words:
+            return False
+        for w in words:
+            if len(w.get("text", "").strip()) < 2:
+                continue
+            ox = max(0, min(wx + side, w["x"] + w["w"]) - max(wx, w["x"]))
+            oy = max(0, min(y_c + side * 0.5, w["y"] + w["h"]) - max(y_c - side * 0.5, w["y"]))
+            if ox * oy > 0.3 * side * side:
+                return True
+        return False
+
     for hit, cands in zip(hits, cands_list):
         cluster = _cluster_for(hit, clusters, th, words, family)
         used_cluster = used_cluster or cluster is not None
         chosen: _Cand | None = None
         reason = ""
         real = [c for c in cands if c.real]
+
+        def on_text(wx: float, side: int, _y=hit.cy) -> bool:
+            return on_text_at(wx, side, _y)
+
         if cluster is not None:
             cx, side, _members = cluster
             near = [c for c in real if abs(c.x0 - cx) <= th * 0.8]
@@ -316,7 +333,10 @@ def find_controls(
                 # an indented sub-option keeps its own box when nothing is printed at the column,
                 # provided the box sits at the column's label-to-box distance (a letter does not)
                 off = offsets.get(cluster)
-                fitting = [c for c in real if off is None or abs((hit.anchor_x - c.x0) - off) <= th * 0.8]
+                fitting = [
+                    c for c in real
+                    if (off is None or abs((hit.anchor_x - c.x0) - off) <= th * 0.8) and not on_text(c.x0, max(c.x1 - c.x0, c.y1 - c.y0))
+                ]
                 if fitting:
                     chosen = max(fitting, key=lambda c: c.x1)
                     reason = "off_column"
@@ -349,18 +369,8 @@ def find_controls(
         cluster = _cluster_for(hit, clusters, th, words, family)
         offset_window = None
 
-        def on_text(wx: float, side: int) -> bool:
-            # a window placed by the label offset must not sit on printed words
-            if not words:
-                return False
-            for w in words:
-                if len(w.get("text", "").strip()) < 2:
-                    continue
-                ox = max(0, min(wx + side, w["x"] + w["w"]) - max(wx, w["x"]))
-                oy = max(0, min(y_c + side * 0.5, w["y"] + w["h"]) - max(y_c - side * 0.5, w["y"]))
-                if ox * oy > 0.3 * side * side:
-                    return True
-            return False
+        def on_text(wx: float, side: int, _y=y_c) -> bool:
+            return on_text_at(wx, side, _y)
 
         if cluster is not None:
             cx, side, _members = cluster
@@ -559,7 +569,7 @@ def _snap(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int) -> tupl
             continue
         cy0, cy1, cx0, cx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
         w, h = cx1 - cx0, cy1 - cy0
-        if not (0.6 * side <= max(w, h) <= 1.5 * side) or min(w, h) < 0.55 * max(w, h):
+        if not (0.75 * side <= w <= 1.5 * side and 0.75 * side <= h <= 1.5 * side):
             continue
         ox = max(0, min(x1, cx1) - max(x0, cx0))
         oy = max(0, min(y1, cy1) - max(y0, cy0))
@@ -570,6 +580,29 @@ def _snap(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int) -> tupl
     if best is None or best_overlap < 0.3 * max(1, (x1 - x0) * (y1 - y0)):
         return None
     return best
+
+
+def _straight_sides(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
+    """A printed square has straight left and right edges that run the whole height; "D", "O",
+    "e" and the other round letters that are box-sized do not. Two outer columns are pooled so a
+    slightly skewed scan still passes; rounded corners are tolerated by measuring the middle 70%."""
+    w = x1 - x0
+    h = y1 - y0
+    if w < 6 or h < 6:
+        return False
+    my0 = y0 + int(h * 0.15)
+    my1 = y1 - int(h * 0.15)
+    if my1 <= my0:
+        return False
+    band = max(2, w // 8)
+    left = float(mask[my0:my1, x0 : x0 + band].any(axis=1).mean())
+    right = float(mask[my0:my1, x1 - band : x1].any(axis=1).mean())
+    mx0 = x0 + int(w * 0.15)
+    mx1 = x1 - int(w * 0.15)
+    vband = max(2, h // 8)
+    top = float(mask[y0 : y0 + vband, mx0:mx1].any(axis=0).mean()) if mx1 > mx0 else 0.0
+    bottom = float(mask[y1 - vband : y1, mx0:mx1].any(axis=0).mean()) if mx1 > mx0 else 0.0
+    return left >= 0.75 and right >= 0.75 and top >= 0.6 and bottom >= 0.6
 
 
 def _cornered(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
@@ -696,11 +729,11 @@ def score_controls(controls: list[Control], family: Family) -> None:
             if c.outside < 2.0 * max(med_o, 0.03):
                 b = min(b, -0.01)
             g = -9.0
-            if c.found and not c.extra.get("merged") and c.side >= 1.35 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.03):
-                g = (c.side / med_side - 1.35) / 0.3  # a check drawn over a bullet grows the component
+            if c.found and not c.extra.get("merged") and c.side >= 1.25 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.03):
+                g = (c.side / med_side - 1.25) / 0.3  # a check drawn over a bullet grows the component
             px = c.extra.get("pixels")
             if px is not None and med_px > 0 and c.found:
-                g = max(g, (px / med_px - 1.6) / 0.5)  # a bullet with a pen stroke carries more ink
+                g = max(g, (px / med_px - 1.4) / 0.4)  # a bullet with a pen stroke carries more ink
         else:
             place = c.extra.get("place", "")
             tight = c.found or place in ("column", "offset")
@@ -736,7 +769,7 @@ def score_controls(controls: list[Control], family: Family) -> None:
             c.reason = "edge"
         if c.extra.get("no_controls"):
             c.extra["unverified"] = True  # measured on windows only: the reading goes to review
-        c.marked = c.score >= 0
+        c.marked = c.score > 0.02
         if c.marked:
             c.reason = {a: "fill", b: "spill", g: "swollen", r: "circled"}[max((a, b, g, r), key=lambda v: v)]
         c.extra.update({"a": round(a, 2), "b": round(b, 2), "g": round(g, 2), "r": round(r, 2)})
