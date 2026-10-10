@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from datetime import date
 from pathlib import Path
+
+import pytest
 
 _WS = Path(__file__).resolve().parents[2] / "waystar_scraper"
 if str(_WS) not in sys.path:
@@ -144,3 +147,56 @@ def test_months_back_window_zero_is_month_start() -> None:
     start, end = months_back_window(date(2026, 8, 24), 0)
     assert start == date(2026, 8, 1)
     assert end == date(2026, 8, 24)
+
+
+def test_pull_windows_downloads_fresh_when_reuse_disabled(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("playwright")
+    import download_claims_listing as dcl
+    from human import HumanSettings
+
+    day = date(2026, 3, 2)
+    dest = tmp_path / "claims_03022026_03022026.csv"
+    dest.write_text("x" * 2000, encoding="utf-8")
+    downloads: list[Path] = []
+
+    async def fake_search(*_args, **_kwargs):
+        return {"total_results": 1}
+
+    async def fake_get_csv(_page, _app_id, path):
+        downloads.append(path)
+        return [{"instance_id": "fresh"}]
+
+    async def no_pause(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(dcl, "_search", fake_search)
+    monkeypatch.setattr(dcl, "_get_csv", fake_get_csv)
+    monkeypatch.setattr(dcl, "human_pause", no_pause)
+    monkeypatch.setattr(dcl, "parse_claims_screen_csv", lambda _path: [{"instance_id": "stale"}])
+
+    def pull(reuse_existing: bool) -> list:
+        batches: list = []
+        asyncio.run(
+            dcl._pull_windows(
+                None,
+                token="t",
+                cust_id="c",
+                app_id="1",
+                status="-1",
+                start=day,
+                end=day,
+                csv_cap=10_000,
+                out_dir=tmp_path,
+                human=HumanSettings(),
+                batches=batches,
+                files=[],
+                max_parts=None,
+                reuse_existing=reuse_existing,
+            )
+        )
+        return batches
+
+    assert pull(True) == [[{"instance_id": "stale"}]]
+    assert downloads == []
+    assert pull(False) == [[{"instance_id": "fresh"}]]
+    assert downloads == [dest]

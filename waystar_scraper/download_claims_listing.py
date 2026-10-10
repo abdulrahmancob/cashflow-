@@ -216,7 +216,22 @@ async def pull_claims(args: argparse.Namespace) -> dict:
             cust_id = await resolve_cust_id(page, config)
             token = await refresh_verification_token(page, human)
             months_back = getattr(args, "months_back", None)
-            if recent and months_back is not None:
+            since = getattr(args, "since", None)
+            if recent and since:
+                start = date.fromisoformat(since)
+                end = datetime.now(ZoneInfo("Africa/Cairo")).date()
+                trans_from = format_mdy(start)
+                trans_to = format_mdy(end)
+                summary["trans_from"] = trans_from
+                summary["trans_to"] = trans_to
+                summary["recent_meta"] = {
+                    "since": str(start),
+                    "lookback_days": (end - start).days,
+                    "start": str(start),
+                    "end": str(end),
+                }
+                log.info("recent since=%s window %s .. %s", since, start, end)
+            elif recent and months_back is not None:
                 today = datetime.now(ZoneInfo("Africa/Cairo")).date()
                 start, end = months_back_window(today, int(months_back))
                 trans_from = format_mdy(start)
@@ -274,6 +289,7 @@ async def pull_claims(args: argparse.Namespace) -> dict:
                 batches=batches,
                 files=summary["files"],
                 max_parts=args.max_parts,
+                reuse_existing=not recent,
             )
             merged = merge_claim_rows(batches)
             merged_path = out_dir / "claims_merged.json"
@@ -330,7 +346,14 @@ async def _pull_windows(
     batches: list,
     files: list,
     max_parts: int | None,
+    reuse_existing: bool = True,
 ) -> None:
+    """Pull [start, end] in windows under the CSV cap.
+
+    ``reuse_existing`` re-parses a window CSV already on disk instead of downloading
+    it (resume for one-off bulk pulls). Nightly pulls must download every window:
+    window names repeat across days, so a reused file carries old remit amounts.
+    """
     stack = [(start, end)]
     searches = 0
     while stack:
@@ -357,7 +380,7 @@ async def _pull_windows(
             f"claims_{format_mdy(win_from).replace('/', '')}_"
             f"{format_mdy(win_to).replace('/', '')}.csv"
         )
-        if dest.is_file() and dest.stat().st_size > 1000:
+        if reuse_existing and dest.is_file() and dest.stat().st_size > 1000:
             rows = parse_claims_screen_csv(dest)
             log.info("resume skip existing %s (%s rows)", dest.name, len(rows))
         else:
@@ -410,6 +433,15 @@ def main(argv: list[str] | None = None) -> int:
             "With --recent: pull from the 1st of (current month minus N) through today. "
             f"Splits automatically under the {CSV_CAP} CSV cap. "
             f"(ops default {DEFAULT_RECENT_MONTHS_BACK} = current + 2 prior months)"
+        ),
+    )
+    parser.add_argument(
+        "--since",
+        default=None,
+        metavar="YYYY-MM-DD",
+        help=(
+            "With --recent: pull Trans Date from this day through today (Africa/Cairo). "
+            "Takes precedence over --months-back."
         ),
     )
     parser.add_argument("--status", default="-1")
