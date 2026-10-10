@@ -1,0 +1,2 @@
+# Issues present before the deploy guard. Only new ones fail a deploy.
+# Seeded from the live tree on 2026-10-09: the static scan found none.

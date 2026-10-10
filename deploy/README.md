@@ -26,6 +26,21 @@ What a push does not do:
 
 Other branches are not deployed. Watch the result under the repo's Actions tab. The job log ends with `DEPLOY_RELEASE_DONE` and `api_recreated=0` or `1`.
 
+### Safety checks
+
+The api, worker and scrapers bind-mount `/opt/cashflow`, so a copied file is live for every process that starts after the copy. The deploy therefore checks before it copies and undoes the copy when a later step fails.
+
+| Step | When it stops the deploy | Override |
+|------|-------------------------|----------|
+| Busy guard | A worker, scraper or nightly container that runs this code is up. It waits up to 30 minutes first. Intake jobs are ignored. | `[deploy-now]` in a commit message |
+| Drift guard | A server file the push would replace holds content that no commit ever had (it was uploaded by hand). Nothing is copied. | `[deploy-overwrite]` in a commit message |
+| Pre-flight | The server's Python tree plus this push, staged under `/data/deploy-stage` and checked in the real image by `python -m cashflow_ops.deploy_preflight`, has a name that will not resolve: a missing import, a missing `module.attr`, or an unknown keyword, including imports inside functions. Issues listed in `cashflow_ops/deploy_preflight_known.txt` are ignored. | Fix the code |
+| Rollback | After the copy, a failed migration, image build, `/ready`, login check, signed-out `/api/auth/me` (must be 401), portal smoke check or `nginx -t` puts back every replaced file from `/data/deploy-backups/<time>-<sha>`, removes new files, retags the previous image and recreates what was recreated. The log says `DEPLOY_ROLLED_BACK` (or `ROLLBACK_INCOMPLETE` with the manual steps). | — |
+
+Migrations are not rolled back. Each run is one transaction and every file must stay additive, so the previous code still runs on the new schema.
+
+`deploy/scripts/drift_report.sh` (read-only, run on the server) lists every tracked file whose server copy matches no commit. Commit those copies before a push touches them.
+
 ## Architecture
 
 ```text
