@@ -198,8 +198,8 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
             printed = True  # the rest of a label whose OCR split in two ("Clinic" | "staff")
             if w["x"] + w["w"] > hit.x1 + th * 1.5:
                 clip_x1 = int(hit.x1 + th * 0.35)  # the word ran on into the handwriting
-        if not printed and kind == "below" and w["x"] > hit.x0 + th * 15:
-            continue  # right of the helper line: handwriting, never print
+        if not printed and kind == "below" and w["x"] > hit.x0 + th * 22:
+            continue  # right of the helper line (the Spanish one is 20 text heights wide): handwriting
         if not printed and len(key) >= 4:
             printed = any((key in tk or tk in key) for tk in tokens if len(tk) >= 4) or any(similarity(key, tk) >= 0.75 for tk in tokens if len(tk) >= 4)
         if not printed and len(key) == 3:
@@ -212,7 +212,7 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
         if printed:
             x_end = min(w["x"] + w["w"], clip_x1) if clip_x1 is not None else w["x"] + w["w"]
             if kind == "below":
-                x_end = min(x_end, int(hit.x0 + th * 15))  # the helper line is at most this wide
+                x_end = min(x_end, int(hit.x0 + th * 22))  # the helper line is at most this wide
             if x_end > w["x"]:
                 boxes.append((w["x"], w["y"], x_end, w["y"] + w["h"]))
                 printed_boxes_x1.append(x_end)
@@ -387,7 +387,7 @@ def _is_printed_hint(text: str) -> bool:
         if similarity(window, h) >= 0.6 or (len(key) >= 8 and h.endswith(key[-8:])):
             return True
         # a long helper tail like "ctorsname" or "nameoffice" inside the strip
-        for part in ("doctorsname", "nameoffice", "typedoctor", "nombredelmedico", "medicooficina"):
+        for part in ("doctorsname", "nameoffice", "typedoctor", "nombredelmedico", "medicooficina", "delmedico", "escriba", "office", "oficina"):
             if part in key and len(key) <= len(part) + 10:
                 return True
     return False
