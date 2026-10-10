@@ -19,6 +19,7 @@ from intake_reader.writein import WriteIn, map_text, stray_ink
 
 from .synth import Spec, _words_for, draw_block, font
 from .test_controls import NEW_LEFT, NEW_RIGHT, OLD_LABELS, marked_codes, run_block
+from .test_labels import words_from_text
 
 
 def _option(family, code):
@@ -113,7 +114,7 @@ class RoundEightTests(unittest.TestCase):
         low = [_word("nof", 700, 302, 50, 26, conf=31.0), _word("sure", 760, 302, 70, 26, conf=28.0)]
         found = stray_ink(ink, block.words + low, controls, [], layout.hear, layout.text_h)
         self.assertIsNotNone(found)
-        tall, total, box = found
+        tall, total, box = found[:3]
         self.assertGreaterEqual(tall, 2)
         self.assertLessEqual(box[0], 702, box)
         self.assertGreaterEqual(box[2], 800, box)
@@ -208,7 +209,121 @@ class RoundNineTests(unittest.TestCase):
         image = block.image.copy()
         _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Social Media")
         th = block.text_h
-        ImageDraw.Draw(image).line((x0 + 2, y0 + 2, x0 - th * 1.5, y0 - th * 0.6), fill=0, width=3)
+        ImageDraw.Draw(image).line((x0 + 2, y0 + 2, x0 - th * 1.5, y0 - th * 0.6), fill=0, width=5)
         block.gray = np.asarray(image)
         layout, controls = run_block(block, NEW_CIRCLE)
         self.assertEqual(marked_codes(controls), ["social_media"])
+
+
+class RoundTenTests(unittest.TestCase):
+    def test_printed_text_is_not_a_stray_answer(self):
+        from intake_reader.writein import looks_printed
+
+        phrases = [p for o in OLD_CHECKBOX.options + OLD_CHECKBOX.booking for p in o.phrases]
+        for text in ("Clinic statt", "Phone / Te", "mr oasis kwhat applies", "Word of Mouth", "Typedoctors name", "Event or community outreach"):
+            self.assertTrue(looks_printed(text, phrases), text)
+        for text in ("not sure", "AI search", "my sister", "walking by", "Fidelis website", "Dr Google told me"):
+            self.assertFalse(looks_printed(text, phrases), text)
+
+    def test_stray_box_is_the_handwriting_not_every_speck(self):
+        block = draw_block("How did you hear about us?", [Spec(l, "") for l in OLD_LABELS], "box", width=1100)
+        image = block.image.copy()
+        draw = ImageDraw.Draw(image)
+        draw.text((700, 296), "not sure", fill=0, font=font(40))
+        draw.ellipse((900, 560, 924, 584), outline=0, width=3)  # a stray ring far below
+        draw.ellipse((940, 600, 962, 622), outline=0, width=3)
+        gray = np.asarray(image)
+        layout = analyse(block.words, OLD_CHECKBOX, block.text_h)
+        ink = mask_lines(binarize(gray, 165), layout.text_h)
+        controls = find_controls(ink, layout.hear, layout.text_h, OLD_CHECKBOX, ink, block.words)
+        found = stray_ink(ink, block.words, controls, [], layout.hear, layout.text_h)
+        self.assertIsNotNone(found)
+        tall, total, box, cluster_tall = found
+        self.assertLessEqual(box[3] - box[1], layout.text_h * 3, box)
+        self.assertLessEqual(box[3], 560, box)
+        self.assertGreaterEqual(cluster_tall, 2)
+
+    def test_refine_window_reaches_a_text_height_down(self):
+        from intake_reader.controls import _refine_window
+
+        image = Image.new("L", (200, 160), 255)
+        ImageDraw.Draw(image).rectangle((80, 60, 108, 88), outline=0, width=2)
+        mask = np.asarray(image) < 128
+        refined = _refine_window(mask, 80, 42, 110, 72, 20)  # the window 18 px above the box
+        self.assertIsNotNone(refined)
+        self.assertLessEqual(abs(refined[1] - 60), 3, refined)
+
+    def test_stroke_beside_the_box_counts(self):
+        """The hook of a check stops a few pixels short of the box and the leg runs into the
+        gutter: nothing touches the printed box, the stroke still marks it (reviewed)."""
+        block = draw_block("How did you hear about us?", [Spec(l, "", column=0) for l in NEW_LEFT] + [Spec(l, "", column=1) for l in NEW_RIGHT], "box")
+        image = block.image.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Social Media")
+        th = block.text_h
+        ImageDraw.Draw(image).line((x0 - 5, y1 + 4, x0 - th * 4, y0 - th * 1.2), fill=0, width=3)
+        block.gray = np.asarray(image)
+        layout, controls = run_block(block, NEW_CIRCLE)
+        self.assertEqual(marked_codes(controls), ["social_media"])
+        ctrl = next(c for c in controls if c.code == "social_media")
+        self.assertTrue(ctrl.found)
+        self.assertIsNotNone(ctrl.extra.get("stroke"))
+
+    def test_check_leaving_a_circle_past_the_label_start(self):
+        """A check drawn from inside the circle up and out past where the label starts (U099)."""
+        block = draw_block("How did you hear about us?", [Spec(l, "", column=0) for l in NEW_LEFT] + [Spec(l, "", column=1) for l in NEW_RIGHT], "circle")
+        image = block.image.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Google")
+        th = block.text_h
+        ImageDraw.Draw(image).line(((x0 + x1) // 2, (y0 + y1) // 2, x1 + th * 1.2, y0 - th * 0.5), fill=0, width=3)
+        block.gray = np.asarray(image)
+        layout, controls = run_block(block, NEW_CIRCLE)
+        self.assertEqual(marked_codes(controls), ["google"])
+
+    def test_tiny_loose_window_keeps_its_neighbour_label(self):
+        from intake_reader.anchors import TINY
+
+        words = words_from_text(["How did you hear about us? Doctor Google Social Media Zocdoc Walk-in Flyers Friends/Family Other:"], h=14, gap=30)
+        layout = analyse(words, TINY, 14)
+        ink = np.zeros((80, 1400), dtype=bool)
+        controls = find_controls(ink, layout.hear, 14, TINY, ink, words)
+        for c in controls:
+            self.assertFalse(c.extra.get("on_text"), (c.code, c.extra.get("place")))
+            self.assertGreaterEqual(c.x1 - c.x0, 14 * 0.5, c.code)
+
+    def test_pencil_name_is_read_on_the_light_mask(self):
+        from intake_reader import writein as module
+        from intake_reader.labels import LabelHit
+
+        option = _option(OLD_CHECKBOX, "doctor")
+        word = _word("Doctor's", 100, 100, 70, 20)
+        hit = LabelHit("doctor", option, [word], 0, "hear", 1.0, 0, 900)
+        ink = np.zeros((300, 900), dtype=bool)
+        light = ink.copy()
+        image = Image.new("L", (900, 300), 255)
+        ImageDraw.Draw(image).text((120, 128), "DR BERTERO", fill=0, font=font(26))
+        light |= np.asarray(image) < 200
+        gray = np.asarray(image)
+        original = module.ocr_strip
+        try:
+            module.ocr_strip = lambda *_a, **_k: ("DR BERTERO", 81.0)
+            found = module.detect(ink, gray, [word], hit, "below", 20, "eng", light=light)
+            self.assertIsNotNone(found)
+            self.assertEqual(found.text, "DR BERTERO")
+            module.ocr_strip = lambda *_a, **_k: ("~ , -", 12.0)
+            self.assertIsNone(module.detect(ink, gray, [word], hit, "below", 20, "eng", light=light))
+            self.assertIsNone(module.detect(ink, gray, [word], hit, "below", 20, "eng"))
+        finally:
+            module.ocr_strip = original
+
+    def test_ring_around_the_last_word_of_an_inferred_label(self):
+        from intake_reader.controls import _ring
+        from intake_reader.labels import LabelHit
+
+        option = _option(NEW_CIRCLE, "event")
+        synthetic = _word("event / outreach", 100, 100, 180, 18)  # one synthetic word for the whole label
+        hit = LabelHit("event", option, [synthetic], 0, "hear", 0.45, 0, 900, inferred=True)
+        image = Image.new("L", (400, 240), 255)
+        ImageDraw.Draw(image).ellipse((185, 90, 292, 128), outline=0, width=2)  # around "outreach" only
+        ink = np.asarray(image) < 128
+        self.assertGreaterEqual(_ring(ink, hit, 20, [synthetic]), 0.45)
+        self.assertEqual(_ring(np.zeros_like(ink), hit, 20, [synthetic]), 0.0)

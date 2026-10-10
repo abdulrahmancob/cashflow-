@@ -219,44 +219,11 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
     return boxes
 
 
-def detect(
-    ink: np.ndarray,
-    gray: np.ndarray,
-    words: list[dict],
-    hit: LabelHit,
-    kind: str,
-    th: int,
-    lang: str,
-    bounds: tuple[int | None, int | None] | None = None,
-    erase: np.ndarray | None = None,
-    trace: list | None = None,
-    family=None,
-) -> WriteIn | None:
-    """Return a WriteIn when real ink sits in the write-in area, else None.
-
-    Printed rules and their fragments (skewed scans defeat the long-run mask) never count;
-    an answer needs either readable letters or clearly handwriting-sized ink.
-    """
-    height, width = ink.shape
-    area = writein_area(hit, kind, th, width, height, bounds)
-    x0, y0, x1, y1 = area
-    if x1 - x0 < th or y1 - y0 < th * 0.5:
-        if trace is not None:
-            trace.append((hit.code, kind, area, 0, 0, 0.0, "", 0.0, False))
-        return None
-    region = ink[y0:y1, x0:x1].copy()
-    boxes = _printed_boxes(words, area, hit, kind, th, family)
-    for bx0, by0, bx1, by1 in boxes:
-        rx0 = max(0, bx0 - 2 - x0)
-        rx1 = min(region.shape[1], bx1 + 2 - x0)
-        ry0 = max(0, by0 - 2 - y0)
-        ry1 = min(region.shape[0], by1 + 2 - y0)
-        if rx1 > rx0 and ry1 > ry0:
-            region[ry0:ry1, rx0:rx1] = False
+def _ink_stats(region: np.ndarray, th: int) -> tuple[int, int]:
+    """(letter-sized components, ink pixels) of a write-in area after the printed boxes were cut
+    out: dashes of a dotted line, printed rules and their fragments never count."""
     if not region.any():
-        if trace is not None:
-            trace.append((hit.code, kind, area, 0, 0, 0.0, "", 0.0, False))
-        return None
+        return 0, 0
     labels, count, slices = components(region)
     tall = 0
     total = 0
@@ -295,11 +262,68 @@ def detect(
             continue  # a dash of a printed border or a binder line, not a letter
         if (h >= th * 0.45 and h >= 0.25 * w) or (w >= th * 1.5 and h >= th * 0.3):
             tall += 1
+    return tall, total
+
+
+def detect(
+    ink: np.ndarray,
+    gray: np.ndarray,
+    words: list[dict],
+    hit: LabelHit,
+    kind: str,
+    th: int,
+    lang: str,
+    bounds: tuple[int | None, int | None] | None = None,
+    erase: np.ndarray | None = None,
+    trace: list | None = None,
+    family=None,
+    light: np.ndarray | None = None,
+) -> WriteIn | None:
+    """Return a WriteIn when real ink sits in the write-in area, else None.
+
+    Printed rules and their fragments (skewed scans defeat the long-run mask) never count;
+    an answer needs either readable letters or clearly handwriting-sized ink.
+    """
+    height, width = ink.shape
+    area = writein_area(hit, kind, th, width, height, bounds)
+    x0, y0, x1, y1 = area
+    if x1 - x0 < th or y1 - y0 < th * 0.5:
+        if trace is not None:
+            trace.append((hit.code, kind, area, 0, 0, 0.0, "", 0.0, False))
+        return None
+    boxes = _printed_boxes(words, area, hit, kind, th, family)
+
+    def cut(mask: np.ndarray) -> np.ndarray:
+        region = mask[y0:y1, x0:x1].copy()
+        for bx0, by0, bx1, by1 in boxes:
+            rx0 = max(0, bx0 - 2 - x0)
+            rx1 = min(region.shape[1], bx1 + 2 - x0)
+            ry0 = max(0, by0 - 2 - y0)
+            ry1 = min(region.shape[0], by1 + 2 - y0)
+            if rx1 > rx0 and ry1 > ry0:
+                region[ry0:ry1, rx0:rx1] = False
+        return region
+
+    tall, total = _ink_stats(cut(ink), th)
+
     def note(text: str, conf: float, accepted: bool) -> None:
         if trace is not None:
             trace.append((hit.code, kind, area, tall, int(total), round(total / (th * th), 2), text[:40], round(conf, 1), accepted))
 
     if tall == 0 or total < th * th * 0.6:
+        if light is not None:
+            # pencil and faint pen vanish from the dark mask: look again on the light one, where
+            # only readable text counts (paper shading also shows there)
+            tall_l, total_l = _ink_stats(cut(light), th)
+            if tall_l >= 2 and total_l >= th * th * 1.0:
+                tall, total = tall_l, total_l
+                text, conf = ocr_strip(gray, area, lang, erase, boxes)
+                letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
+                if len(letters) >= 3 and conf >= 45 and not _is_printed_hint(text):
+                    note(text, conf, True)
+                    return WriteIn(hit.code, kind, text, conf, map_text(text), total, area)
+                note(text, conf, False)
+                return None
         note("", 0.0, False)
         return None
     text, conf = ocr_strip(gray, area, lang, erase, boxes)
@@ -317,6 +341,8 @@ def detect(
         pass
     elif kind == "below" and tall >= 3 and total >= th * th * 1.0:
         pass  # the helper line under the doctor option OCRs into junk; only real ink counts there
+    elif kind == "below" and tall >= 5 and total >= th * th * 0.6:
+        pass  # a name in a thin pen: many letters, little ink
     elif kind == "below" and some and tall >= 2 and total >= th * th * 1.0:
         pass
     else:
@@ -354,7 +380,7 @@ def stray_ink(
         cy = w["y"] + w["h"] / 2
         print_like = float(w.get("conf", 0)) >= 60 or key in vocabulary or any(y0 <= cy <= y1 for y0, y1 in protect or ())
         if not print_like and len(key) >= 4:
-            print_like = any(similarity(key, tk) >= 0.8 for tk in vocabulary if len(tk) >= 4)
+            print_like = any(similarity(key, tk) >= 0.8 or (len(tk) >= 5 and tk in key) for tk in vocabulary if len(tk) >= 4)
         if not print_like:
             continue
         x0, y0 = max(0, w["x"] - pad), max(0, w["y"] - pad)
@@ -377,7 +403,7 @@ def stray_ink(
     labels, count, slices = components(region)
     tall = 0
     total = 0
-    box: list[int] | None = None
+    pieces: list[tuple[int, int, int, int, int]] = []  # x0, y0, x1, y1, pixels of the letter-sized parts
     for index, sl in enumerate(slices, 1):
         if sl is None:
             continue
@@ -391,14 +417,58 @@ def stray_ink(
         total += pixels
         if th * 0.45 <= h <= th * 3 and h >= 0.25 * w:
             tall += 1
-            if box is None:
-                box = [sl[1].start, sl[0].start, sl[1].stop, sl[0].stop]
-            else:
-                box = [min(box[0], sl[1].start), min(box[1], sl[0].start), max(box[2], sl[1].stop), max(box[3], sl[0].stop)]
-    if tall >= 2 and total >= th * th * 1.5 and box is not None:
-        grow = max(2, int(th * 0.3))
-        return tall, total, (max(0, box[0] - grow), max(0, box[1] - grow), min(width, box[2] + grow), min(height, box[3] + grow))
-    return None
+            pieces.append((sl[1].start, sl[0].start, sl[1].stop, sl[0].stop, pixels))
+    if tall < 2 or total < th * th * 1.5:
+        return None
+    # the handwriting is one group of letters; stray specks elsewhere must not stretch its box
+    pieces.sort()
+    clusters: list[list[int]] = []  # x0, y0, x1, y1, pixels, count
+    gap_x, gap_y = th * 1.5, th * 1.0
+    for px0, py0, px1, py1, pixels in pieces:
+        for cl in clusters:
+            if px0 <= cl[2] + gap_x and px1 >= cl[0] - gap_x and py0 <= cl[3] + gap_y and py1 >= cl[1] - gap_y:
+                cl[0], cl[1], cl[2], cl[3] = min(cl[0], px0), min(cl[1], py0), max(cl[2], px1), max(cl[3], py1)
+                cl[4] += pixels
+                cl[5] += 1
+                break
+        else:
+            clusters.append([px0, py0, px1, py1, pixels, 1])
+    biggest = max(clusters, key=lambda cl: cl[4])
+    grow = max(2, int(th * 0.3))
+    box = (max(0, biggest[0] - grow), max(0, biggest[1] - grow), min(width, biggest[2] + grow), min(height, biggest[3] + grow))
+    return tall, total, box, biggest[5]
+
+
+_QUESTION_WORDS = (
+    "how did you hear about us book your appointment please check what applies find como nos "
+    "conocio conociste marque lo que corresponda escuchado sobre nosotros reservo cita medio "
+    "programado encontro referral referrals recommendations"
+)
+
+
+def looks_printed(text: str, phrases) -> bool:
+    """Text read off the page that is print, not handwriting: most of its words are words of the
+    form (option labels, booking labels, helper lines, the questions) within one OCR error."""
+    if _is_printed_hint(text):
+        return True
+    tokens = [t for t in re.findall(r"[a-z]+", _fold(text)) if len(t) >= 4]
+    if not tokens:
+        return False
+    from .labels import edit_distance
+
+    vocabulary = {t for t in _tokens(phrases) | _tokens(_PRINTED_HINTS) | _tokens([_QUESTION_WORDS]) if len(t) >= 4}
+    hits = 0
+    for token in tokens:
+        for v in vocabulary:
+            if abs(len(token) - len(v)) <= 1 and edit_distance(token, v, 1) <= 1:
+                hits += 1
+                break
+            if len(v) >= 5 and v in token:
+                hits += 1
+                break
+    # every word is print, or at least two are and they make two thirds of the text: a
+    # handwritten "Fidelis website" keeps its one vocabulary word
+    return hits == len(tokens) or (hits >= 2 and hits * 3 >= 2 * len(tokens))
 
 
 def _is_printed_hint(text: str) -> bool:

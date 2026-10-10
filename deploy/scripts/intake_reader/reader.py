@@ -22,7 +22,7 @@ from .controls import find_controls, score_controls
 from .decide import Reading, decide, merge_readings
 from .labels import Layout, analyse, phrase_in_line
 from .page import binarize, clean_for_ocr, mask_lines, median_text_height, normalize_contrast, ocr_words, render, rotate, upright
-from .writein import WriteIn, _is_printed_hint, map_text, ocr_strip, stray_ink
+from .writein import WriteIn, looks_printed, map_text, ocr_strip, stray_ink
 from .writein import detect as detect_writein
 
 QUICK_ZOOM = 1.4
@@ -218,6 +218,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     ink = mask_lines(raw_ink, th)
     erased = raw_ink & ~ink  # printed rules and binder lines, painted out before strip OCR
     locate = mask_lines(binarize(level, 205), th)  # faint print still shows its boxes; 220 lets paper shading join them
+    light_ink = mask_lines(binarize(level, 190), th)  # pencil handwriting, for the write-in second look
     # one search over both questions: the booking circles share the hear column, so a booking
     # label whose own circle is hidden by a check still gets measured at the right place
     all_controls = find_controls(ink, layout.hear + layout.booking, th, family, locate, words)
@@ -233,7 +234,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         if not kind:
             continue
         bounds = _neighbour_bounds(hit, all_hits, th)
-        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased, trace=tries, family=family)
+        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased, trace=tries, family=family, light=light_ink)
         if found is not None:
             writeins.append(found)
     def run_decide() -> Reading:
@@ -261,10 +262,13 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         protect = [(int(q_line.y0), int(q_line.y1))]
         if layout.booking_line is not None:
             protect.append((int(layout.lines[layout.booking_line].y0), int(layout.lines[layout.booking_line].y1)))
+        for py0, py1 in protect:
+            # the question lines themselves: OCR misses their bold words on a faded copy
+            region_ink[max(0, int(py0 - th * 0.2)) : min(ink.shape[0], int(py1 + th * 0.2))] = False
         stray = stray_ink(region_ink, words, hear_controls + booking_controls, areas, layout.hear + layout.booking, th, protect=protect)
         if stray is not None:
-            tall, total, box = stray
-            if reading.source == "unmarked" and box[3] - box[1] <= th * 3.5 and box[2] - box[0] >= th * 1.5:
+            tall, total, box, cluster_tall = stray
+            if reading.source == "unmarked" and cluster_tall >= 2 and box[3] - box[1] <= th * 3.5 and box[2] - box[0] >= th * 1.5:
                 # handwriting floating in the block with nothing marked ("not sure" beside the
                 # options): read it as the answer, mapped by keyword or kept as Other for review
                 printed = [
@@ -274,13 +278,16 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
                 ]
                 text, conf = ocr_strip(level, box, lang, erased, printed)
                 letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
-                readable = len(letters) >= 3 and conf >= 30 and not _is_printed_hint(text)
-                accepted = readable or (tall >= 3 and total >= th * th * 2.0)
+                phrases = [p for o in family.options + family.booking for p in o.phrases]
+                printed_text = looks_printed(text, phrases)
+                readable = len(letters) >= 3 and conf >= 30 and not printed_text
+                accepted = readable or (not printed_text and cluster_tall >= 3 and total >= th * th * 2.0)
                 tries.append(("other", "stray", box, tall, int(total), round(total / (th * th), 2), text[:40], round(conf, 1), accepted))
                 if accepted:
                     writeins.append(WriteIn("other", "stray", text if readable else "", conf, map_text(text) if readable else None, int(total), box))
                     reading = run_decide()
                     reading.reasons.append("stray_text")
+                    reading.needs_review = True  # an answer read off the page outside every line: checked by a person
             if tall >= 4:
                 reading.reasons.append("stray_ink")
                 reading.needs_review = True
