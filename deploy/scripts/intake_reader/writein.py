@@ -143,7 +143,7 @@ def writein_area(
     right_stop = bounds[2] if bounds and len(bounds) > 2 else None
     if kind == "below":
         x0 = max(0, hit.x0 - int(th * 0.2))
-        x1 = min(width, hit.x0 + int(th * 16))
+        x1 = min(width, hit.x0 + int(th * 24))  # the name line runs well past the label's end
         y0 = min(height, hit.y1 + int(th * 0.1))
         y1 = min(height, hit.y1 + int(th * 2.6))
         if below is not None:

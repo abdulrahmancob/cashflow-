@@ -18,7 +18,7 @@ import numpy as np
 
 from . import anchors
 from .anchors import GENERIC, Family, QUESTION_RE, detect_family
-from .controls import find_controls, score_controls
+from .controls import find_controls, ringed_label, score_controls
 from .decide import Reading, decide, merge_readings
 from .labels import Layout, analyse, phrase_in_line
 from .page import binarize, clean_for_ocr, mask_lines, median_text_height, normalize_contrast, ocr_words, render, rotate, upright
@@ -218,10 +218,10 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     ink = mask_lines(raw_ink, th)
     erased = raw_ink & ~ink  # printed rules and binder lines, painted out before strip OCR
     locate = mask_lines(binarize(level, 205), th)  # faint print still shows its boxes; 220 lets paper shading join them
-    light_ink = locate & binarize(level, 190)  # pencil handwriting, for the write-in second look (lines already masked)
+    light_ink = locate  # pencil handwriting, for the write-in second look (lines already masked)
     # one search over both questions: the booking circles share the hear column, so a booking
     # label whose own circle is hidden by a check still gets measured at the right place
-    all_controls = find_controls(ink, layout.hear + layout.booking, th, family, locate, words)
+    all_controls = find_controls(ink, layout.hear + layout.booking, th, family, locate, words, raw=raw_ink)
     hear_controls = [c for c in all_controls if c.extra["hit"].group == "hear"]
     booking_controls = [c for c in all_controls if c.extra["hit"].group == "booking"]
     score_controls(hear_controls, family)
@@ -268,7 +268,16 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         stray = stray_ink(region_ink, words, hear_controls + booking_controls, areas, layout.hear + layout.booking, th, protect=protect)
         if stray is not None:
             tall, total, box, cluster_tall = stray
-            if reading.source == "unmarked" and cluster_tall >= 2 and box[3] - box[1] <= th * 3.5 and box[2] - box[0] >= th * 1.5:
+            ringed = ringed_label(box, layout.hear, hear_controls, th, cluster_tall) if reading.source == "unmarked" else None
+            if ringed is not None:
+                # a scribble around one word of a label: that option, checked by a person
+                ringed.marked = True
+                ringed.score = max(ringed.score, 0.25)
+                ringed.reason = "ringed"
+                reading = run_decide()
+                reading.reasons.append("stray_ring")
+                reading.needs_review = True
+            elif reading.source == "unmarked" and cluster_tall >= 2 and box[3] - box[1] <= th * 3.5 and box[2] - box[0] >= th * 1.5:
                 # handwriting floating in the block with nothing marked ("not sure" beside the
                 # options): read it as the answer, mapped by keyword or kept as Other for review
                 printed = [
@@ -306,7 +315,10 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
             for c in hear_controls + booking_controls
         ],
         "writeins": [(w.code, w.kind, w.text, round(w.conf, 1), w.mapped, w.ink, w.area) for w in writeins],
-        "places": [(c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels"), c.extra.get("refined")) for c in hear_controls + booking_controls],
+        "places": [
+            (c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels"), c.extra.get("refined"), c.extra.get("refine"), c.extra.get("stroke"), c.extra.get("raw_int"), c.extra.get("overlap_out"))
+            for c in hear_controls + booking_controls
+        ],
         "writein_tries": tries,
         "notes": layout.notes[:20],
         "stray": stray,

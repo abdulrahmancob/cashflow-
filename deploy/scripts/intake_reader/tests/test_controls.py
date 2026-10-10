@@ -32,9 +32,10 @@ NEW_RIGHT = ["Google", "Social Media", "Word of Mouth"]
 
 def run_block(block, family):
     layout = analyse(block.words, family, block.text_h)
-    ink = mask_lines(binarize(block.gray, 165), layout.text_h)
+    raw = binarize(block.gray, 165)
+    ink = mask_lines(raw, layout.text_h)
     locate = mask_lines(binarize(block.gray, 200), layout.text_h)
-    controls = find_controls(ink, layout.hear, layout.text_h, family, locate, block.words)
+    controls = find_controls(ink, layout.hear, layout.text_h, family, locate, block.words, raw=raw)
     score_controls(controls, family)
     return layout, controls
 

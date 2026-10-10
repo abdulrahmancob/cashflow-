@@ -15,7 +15,7 @@ from intake_reader.controls import Control, _window, find_controls, score_contro
 from intake_reader.decide import decide
 from intake_reader.labels import LabelHit, analyse
 from intake_reader.page import binarize, mask_lines
-from intake_reader.writein import WriteIn, map_text, stray_ink
+from intake_reader.writein import WriteIn, map_text, stray_ink, writein_area
 
 from .synth import Spec, _words_for, draw_block, font
 from .test_controls import NEW_LEFT, NEW_RIGHT, OLD_LABELS, marked_codes, run_block
@@ -327,3 +327,97 @@ class RoundTenTests(unittest.TestCase):
         ink = np.asarray(image) < 128
         self.assertGreaterEqual(_ring(ink, hit, 20, [synthetic]), 0.45)
         self.assertEqual(_ring(np.zeros_like(ink), hit, 20, [synthetic]), 0.0)
+
+
+class RoundElevenTests(unittest.TestCase):
+    def _old_block(self, marks=None, **kw):
+        return draw_block("How did you hear about us?", [Spec(l, (marks or {}).get(l, "")) for l in OLD_LABELS], "box", **kw)
+
+    def test_check_tip_touching_the_window_edge_counts(self):
+        """A check drawn right of the box whose tip reaches the box's edge (D052)."""
+        block = self._old_block()
+        image = block.image.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Google")
+        th = block.text_h
+        yc = (y0 + y1) // 2
+        draw = ImageDraw.Draw(image)
+        draw.line((x1 + 3, yc + 6, x1 + 10, yc + 13), fill=0, width=3)
+        draw.line((x1 + 10, yc + 13, x1 + int(th * 1.6), y0 - int(th * 0.5)), fill=0, width=3)
+        block.gray = np.asarray(image)
+        layout, controls = run_block(block, OLD_CHECKBOX)
+        self.assertEqual(marked_codes(controls), ["google"])
+
+    def test_swoosh_above_the_row_is_not_a_stroke(self):
+        """A pen line passing just above the doctor box (U034) marks nothing."""
+        block = self._old_block()
+        image = block.image.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label.startswith("Doctor"))
+        th = block.text_h
+        ImageDraw.Draw(image).line((x0 - 20, y0 - 8, x0 + th * 6, y0 - 7), fill=0, width=3)
+        block.gray = np.asarray(image)
+        layout, controls = run_block(block, OLD_CHECKBOX)
+        self.assertEqual(marked_codes(controls), [])
+
+    def test_label_text_right_of_the_control_is_not_a_stroke(self):
+        """The printed label (or its write-in line) right of a circle never counts (U027)."""
+        block = draw_block("How did you hear about us?", [Spec(l, "", column=0) for l in NEW_LEFT] + [Spec(l, "", column=1) for l in NEW_RIGHT], "circle", gap=6, dotted_writein=True)
+        words = [w for w in block.words if w["text"] != "Other:"]  # the OCR lost the word: its text is not known as the label
+        layout = analyse(block.words, NEW_CIRCLE, block.text_h)
+        raw = binarize(block.gray, 165)
+        ink = mask_lines(raw, layout.text_h)
+        controls = find_controls(ink, layout.hear, layout.text_h, NEW_CIRCLE, ink, words, raw=raw)
+        score_controls(controls, NEW_CIRCLE)
+        self.assertEqual(marked_codes(controls), [])
+
+    def test_line_through_a_box_keeps_the_cross_on_the_raw_ink(self):
+        """A binder line through the column with a cross in one box (I14): the line's columns are
+        dropped and the rest of the cross counts; the empty boxes on the same line stay empty."""
+        block = self._old_block({"Google": "x"})
+        gray = block.gray.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Google")
+        xc = (x0 + x1) // 2 + 2
+        gray[:, xc - 2 : xc + 2] = 0
+        gray[:, xc + 5 : xc + 8] = 0  # a doubled line
+        block.gray = gray
+        layout, controls = run_block(block, OLD_CHECKBOX)
+        self.assertEqual(marked_codes(controls), ["google"])
+        ctrl = next(c for c in controls if c.code == "google")
+        self.assertIsNotNone(ctrl.extra.get("raw_int"))
+
+    def test_overlap_reports_the_ink_outside_the_box(self):
+        from intake_reader.controls import _overlap_growth
+        from intake_reader.page import components
+
+        image = Image.new("L", (200, 120), 255)
+        draw = ImageDraw.Draw(image)
+        draw.rectangle((40, 40, 62, 62), outline=0, width=2)
+        draw.line((60, 42, 95, 20), fill=0, width=2)  # a leg out of the top-right corner, 40 px long
+        labels, count, slices = components(np.asarray(image) < 128)
+        grown = _overlap_growth(labels, slices, 40, 40, 63, 63, 23, 120, 20)
+        self.assertIsNotNone(grown)
+        ratio, leaves, pixels, outside = grown
+        self.assertTrue(leaves)
+        self.assertGreaterEqual(outside, 30)
+        self.assertLess(outside, pixels)
+
+    def test_below_area_reaches_past_the_label_end(self):
+        option = _option(OLD_CHECKBOX, "doctor")
+        word = _word("Doctor's", 244, 459, 450, 36)
+        hit = LabelHit("doctor", option, [word], 0, "hear", 1.0, 0, 1200)
+        x0, y0, x1, y1 = writein_area(hit, "below", 28, 1200, 900)
+        self.assertGreaterEqual(x1, 244 + 28 * 20)
+
+    def test_scribble_around_an_inferred_label_word_marks_it(self):
+        from intake_reader.controls import ringed_label
+
+        option = _option(NEW_CIRCLE, "event")
+        synthetic = _word("event / outreach", 287, 310, 176, 20)
+        hit = LabelHit("event", option, [synthetic], 0, "hear", 0.45, 0, 900, inferred=True)
+        control = Control("event", 249, 302, 278, 330, True)
+        control.extra["hit"] = hit
+        other = Control("other", 249, 346, 278, 374, True)
+        self.assertIs(ringed_label((390, 276, 492, 314), [hit], [control, other], 20, 2), control)  # the U064 scribble
+        self.assertIsNone(ringed_label((500, 400, 600, 430), [hit], [control, other], 20, 2))
+        self.assertIsNone(ringed_label((390, 262, 492, 300), [hit], [control, other], 20, 2))  # above the word, not around it
+        self.assertIsNone(ringed_label((400, 290, 440, 318), [hit], [control, other], 20, 2))  # too narrow for a ring
+        self.assertIsNone(ringed_label((390, 276, 492, 314), [hit], [control, other], 20, 7))  # handwriting, not a ring

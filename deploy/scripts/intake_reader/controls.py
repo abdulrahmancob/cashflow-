@@ -289,6 +289,7 @@ def find_controls(
     family: Family,
     locate: np.ndarray | None = None,
     words: list[dict] | None = None,
+    raw: np.ndarray | None = None,
 ) -> list[Control]:
     """Locate the control for every label (component first, window fallback).
 
@@ -495,7 +496,7 @@ def find_controls(
                 # covering this window is far bigger than a box but stops before the label
                 grown = _overlap_growth(labels, slices, x0, y0, x1, y1, side, hit.anchor_x, th)
                 if grown is not None:
-                    control.extra["overlap"], control.extra["overlap_leaves"], control.extra["overlap_px"] = grown
+                    control.extra["overlap"], control.extra["overlap_leaves"], control.extra["overlap_px"], control.extra["overlap_out"] = grown
         else:
             if glued:
                 x0 = _clip(hit.x0 - th * 0.1, 0, width)
@@ -542,6 +543,17 @@ def find_controls(
         if hit.prefix_px > 0 and not control.found:
             x_ref = control.x1 + 1
         _measure(ink, control, max(x_ref, control.x1 + 1), hit.left_limit, th)
+        if raw is not None and raw is not ink:
+            cut = raw[control.y0 : control.y1, control.x0 : control.x1] & ~ink[control.y0 : control.y1, control.x0 : control.x1]
+            if cut.size and ((cut.mean(axis=0) >= 0.6).any() or (cut.mean(axis=1) >= 0.6).any()):
+                # a binder line or a rule was masked out of this window together with its halo,
+                # and the halo took part of the mark with it: measure the interior on the raw ink,
+                # where the line's own columns or rows are dropped and the rest of the mark stays
+                on_raw = Control(control.code, control.x0, control.y0, control.x1, control.y1, control.found)
+                _measure(raw, on_raw, max(x_ref, control.x1 + 1), hit.left_limit, th)
+                if on_raw.interior > control.interior:
+                    control.interior = on_raw.interior
+                    control.extra["raw_int"] = round(on_raw.interior, 3)
         if locate is not None and locate is not ink:
             # a faint pen stroke on faint print vanishes from the dark mask but not from the
             # light one; siblings are measured the same way so the relative rule still holds
@@ -551,7 +563,7 @@ def find_controls(
             control.extra["outside2"] = light.outside
         control.ring = _ring(ink, hit, th, words, control)
         control.extra["hit"] = hit
-        if labels is not None and family.control != "bullet":
+        if labels is not None and family.control != "bullet" and (control.found or control.extra.get("place") in ("column", "offset")):
             stroke = _stroke_near(labels, slices, control, controls, words, th, hit)
             if stroke is not None:
                 control.extra["stroke"] = round(stroke, 2)
@@ -669,21 +681,24 @@ def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: in
     if ratio < 1.8:
         return None
     pixels = int((labels[sl] == best[0]).sum())
-    return ratio, leaves, pixels
+    outside = pixels - int(best[1])  # ink of the component beyond the window: the check's leg
+    return ratio, leaves, pixels, outside
 
 
 def _stroke_near(labels, slices, control: Control, controls: list, words: list[dict] | None, th: int, hit: LabelHit) -> float | None:
     """Length (in text heights) of a pen stroke lying against this control without touching its
     printed shape: a check whose hook stops just short of the box, or whose leg only grazes the
-    circle. The stroke must be long and sparse (a line, not a glyph or a blob), lie near no other
-    control and not be printed text. Returns None when there is none."""
+    circle. The stroke must be long and sparse (a line, not a glyph or a blob), sit on the
+    control's row, lie near no other control, not be the label text and not be printed. Returns
+    None when there is none."""
     x0, y0, x1, y1 = control.x0, control.y0, control.x1, control.y1
     reach = max(2, int(th * 0.6))
     near_other = max(2, int(th * 0.25))
     region = labels[max(0, y0 - reach) : y1 + reach, max(0, x0 - reach) : x1 + reach]
     if region.size == 0:
         return None
-    own = {id(w) for w in hit.words}
+    # the label's own OCR word counts as print unless it starts on the control (it swallowed the mark)
+    own_glued = {id(w) for w in hit.words if w["x"] < x1}
     best = None
     for index in np.unique(region):
         if index == 0:
@@ -697,11 +712,17 @@ def _stroke_near(labels, slices, control: Control, controls: list, words: list[d
             continue  # a speck or a glyph, or a scribble over several rows
         if (w <= th * 0.3 and h >= th * 2.5) or (h <= 3 and w >= th * 2):
             continue  # a binder line or a rule
+        if cy0 > y1 + th * 2.5 or cy1 < y0 - th * 2.5:
+            continue  # far above or below the row
+        if min(cy1, y1 + th * 0.3) - max(cy0, y0 - th * 0.3) < th * 0.5:
+            continue  # a stroke above or below the row that only grazes it
+        if cx0 >= x1 + th * 0.3:
+            continue  # entirely right of the control: the label's text or its write-in line
         pixels = int((labels[sl] == index).sum())
         if pixels > 0.45 * w * h or pixels < th * 1.5:
             continue  # a blob, or too little ink
         inside = int((labels[max(0, y0 - 1) : y1 + 1, max(0, x0 - 1) : x1 + 1] == index).sum())
-        if inside >= min(0.1 * pixels, th * 2):
+        if inside >= 0.25 * pixels or inside >= th * 3:
             continue  # the control's own component (alone, glued to its label or merged with a check)
         close = False
         for other in controls:
@@ -717,7 +738,7 @@ def _stroke_near(labels, slices, control: Control, controls: list, words: list[d
             continue
         printed = False
         for word in words or ():
-            if id(word) in own or len(word.get("text", "").strip()) < 3 or float(word.get("conf", 0)) < 60:
+            if id(word) in own_glued or float(word.get("conf", 0)) < 60 or not re.search(r"[A-Za-z]{3}", word.get("text", "")):
                 continue
             ox = max(0, min(cx1, word["x"] + word["w"]) - max(cx0, word["x"]))
             oy = max(0, min(cy1, word["y"] + word["h"]) - max(cy0, word["y"]))
@@ -886,6 +907,51 @@ def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) 
     c.extra["window"] = (gx0, gy0, gx1, gy1)
 
 
+def label_word_boxes(hit: LabelHit, th: int) -> list[dict]:
+    """The label's word boxes; an inferred label is one synthetic word and is split the way the
+    phrase's words share its width."""
+    boxes = list(hit.words)
+    if len(boxes) == 1 and hit.option.phrases:
+        phrase = max(hit.option.phrases, key=lambda p: len(p.split()))
+        parts = phrase.split()
+        one = boxes[0]
+        if len(parts) >= 2 and one["w"] >= th * 4:
+            chars = sum(len(p) for p in parts) + len(parts) - 1
+            x = one["x"]
+            boxes = []
+            for part in parts:
+                width = int(one["w"] * len(part) / chars)
+                boxes.append({"text": part, "x": x, "y": one["y"], "w": width, "h": one["h"]})
+                x += width + int(one["w"] / chars)
+    return boxes
+
+
+def ringed_label(box: tuple[int, int, int, int], hits: list[LabelHit], controls: list[Control], th: int, parts: int = 1) -> Control | None:
+    """The control whose label word a scribble (the box of floating ink, made of `parts`
+    components) surrounds: the ink spans most of the word and covers a good part of its height.
+    A ring drawn a little high or low around "Outreach" still means that option; an inferred
+    label's row is only approximate, so there the ring may just touch the word. Handwriting (many
+    letter-sized parts) is never a ring."""
+    bx0, by0, bx1, by1 = box
+    if bx1 - bx0 > th * 14 or by1 - by0 < th * 0.6 or parts > 4:
+        return None
+    for hit in hits:
+        for w in label_word_boxes(hit, th):
+            if len(re.sub(r"[^A-Za-z]", "", w.get("text", ""))) < 4 or w["w"] < th * 1.5:
+                continue
+            overlap_x = min(bx1, w["x"] + w["w"]) - max(bx0, w["x"])
+            if overlap_x < 0.75 * w["w"] or bx1 - bx0 < 0.9 * w["w"]:
+                continue  # a sloppy ring may start inside the word, but it spans most of it
+            overlap_y = min(by1, w["y"] + w["h"]) - max(by0, w["y"])
+            need_y = -0.15 * w["h"] if hit.inferred else 0.25 * w["h"]
+            if overlap_y < need_y or by1 - by0 < 0.8 * w["h"]:
+                continue
+            for control in controls:
+                if control.code == hit.code and control.extra.get("hit") is hit:
+                    return control
+    return None
+
+
 def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = None, control: Control | None = None) -> float:
     """Ink around the label words, excluding every printed word box in the region (circled text,
     R6b). A pen circle drawn around a label leaves ink on all four sides; an underline, a binder
@@ -956,20 +1022,7 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = No
         return min(usable)
 
     best = around(hit.x0 - x0, hit.y0 - y0, hit.x1 - x0, hit.y1 - y0, True)
-    ring_words = list(hit.words)
-    if len(ring_words) == 1 and hit.option.phrases:
-        phrase = max(hit.option.phrases, key=lambda p: len(p.split()))
-        parts = phrase.split()
-        one = ring_words[0]
-        if len(parts) >= 2 and one["w"] >= th * 4:
-            # an inferred label is one synthetic word: split it the way the phrase's words share it
-            chars = sum(len(p) for p in parts) + len(parts) - 1
-            x = one["x"]
-            ring_words = []
-            for part in parts:
-                width = int(one["w"] * len(part) / chars)
-                ring_words.append({"text": part, "x": x, "y": one["y"], "w": width, "h": one["h"]})
-                x += width + int(one["w"] / chars)
+    ring_words = label_word_boxes(hit, th)
     if len(ring_words) > 1:
         # a ring drawn around the first or the last word of a longer label ("Outreach" of
         # "Event / Outreach"): its inner side runs through the other words and is not required
@@ -1051,7 +1104,10 @@ def score_controls(controls: list[Control], family: Family) -> None:
                 opx = c.extra.get("overlap_px")
                 # a stroke that leaves the row carries far more ink than a printed box: a check
                 # drawn beside the box rather than in it leaves the window itself clean
-                heavy = bool(c.extra.get("overlap_leaves")) and opx is not None and med_px > 0 and opx >= 1.8 * med_px
+                th_px = float(c.extra.get("th") or 0)
+                heavy = (bool(c.extra.get("overlap_leaves")) and opx is not None and med_px > 0 and opx >= 1.8 * med_px) or (
+                    float(c.extra.get("overlap_out") or 0) >= th_px * 1.5  # a check's leg at least a text height long outside the box
+                )
                 if inky:
                     g = (grown - 1.8) / 0.6  # the box merged with a check that ran out of it
                 elif heavy:
