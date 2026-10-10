@@ -1,0 +1,115 @@
+EVAL_START codes=391 workers=6
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+
+
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+
+progress 20/391
+progress 40/391
+progress 60/391
+progress 80/391
+progress 100/391
+progress 120/391
+progress 140/391
+progress 160/391
+progress 180/391
+progress 200/391
+progress 220/391
+progress 240/391
+progress 260/391
+progress 280/391
+progress 300/391
+progress 320/391
+progress 340/391
+progress 360/391
+progress 380/391
+EVAL_SUMMARY miss=3 ok=314 skip=6 soft=68 accuracy=0.816
+bucket blank              ok=1
+bucket doctor             ok=92 soft=8
+bucket event              ok=12 soft=4
+bucket first_rows         ok=34 skip=1 soft=5
+bucket friend_family      ok=12 soft=4
+bucket google             ok=13 soft=3
+bucket insurance          ok=12 soft=4
+bucket other              ok=6 skip=1 soft=9
+bucket phone              ok=2 soft=2
+bucket social_media       ok=10 skip=1 soft=5
+bucket unmarked_options   miss=3 ok=76 skip=1 soft=20
+bucket unreadable         ok=23 skip=1
+bucket walk_in            ok=7 soft=1
+bucket website            ok=1 soft=1
+bucket zocdoc             ok=13 skip=1 soft=2
+MISS U010 truth=google got=unmarked marks=[] fam=old_checkbox conf=0.68 reasons= note=
+MISS U034 truth=unmarked got=doctor marks=['doctor'] fam=old_checkbox conf=0.7 reasons= note=faded
+MISS U055 truth=doctor got=unmarked marks=[] fam=old_bullet conf=0.68 reasons= note=bullet-name
+SOFT B00 truth=doctor extra marks ['doctor', 'google'] note=
+SOFT D026 truth=multi:doctor+insurance partial multi ['direct_mail', 'doctor', 'insurance'] vs ['doctor', 'insurance'] note=board-shows-both
+SOFT D029 truth=multi:doctor+friend_family partial multi ['doctor', 'other'] vs ['doctor', 'friend_family'] note=other-a-friend
+SOFT D049 truth=multi:doctor+flyer_doctor_office one of two marks: doctor note=board-shows-both
+SOFT D052 truth=multi:doctor+insurance one of two marks: doctor note=large-board-shows-both
+SOFT D056 truth=multi:doctor+insurance one of two marks: doctor note=bullets-both-checked
+SOFT D060 truth=google extra marks ['google', 'zocdoc'] note=
+SOFT D073 truth=doctor extra marks ['clinic_staff', 'doctor', 'event'] note=
+SOFT D089 truth=multi:doctor+google? one of two marks: doctor note=
+SOFT E03 truth=friend_family handwritten answer kept for review note=other-friend
+SOFT E08 truth=friend_family handwritten answer kept for review note=my-husband
+SOFT E13 truth=doctor extra marks ['doctor', 'other'] note=
+SOFT E15 truth=doctor handwritten answer kept for review note=other-ENT
+SOFT F03 truth=multi:doctor+friend_family partial multi ['doctor', 'other'] vs ['doctor', 'friend_family'] note=other-friend
+SOFT F06 truth=friend_family extra marks ['clinic_staff', 'friend_family'] note=friend-told-me
+SOFT F13 truth=multi:doctor+friend_family partial multi ['direct_mail', 'doctor', 'friend_family'] vs ['doctor', 'friend_family'] note=
+SOFT F14 truth=friend_family extra marks ['friend_family', 'marketing_table'] note=passing-by
+SOFT G00 truth=google? extra marks ['google', 'social_media'] note=line-through-3
+SOFT G09 truth=google extra marks ['google', 'social_media'] note=
+SOFT G14 truth=google extra marks ['google', 'zocdoc'] note=
+SOFT I00 truth=multi:doctor+insurance partial multi ['clinic_staff', 'friend_family', 'insurance', 'social_media'] vs ['doctor', 'insurance'] note=
+SOFT I03 truth=insurance extra marks ['clinic_staff', 'insurance'] note=
+SOFT I11 truth=multi:insurance+friend_family partial multi ['clinic_staff', 'insurance'] vs ['friend_family', 'insurance'] note=
+SOFT I14 truth=insurance extra marks ['event', 'insurance', 'other'] note=app
+SOFT O00 truth=doctor extra marks ['doctor', 'flyer_street', 'other'] note=name
+SOFT O03 truth=website handwritten answer kept for review note=other-website
+SOFT O08 truth=unmarked? got=other marks=['other'] note=
+SOFT O09 truth=other extra marks ['flyer_street', 'other'] note=allerton-location
+SOFT O10 truth=multi:doctor+walk_in partial multi ['doctor', 'other'] vs ['doctor', 'walk_in'] note=name-and-walk-by
+SOFT O12 truth=multi:doctor+friend_family partial multi ['doctor', 'other', 'zocdoc'] vs ['doctor', 'friend_family'] note=bullet
+SOFT O13 truth=google extra marks ['google', 'walk_in'] note=tiny
+SOFT O14 truth=doctor extra marks ['clinic_staff', 'doctor'] note=name
+SOFT O15 truth=friend_family handwritten answer kept for review note=through-my-wife
+SOFT P00 truth=friend_family handwritten answer kept for review note=tiny-other-spouse
+SOFT P01 truth=multi:event+other one of two marks: other note=
+SOFT S01 truth=multi:google+social_media partial multi ['google', 'other', 'social_media'] vs ['google', 'social_media'] note=
+SOFT S07 truth=social_media extra marks ['insurance', 'social_media'] note=es
+SOFT S08 truth=lives_nearby extra marks ['lives_nearby', 'other'] note=lives-nearby-tiny
+SOFT S13 truth=multi:social_media+friend_family partial multi ['doctor', 'social_media'] vs ['friend_family', 'social_media'] note=text-on-doctor-line
+SOFT S14 truth=multi:social_media+insurance+friend_family partial multi ['direct_mail', 'flyer_doctor_office', 'friend_family', 'insurance', 'social_media'] vs ['friend_family', 'insurance', 'social_media'] note=es
+SOFT T02 truth=walk_in handwritten answer kept for review note=other-walking-on-the-block
+SOFT T10 truth=unmarked? got=doctor marks=['doctor'] note=no visible mark
+SOFT T17 truth=multi:doctor+insurance partial multi ['doctor', 'other'] vs ['doctor', 'insurance'] note=doctor-x-and-approved-providers
+SOFT T27 truth=multi:doctor+insurance partial multi ['doctor', 'insurance', 'zocdoc'] vs ['doctor', 'insurance'] note=board-shows-both
+SOFT T29 truth=walk_in handwritten answer kept for review note=other-walk-in
+SOFT U001 truth=event handwritten answer kept for review note=flyer-text
+SOFT U005 truth=unmarked? got=other marks=['other'] note=
+SOFT U006 truth=friend_family handwritten answer kept for review note=mi-hijo
+SOFT U009 truth=friend_family handwritten answer kept for review note=spouse
+SOFT U013 truth=walk_in handwritten answer kept for review note=es-otros-vivo-cerca
+SOFT U025 truth=doctor handwritten answer kept for review note=another-PT-referred
+SOFT U029 truth=doctor? handwritten answer kept for review note=name-on-other
+SOFT U032 truth=friend_family handwritten answer kept for review note=my-sister
+SOFT U037 truth=walk_in handwritten answer kept for review note=walk-pass
+SOFT U040 truth=doctor? got=unmarked marks=[] note=faint
+SOFT U043 truth=flyer_street extra marks ['flyer_street', 'other'] note=
+SOFT U047 truth=google? handwritten answer kept for review note=floating-ai-search-text
+SOFT U052 truth=google extra marks ['friend_family', 'google', 'marketing_table'] note=
+SOFT U067 truth=doctor extra marks ['doctor', 'google'] note=
+SOFT U069 truth=other extra marks ['doctor', 'other'] note=text
+SOFT U070 truth=friend_family extra marks ['doctor', 'friend_family'] note=
+SOFT U074 truth=walk_in handwritten answer kept for review note=other-walking-by-board
+SOFT U077 truth=doctor extra marks ['doctor', 'flyer_doctor_office'] note=es
+SOFT U078 truth=walk_in handwritten answer kept for review note=other-in-my-area
+SOFT U086 truth=google handwritten answer kept for review note=search
+SOFT W02 truth=unmarked? got=walk_in marks=['walk_in'] note=
+SOFT Z05 truth=multi:google+zocdoc partial multi ['google', 'social_media', 'zocdoc'] vs ['google', 'zocdoc'] note=
+SOFT Z13 truth=multi:zocdoc+google one of two marks: zocdoc note=tiny-other-online
+timing mean=4.6s max=53.4s
+EVAL_DONE
