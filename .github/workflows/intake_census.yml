@@ -47,6 +47,7 @@ jobs:
         -v ${{ github.workspace }}/deploy/scripts/intake_census.py:/app/deploy/scripts/intake_census.py:ro
         -v ${{ github.workspace }}/deploy/scripts/intake_census_eval.py:/app/deploy/scripts/intake_census_eval.py:ro
         -v ${{ github.workspace }}/deploy/scripts/intake_census_workbook.py:/app/deploy/scripts/intake_census_workbook.py:ro
+        -v ${{ github.workspace }}/deploy/scripts/intake_census_compare.py:/app/deploy/scripts/intake_census_compare.py:ro
         -v ${{ github.workspace }}/deploy/scripts/intake_reader:/app/deploy/scripts/intake_reader:ro
         -v ${{ github.workspace }}/intake_test:/app/intake_test:ro
     steps:
@@ -155,14 +156,28 @@ jobs:
           $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
             python -u /app/deploy/scripts/intake_census_workbook.py --dir "$V2"
 
+      - name: Shadow checks against the Oct 5 run and spot-check boards
+        if: env.FINISHED == 'yes'
+        run: |
+          set -euo pipefail
+          $COMPOSE run --rm --no-deps -T $MOUNTS scraper             python -u /app/deploy/scripts/intake_census_compare.py --old /data/exports/intake_census --new "$V2"             | tee "$RUNNER_TEMP/compare_log.txt"
+          sudo rm -rf "$V2/spot"
+          $COMPOSE run --rm --no-deps -T $MOUNTS -e TESSDATA_PREFIX=/data/ocr/tessdata -e OMP_THREAD_LIMIT=1 scraper             python -u /app/deploy/scripts/intake_census_eval.py --map "$V2/spot_map.json" --labels "$V2/spot_labels.tsv"             --out "$V2/spot" --workers "$WORKERS" --boards all --tile 900 --per-board 2 || true
+
       - name: Publish results to the intake-census-results branch
         if: always() && env.FINISHED == 'yes'
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/results/census"
-          for f in summary.json patients.csv intake_census_stats.xlsx census_log.txt; do
+          for f in summary.json patients.csv intake_census_stats.xlsx census_log.txt compare.json spot_labels.tsv; do
             sudo cp "$V2/$f" "$RUNNER_TEMP/results/census/" 2>/dev/null || true
           done
+          cp "$RUNNER_TEMP/compare_log.txt" "$RUNNER_TEMP/results/census/" 2>/dev/null || true
+          if [ -d "$V2/spot" ]; then
+            mkdir -p "$RUNNER_TEMP/results/census/spot"
+            sudo cp "$V2/spot/eval_report.json" "$V2/spot/eval_log.txt" "$RUNNER_TEMP/results/census/spot/" 2>/dev/null || true
+            sudo cp "$V2"/spot/*.jpg "$RUNNER_TEMP/results/census/spot/" 2>/dev/null || true
+          fi
           sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/results"
           echo "${{ github.sha }}" > "$RUNNER_TEMP/results/census/SOURCE_SHA"
           git config user.name "intake-census-bot"
