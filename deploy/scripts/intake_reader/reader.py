@@ -218,7 +218,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     ink = mask_lines(raw_ink, th)
     erased = raw_ink & ~ink  # printed rules and binder lines, painted out before strip OCR
     locate = mask_lines(binarize(level, 205), th)  # faint print still shows its boxes; 220 lets paper shading join them
-    light_ink = mask_lines(binarize(level, 190), th)  # pencil handwriting, for the write-in second look
+    light_ink = locate & binarize(level, 190)  # pencil handwriting, for the write-in second look (lines already masked)
     # one search over both questions: the booking circles share the hear column, so a booking
     # label whose own circle is hidden by a check still gets measured at the right place
     all_controls = find_controls(ink, layout.hear + layout.booking, th, family, locate, words)
