@@ -387,9 +387,12 @@ def _is_printed_hint(text: str) -> bool:
         if similarity(window, h) >= 0.6 or (len(key) >= 8 and h.endswith(key[-8:])):
             return True
         # a long helper tail like "ctorsname" or "nameoffice" inside the strip
-        for part in ("doctorsname", "nameoffice", "typedoctor", "nombredelmedico", "medicooficina", "delmedico", "escriba", "office", "oficina"):
-            if part in key and len(key) <= len(part) + 10:
+        for part, slack in (("doctorsname", 10), ("nameoffice", 10), ("typedoctor", 10), ("nombredelmedico", 10), ("medicooficina", 10), ("delmedico", 6), ("escriba", 6), ("office", 3), ("oficina", 3)):
+            if part in key and len(key) <= len(part) + slack:
                 return True
+        for start in ("escriba", "typedoctor", "nombredel"):
+            if len(key) >= len(start) and similarity(key[: len(start)], start) >= 0.7 and len(key) <= len(start) + 14:
+                return True  # "(Esfriba del médica": the helper line with OCR errors
     return False
 
 
