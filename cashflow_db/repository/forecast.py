@@ -153,6 +153,23 @@ _ALLOWED_STAGES = frozenset(
 _INSERT_BATCH = 500
 
 
+def _int_or_none(value: Any) -> int | None:
+    """Integer columns. pandas turns an int column into floats once a row without it is
+    concatenated (268 becomes 268.0), and COPY into an int column rejects "268.0"."""
+    value = _json_safe(value)
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return int(value)
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(number) or math.isinf(number):
+        return None
+    return int(round(number))
+
+
 def _prediction_params(run_id: str, r: dict[str, Any]) -> tuple[Any, ...]:
     risk = r.get("risk_flags")
     if not isinstance(risk, (dict, list)):
@@ -179,11 +196,11 @@ def _prediction_params(run_id: str, r: dict[str, Any]) -> tuple[Any, ...]:
         stage_s,
         _json_safe(row.get("expected_amount")),
         _date_or_none(row.get("expected_pay_date")),
-        _json_safe(row.get("overdue_days")),
+        _int_or_none(row.get("overdue_days")),
         _json_safe(row.get("denied_amount")),
         row.get("denial_category"),
-        _json_safe(row.get("sla_lag_days")),
-        _json_safe(row.get("forecast_shift_days")),
+        _int_or_none(row.get("sla_lag_days")),
+        _int_or_none(row.get("forecast_shift_days")),
         json.dumps(_json_safe(risk), default=str),
         _json_safe(row.get("risk_score")),
         _empty_str_none(row.get("webpt_patient_id")),
