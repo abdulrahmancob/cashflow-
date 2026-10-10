@@ -130,7 +130,7 @@ def _crop_bounds(scan: PageScan, scale: float, height: int, th_quick: int) -> tu
     top = q - th * 9
     if scan.booking_y is not None and scan.booking_y < scan.question_y:
         top = min(top, scan.booking_y * scale - th * 1.5)
-    bottom = q + max(th * 48, 700 * scale / 1.43)  # the quick text height underestimates small print
+    bottom = q + max(th * 52, 820 * scale / 1.43)  # the quick text height underestimates small print; room under "Other"
     return int(max(0, top)), int(min(height, bottom))
 
 
@@ -217,7 +217,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
     raw_ink = binarize(level, 165)
     ink = mask_lines(raw_ink, th)
     erased = raw_ink & ~ink  # printed rules and binder lines, painted out before strip OCR
-    locate = mask_lines(binarize(level, 220), th)  # light-grey print still shows its boxes
+    locate = mask_lines(binarize(level, 205), th)  # faint print still shows its boxes; 220 lets paper shading join them
     # one search over both questions: the booking circles share the hear column, so a booking
     # label whose own circle is hidden by a check still gets measured at the right place
     all_controls = find_controls(ink, layout.hear + layout.booking, th, family, locate, words)
@@ -233,7 +233,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         if not kind:
             continue
         bounds = _neighbour_bounds(hit, all_hits, th)
-        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased, trace=tries)
+        found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased, trace=tries, family=family)
         if found is not None:
             writeins.append(found)
     reading = decide(

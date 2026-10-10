@@ -673,7 +673,8 @@ def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int
     found = {h.code: h for h in hits}
     options = {o.code: o for o in family.options}
     taken = {id(w) for h in hits for w in h.words}
-    for missing, neighbour, side in _TINY_NEIGHBOURS:
+    # two passes: a label found in the first pass is a neighbour for the second
+    for missing, neighbour, side in _TINY_NEIGHBOURS + _TINY_NEIGHBOURS:
         if missing in found or neighbour not in found:
             continue
         ref = found[neighbour]
@@ -683,10 +684,11 @@ def _infer_tiny(lines: list[Line], hits: list[LabelHit], family: Family, th: int
         words = [w for _i, ln in row_lines for w in ln.words if id(w) not in taken and len(re.sub(r"[^A-Za-z]", "", w["text"])) >= 2]
         if side == "left":
             # the word box may run into the neighbour's box when a check is glued to it
-            cands = [w for w in words if w["x"] <= ref.x0 - th * 2.0 and w["x"] + w["w"] <= ref.x0 + th * 0.5 and w["x"] >= ref.x0 - th * 10]
+            cands = [w for w in words if w["x"] <= ref.x0 - th * 2.0 and w["x"] + w["w"] <= ref.x0 + th * 0.5 and w["x"] >= ref.x0 - th * 14]
             pick = max(cands, key=lambda w: w["x"]) if cands else None
         else:
-            cands = [w for w in words if w["x"] >= ref.x1 + th * 0.5 and w["x"] <= ref.x1 + th * 10]
+            # "Doctor LAGcoote": the glued word can start right after the neighbour's label
+            cands = [w for w in words if w["x"] >= ref.x1 + th * 0.1 and w["x"] <= ref.x1 + th * 14]
             pick = min(cands, key=lambda w: w["x"]) if cands else None
         if notes is not None:
             notes.append(("tiny", missing, neighbour, side, [(w["text"], w["x"], w["x"] + w["w"]) for w in words][:8], pick["text"] if pick else None))
@@ -769,7 +771,13 @@ def _infer_other(lines: list[Line], hits: list[LabelHit], family: Family, th: in
                     continue
                 starts_row = index > last_hit.line_index and word is line.words[0] and word["x"] < row_x0 + th * 4
                 if similarity(normalize(word["text"]), "other") >= 0.5 or starts_row:
-                    hit = LabelHit("other", last, [word], index, "hear", 0.5, 0, word["x"] + word["w"] + th, None, 0, None, True)
+                    label_word = word
+                    if word["w"] > th * 3.5:
+                        # "Other:__hugi": the word swallowed the handwriting; keep the printed part
+                        label_word = dict(word)
+                        label_word["w"] = int(th * 3.0)
+                        label_word["text"] = word["text"][:6]
+                    hit = LabelHit("other", last, [label_word], index, "hear", 0.5, 0, label_word["x"] + label_word["w"] + th, None, 0, None, True)
                     hit.line_cy, hit.line_h = _line_stats(line, th)
                     hits.append(hit)
                     return sorted(hits, key=lambda h: (h.line_index, h.x0))

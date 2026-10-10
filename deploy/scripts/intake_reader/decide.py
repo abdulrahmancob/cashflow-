@@ -83,13 +83,9 @@ def decide(
     if not marks and len(near) == 1 and near[0].code in hints and near[0].score > -0.15:
         marks[near[0].code] = near[0].score
         reading.reasons.append("text_hint")
-    if hear and all(c.reason == "no_controls" for c in hear):
-        reading.source = "unreadable"
+    unverified = bool(hear) and all(c.extra.get("unverified") for c in hear)
+    if unverified:
         reading.reasons.append("controls_not_found")
-        reading.confidence = 0.0
-        reading.needs_review = True
-        reading.booking = sorted({c.code for c in booking if c.marked})
-        return reading
 
     texts: list[str] = []
     for item in writeins:
@@ -132,7 +128,7 @@ def decide(
         reading.marks = []
         worst = max((c.score for c in hear), default=-9)
         reading.confidence = round(max(0.0, min(1.0, 0.95 - max(0.0, worst + 0.6))), 2)
-        reading.needs_review = bool(near) or block_cut
+        reading.needs_review = bool(near) or block_cut or unverified
         if near:
             reading.reasons.append("near_miss:" + ",".join(c.code for c in near))
         if block_cut:
@@ -152,6 +148,7 @@ def decide(
         len(marks) > 1
         or weakest < _REVIEW_MARGIN
         or block_cut
+        or unverified
         or "other_unmapped" in reading.reasons
         or len(near) > 0
     )

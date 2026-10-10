@@ -173,7 +173,7 @@ def _tokens(phrases) -> set[str]:
     return out
 
 
-def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: LabelHit, kind: str = "inline", th: int = 0) -> list[tuple[int, int, int, int]]:
+def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: LabelHit, kind: str = "inline", th: int = 0, family=None) -> list[tuple[int, int, int, int]]:
     """Word boxes inside the area that are printed helper text or the label itself.
 
     Only the helper phrases and this label's own words count as printed: a handwritten "friend"
@@ -186,6 +186,7 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
     joined = normalize(" ".join(w["text"] for w in inside))
     hint_hit = any(similarity(joined[: len(normalize(h)) + 4], normalize(h)) >= 0.6 for h in _PRINTED_HINTS) if joined else False
     tokens = _tokens(_PRINTED_HINTS) | _tokens(hit.option.phrases)
+    other_tokens = {t for t in _tokens(p for o in (family.options + family.booking) for p in o.phrases) if len(t) >= 5} - tokens if family is not None else set()
     th = th or hit.text_h
     printed_boxes_x1: list[int] = []
     for w in inside:
@@ -198,6 +199,8 @@ def _printed_boxes(words: list[dict], area: tuple[int, int, int, int], hit: Labe
             printed = any((key in tk or tk in key) for tk in tokens if len(tk) >= 4) or any(similarity(key, tk) >= 0.75 for tk in tokens if len(tk) >= 4)
         if not printed and len(key) == 3:
             printed = key in tokens
+        if not printed and len(key) >= 5 and float(w.get("conf", 0)) >= 70:
+            printed = any(similarity(key, tk) >= 0.85 for tk in other_tokens)  # "Outreach" from the row above
         if not printed and len(key) <= 3:
             near_printed = any(abs(w["x"] - px1) <= th * 0.6 for px1 in printed_boxes_x1)
             printed = hint_hit or near_printed  # bracket and punctuation scraps of the printed helper line
@@ -218,6 +221,7 @@ def detect(
     bounds: tuple[int | None, int | None] | None = None,
     erase: np.ndarray | None = None,
     trace: list | None = None,
+    family=None,
 ) -> WriteIn | None:
     """Return a WriteIn when real ink sits in the write-in area, else None.
 
@@ -232,7 +236,7 @@ def detect(
             trace.append((hit.code, kind, area, 0, 0, 0.0, "", 0.0, False))
         return None
     region = ink[y0:y1, x0:x1].copy()
-    boxes = _printed_boxes(words, area, hit, kind, th)
+    boxes = _printed_boxes(words, area, hit, kind, th, family)
     for bx0, by0, bx1, by1 in boxes:
         rx0 = max(0, bx0 - 2 - x0)
         rx1 = min(region.shape[1], bx1 + 2 - x0)
@@ -295,12 +299,12 @@ def detect(
         return None  # the strip read the printed helper line, not handwriting
     letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
     strong = len(letters) >= 3 and conf >= 45
-    some = len(letters) >= 3 and conf >= 35
+    some = len(letters) >= 3 and conf >= 30
     if strong:
         pass
-    elif kind == "inline" and some and total >= th * th * 1.2:
+    elif kind == "inline" and some and total >= th * th * 1.0:
         pass
-    elif kind == "inline" and tall >= 2 and total >= th * th * 1.2:
+    elif kind == "inline" and tall >= 2 and total >= th * th * 1.0:
         pass
     elif kind == "below" and tall >= 3 and total >= th * th * 1.0:
         pass  # the helper line under the doctor option OCRs into junk; only real ink counts there

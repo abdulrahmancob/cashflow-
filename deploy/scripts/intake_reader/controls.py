@@ -106,9 +106,7 @@ def _candidates(source, labels, slices, hit: LabelHit, th: int, family: Family, 
     search_lo, search_hi = _window(hit, th, words, family)
     nominal = int(round(th * (0.6 if bullet else 1.1)))
     out: list[_Cand] = []
-    for index, sl in enumerate(slices, 1):
-        if sl is None:
-            continue
+    for index, sl in slices:
         cy0, cy1 = sl[0].start, sl[0].stop
         cx0, cx1 = sl[1].start, sl[1].stop
         w = cx1 - cx0
@@ -270,7 +268,21 @@ def find_controls(
     source = locate if locate is not None else ink
     labels, count, slices = components(source) if source.any() else (None, 0, [])
     th = max(8, int(text_h))
-    cands_list = [_candidates(source, labels, slices, hit, th, family, words) if labels is not None else [] for hit in hits]
+    if labels is not None:
+        # paper shading and text produce thousands of components; only control-sized ones matter
+        _lo, _hi = family.size
+        max_side = max(_hi, 2.6) * th
+        sized = [
+            (index, sl)
+            for index, sl in enumerate(slices, 1)
+            if sl is not None
+            and (sl[0].stop - sl[0].start) <= max(2.0 * th, max_side)
+            and (sl[1].stop - sl[1].start) <= max(3.2 * th, 8 * th)
+            and min(sl[0].stop - sl[0].start, sl[1].stop - sl[1].start) >= max(3, 0.25 * th)
+        ]
+    else:
+        sized = []
+    cands_list = [_candidates(source, labels, sized, hit, th, family, words) if labels is not None else [] for hit in hits]
     # printed columns of controls voted over every label; the tiny form is one row, so its boxes
     # are voted by their distance to the label instead
     tiny = family.id == "tiny"
@@ -513,7 +525,7 @@ def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: in
             continue
         if best is None or count > best[1]:
             best = (index, count)
-    if best is None or best[1] < 0.25 * region.size:
+    if best is None or best[1] < 0.10 * region.size:
         return None
     sl = slices[best[0] - 1]
     if sl is None:
@@ -702,7 +714,9 @@ def score_controls(controls: list[Control], family: Family) -> None:
             b = (c.outside - med_o - 0.10) / 0.12
             if c.outside < 2.0 * max(med_o, 0.03):
                 b = min(b, -0.01)
-            if tight and c.extra.get("interior2") is not None and med_i2 is not None:
+            if tight and c.extra.get("interior2") is not None and med_i2 is not None and c.interior >= med_i + 0.015:
+                # a faint pen stroke leaves a trace on the dark mask and a clear mark on the light
+                # one; paper shading leaves nothing on the dark mask
                 a2 = (c.extra["interior2"] - med_i2 - margin - 0.02) / 0.12
                 if c.extra["interior2"] < 2.5 * max(med_i2, 0.02):
                     a2 = min(a2, -0.01)
@@ -721,8 +735,7 @@ def score_controls(controls: list[Control], family: Family) -> None:
             c.score = -9.0
             c.reason = "edge"
         if c.extra.get("no_controls"):
-            c.score = -9.0
-            c.reason = "no_controls"
+            c.extra["unverified"] = True  # measured on windows only: the reading goes to review
         c.marked = c.score >= 0
         if c.marked:
             c.reason = {a: "fill", b: "spill", g: "swollen", r: "circled"}[max((a, b, g, r), key=lambda v: v)]

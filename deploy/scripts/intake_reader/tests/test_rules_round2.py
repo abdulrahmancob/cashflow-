@@ -671,7 +671,7 @@ class RoundFiveTests(unittest.TestCase):
         layout = analyse(words, NEW_CIRCLE, 20)
         self.assertIn("social_media", _hints(layout))
 
-    def test_form_without_printed_controls_is_unreadable(self):
+    def test_form_without_printed_controls_goes_to_review(self):
         from intake_reader.decide import decide
 
         words = words_from_text(["How did you hear about us?", "Doctor referral|Google", "Zocdoc|Social Media", "Insurance|Word of Mouth", "Event / Outreach", "Other:"])
@@ -679,10 +679,11 @@ class RoundFiveTests(unittest.TestCase):
         ink = np.zeros((260, 900), dtype=bool)
         controls = find_controls(ink, layout.hear, 20, NEW_CIRCLE, ink, words)
         score_controls(controls, NEW_CIRCLE)
-        self.assertTrue(all(c.reason == "no_controls" for c in controls))
+        self.assertTrue(all(c.extra.get("unverified") for c in controls))
         reading = decide("new_circle", 0, controls, [], [])
-        self.assertEqual(reading.source, "unreadable")
+        self.assertEqual(reading.source, "unmarked")
         self.assertTrue(reading.needs_review)
+        self.assertIn("controls_not_found", reading.reasons)
 
     def test_offset_window_never_lands_on_text(self):
         """Doctor's box was not recognised and its label row is split: the window must stay on
