@@ -22,8 +22,8 @@ from .controls import find_controls, score_controls
 from .decide import Reading, decide, merge_readings
 from .labels import Layout, analyse, phrase_in_line
 from .page import binarize, clean_for_ocr, mask_lines, median_text_height, normalize_contrast, ocr_words, render, rotate, upright
+from .writein import WriteIn, _is_printed_hint, map_text, ocr_strip, stray_ink
 from .writein import detect as detect_writein
-from .writein import stray_ink
 
 QUICK_ZOOM = 1.4
 MAX_PAGES = 20
@@ -236,16 +236,19 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         found = detect_writein(ink, level, words, hit, kind, th, lang, bounds=bounds, erase=erased, trace=tries, family=family)
         if found is not None:
             writeins.append(found)
-    reading = decide(
-        family.id,
-        scan.index,
-        hear_controls,
-        booking_controls,
-        writeins,
-        _hints(layout),
-        block_found=True,
-        block_cut=block_cut,
-    )
+    def run_decide() -> Reading:
+        return decide(
+            family.id,
+            scan.index,
+            hear_controls,
+            booking_controls,
+            writeins,
+            _hints(layout),
+            block_found=True,
+            block_cut=block_cut,
+        )
+
+    reading = run_decide()
     stray = None
     if layout.question_line is not None and reading.source not in ("unreadable", "no_question"):
         q_line = layout.lines[layout.question_line]
@@ -255,10 +258,32 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
         y_hi = min(ink.shape[0], int(last + th * 1.5))
         region_ink[y_lo:y_hi] = ink[y_lo:y_hi]
         areas = [tuple(t[2]) for t in tries] if tries else []
-        stray = stray_ink(region_ink, words, hear_controls + booking_controls, areas, layout.hear + layout.booking, th)
+        protect = [(int(q_line.y0), int(q_line.y1))]
+        if layout.booking_line is not None:
+            protect.append((int(layout.lines[layout.booking_line].y0), int(layout.lines[layout.booking_line].y1)))
+        stray = stray_ink(region_ink, words, hear_controls + booking_controls, areas, layout.hear + layout.booking, th, protect=protect)
         if stray is not None:
-            reading.reasons.append("stray_ink")
-            reading.needs_review = True
+            tall, total, box = stray
+            if reading.source == "unmarked" and box[3] - box[1] <= th * 3.5 and box[2] - box[0] >= th * 1.5:
+                # handwriting floating in the block with nothing marked ("not sure" beside the
+                # options): read it as the answer, mapped by keyword or kept as Other for review
+                printed = [
+                    (w["x"], w["y"], w["x"] + w["w"], w["y"] + w["h"])
+                    for w in words
+                    if float(w.get("conf", 0)) >= 60 and w["x"] < box[2] and w["x"] + w["w"] > box[0] and w["y"] < box[3] and w["y"] + w["h"] > box[1]
+                ]
+                text, conf = ocr_strip(level, box, lang, erased, printed)
+                letters = re.sub(r"[^A-Za-zÁÉÍÓÚÑáéíóúñ]", "", text)
+                readable = len(letters) >= 3 and conf >= 30 and not _is_printed_hint(text)
+                accepted = readable or (tall >= 3 and total >= th * th * 2.0)
+                tries.append(("other", "stray", box, tall, int(total), round(total / (th * th), 2), text[:40], round(conf, 1), accepted))
+                if accepted:
+                    writeins.append(WriteIn("other", "stray", text if readable else "", conf, map_text(text) if readable else None, int(total), box))
+                    reading = run_decide()
+                    reading.reasons.append("stray_text")
+            if tall >= 4:
+                reading.reasons.append("stray_ink")
+                reading.needs_review = True
     reading.debug = {
         "block_text": layout.block_text[:300],
         "layout_lines": [(i, ("Q" if i == layout.question_line else "B" if i == layout.booking_line else "E" if i == layout.end_line else " "), ln.text[:90]) for i, ln in enumerate(layout.lines)],

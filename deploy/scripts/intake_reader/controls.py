@@ -8,6 +8,7 @@ the box; a ring of ink around the label catches circled text.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from statistics import median
 
@@ -86,7 +87,8 @@ def _window(hit: LabelHit, th: int, words: list[dict] | None, family: Family | N
     if family is not None and family.id == "tiny":
         return x_ref - th * 2.5, x_ref - max(1, th * 0.05)
     start = x_ref
-    if words and hit.left_limit == 0:
+    phrase_words = max(len(p.split()) for p in hit.option.phrases) if hit.option.phrases else 1
+    if words and hit.left_limit == 0 and len(hit.words) < phrase_words:
         same_line = [
             w for w in words
             if abs((w["y"] + w["h"] / 2) - hit.cy) <= th * 0.5 and w["x"] + w["w"] <= hit.x0 + 1 and w["x"] >= hit.x0 - th * 5.0
@@ -302,6 +304,18 @@ def find_controls(
         there = float(source[ya:yb, xa:xb].mean()) if yb > ya and xb > xa else 0.0
         return there < 0.04
 
+    def covered(wx0: int, wy0: int, wx1: int, wy1: int, skip: dict | None = None) -> bool:
+        # printed words cover more than a third of this window: nothing can be measured there
+        area = max(1, (wx1 - wx0) * (wy1 - wy0))
+        total = 0
+        for w in words or ():
+            if w is skip or len(w.get("text", "").strip()) < 2:
+                continue
+            ox = max(0, min(wx1, w["x"] + w["w"]) - max(wx0, w["x"]))
+            oy = max(0, min(wy1, w["y"] + w["h"]) - max(wy0, w["y"]))
+            total += ox * oy
+        return total > 0.3 * area
+
     def on_text_at(wx: float, side: int, y_c: float) -> bool:
         # a window placed by geometry must not sit on printed words
         if not words:
@@ -361,10 +375,18 @@ def find_controls(
         controls.append(control)
     found_n = sum(1 for c in controls if c is not None)
     wide = found_n * 2 < len(controls)  # most boxes invisible: scan the whole gutter
+    # on some prints the controls sit a little below or above the text of their labels; a window
+    # placed by geometry follows the offset the found siblings show
+    dys = sorted(((c.y0 + c.y1) / 2 - h.cy) for c, h in zip(controls, hits) if c is not None)
+    row_dy = 0.0
+    if len(dys) >= 3 and dys[-1] - dys[0] <= th * 0.6:
+        row_dy = dys[len(dys) // 2]
+        if abs(row_dy) < th * 0.12:
+            row_dy = 0.0
     for index, (hit, cands) in enumerate(zip(hits, cands_list)):
         if controls[index] is not None:
             continue
-        y_c = hit.cy
+        y_c = hit.cy + row_dy
         x_ref = hit.anchor_x
         glued = hit.prefix_px > 0
         cluster = _cluster_for(hit, clusters, th, words, family)
@@ -414,7 +436,7 @@ def find_controls(
                 # covering this window is far bigger than a box but stops before the label
                 grown = _overlap_growth(labels, slices, x0, y0, x1, y1, side, hit.anchor_x, th)
                 if grown is not None:
-                    control.extra["overlap"] = grown
+                    control.extra["overlap"], control.extra["overlap_leaves"], control.extra["overlap_px"] = grown
         else:
             if glued:
                 x0 = _clip(hit.x0 - th * 0.1, 0, width)
@@ -426,11 +448,24 @@ def find_controls(
                 reach = 1.15 if family.control == "bullet" else (4.5 if wide else 1.6)
                 x1 = _clip(x_ref - th * 0.15, 0, width)
                 x0 = _clip(max(hit.left_limit + 1, x1 - th * reach), 0, width)
+                # printed words of another line that sit in the gutter ("Website /" before the
+                # booking "Google" on a typed form) are not a control: the window stops before them
+                on_row = [
+                    w for w in (words or [])
+                    if w is not hit.glyph and len(w.get("text", "").strip()) >= 3
+                    and abs((w["y"] + w["h"] / 2) - y_c) <= th * 0.6
+                    and w["x"] < x1 and w["x"] + w["w"] > x0 and w["x"] + w["w"] <= x_ref + 1
+                ]
+                if on_row:
+                    x1 = _clip(min(w["x"] for w in on_row) - th * 0.1, 0, width)
+                    x0 = _clip(max(hit.left_limit + 1, x1 - th * reach), 0, width)
             y0 = _clip(y_c - th * 0.6, 0, height)
             y1 = _clip(y_c + th * 0.6, 0, height)
             control = Control(hit.code, x0, y0, x1, y1, False)
             control.extra["wide"] = wide
             control.extra["place"] = "glued" if glued else "loose"
+            if not glued and (x1 - x0 < th * 0.5 or covered(x0, y0, x1, y1, hit.glyph)):
+                control.extra["on_text"] = True  # no clear paper left of the label: nothing to measure
         control.extra["cands"] = [(c.x0, c.y0, c.x1, c.y1, int(c.real), int(c.merged)) for c in cands[:6]]
         controls[index] = control
     for control, hit in zip(controls, hits):
@@ -526,10 +561,12 @@ def _boxlike(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> bool:
     return sum(1 for s in sides if s >= 0.6) >= 3
 
 
-def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int, x_ref: int, th: int) -> float | None:
-    """Area ratio of the one component that covers most of this window when it is much larger
-    than a control and ends before the label: a check that ran out of the box and merged with it.
-    Lines (binder lines, rules) and words glued to the box are excluded."""
+def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int, x_ref: int, th: int) -> tuple[float, bool, int] | None:
+    """The one component that covers most of this window when it is much larger than a control:
+    a check that ran out of the box and merged with it. Returns (area ratio, whether the
+    component leaves the label's row, its pixels). Lines (binder lines, rules) and words glued to
+    the box are excluded; a stroke that leaves the row (a check drawn up across the rows above)
+    may reach past the label's start, printed text never does."""
     region = labels[y0:y1, x0:x1]
     if region.size == 0:
         return None
@@ -547,12 +584,18 @@ def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: in
         return None
     cy0, cy1, cx0, cx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
     w, h = cx1 - cx0, cy1 - cy0
-    if w <= th * 0.3 or h <= th * 0.3 or h >= th * 6 or w >= th * 8:
+    if w <= th * 0.3 or h <= th * 0.3 or h >= th * 6 or w >= th * 12:
         return None  # a line or a huge blob, not a check
-    if cx1 > x_ref + th * 0.3:
+    leaves = (cy0 < y0 - th * 0.8 or cy1 > y1 + th * 0.8) and h >= th * 1.5
+    if cx1 > x_ref + th * 0.3 and not leaves:
         return None  # runs into the label: text glued to the box
+    if w >= th * 8 and not leaves:
+        return None
     ratio = (w * h) / max(1.0, float((x1 - x0) * (y1 - y0)))
-    return ratio if ratio >= 1.8 else None
+    if ratio < 1.8:
+        return None
+    pixels = int((labels[sl] == best[0]).sum())
+    return ratio, leaves, pixels
 
 
 def _rim_score(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> float:
@@ -730,10 +773,7 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = No
         wy0 = _clip(word["y"] - 1 - y0, 0, region.shape[0])
         wy1 = _clip(word["y"] + word["h"] + 1 - y0, 0, region.shape[0])
         known[wy0:wy1, wx0:wx1] = False
-    top = slice(0, max(1, hit.y0 - y0))
-    bottom = slice(min(region.shape[0] - 1, hit.y1 - y0), region.shape[0])
-    left = slice(0, max(1, hit.x0 - x0))
-    right = slice(min(region.shape[1] - 1, hit.x1 - x0), region.shape[1])
+    rh, rw = region.shape
 
     def span(rows: slice, cols: slice, axis: int) -> float | None:
         # a pen ring crosses the whole width above and below the label and the whole height at
@@ -745,11 +785,38 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = No
             return None
         return float((inked & seen).sum() / max(1, seen.sum()))
 
-    bands = [span(top, slice(None), 0), span(bottom, slice(None), 0), span(slice(None), left, 1), span(slice(None), right, 1)]
-    usable = [b for b in bands if b is not None]
-    if len(usable) < 3:
-        return 0.0
-    return min(usable)
+    def around(bx0: int, by0: int, bx1: int, by1: int, whole: bool, drop: str | None = None) -> float:
+        # bands above, below, left and right of a box (region coordinates); the whole label uses
+        # the full region width and height, one word of it only its own extent; `drop` leaves out
+        # the side where the label's other words are (the ring runs through them)
+        top = slice(_clip(by0 - dy, 0, rh), max(1, _clip(by0, 0, rh)))
+        bottom = slice(min(rh - 1, _clip(by1, 0, rh)), _clip(by1 + dy, 0, rh))
+        left = slice(_clip(bx0 - dx, 0, rw), max(1, _clip(bx0, 0, rw)))
+        right = slice(min(rw - 1, _clip(bx1, 0, rw)), _clip(bx1 + dx, 0, rw))
+        cols = slice(None) if whole else slice(_clip(bx0, 0, rw), _clip(bx1, 0, rw))
+        rows = slice(None) if whole else slice(_clip(by0, 0, rh), _clip(by1, 0, rh))
+        bands = [span(top, cols, 0), span(bottom, cols, 0), span(rows, left, 1), span(rows, right, 1)]
+        if drop == "left":
+            bands[2] = None
+        elif drop == "right":
+            bands[3] = None
+        usable = [b for b in bands if b is not None]
+        if len(usable) < 3:
+            return 0.0
+        return min(usable)
+
+    best = around(hit.x0 - x0, hit.y0 - y0, hit.x1 - x0, hit.y1 - y0, True)
+    if len(hit.words) > 1:
+        # a ring drawn around the first or the last word of a longer label ("Outreach" of
+        # "Event / Outreach"): its inner side runs through the other words and is not required
+        ordered = sorted(hit.words, key=lambda w: w["x"])
+        for i, w in enumerate(ordered):
+            if i not in (0, len(ordered) - 1):
+                continue
+            if len(re.sub(r"[^A-Za-z]", "", w.get("text", ""))) >= 4 and w["w"] >= th * 1.5:
+                drop = "right" if i == 0 else "left"
+                best = max(best, around(w["x"] - x0, w["y"] - y0, w["x"] + w["w"] - x0, w["y"] + w["h"] - y0, False, drop))
+    return best
 
 
 def score_controls(controls: list[Control], family: Family) -> None:
@@ -815,8 +882,16 @@ def score_controls(controls: list[Control], family: Family) -> None:
                 a = max(a, a2)
             g = -9.0
             grown = c.extra.get("overlap")
-            if grown is not None and (c.interior >= med_i + 0.05 or c.outside >= med_o + 0.05):
-                g = (grown - 1.8) / 0.6  # the box merged with a check that ran out of it
+            if grown is not None:
+                inky = c.interior >= med_i + 0.05 or c.outside >= med_o + 0.05
+                opx = c.extra.get("overlap_px")
+                # a stroke that leaves the row carries far more ink than a printed box: a check
+                # drawn beside the box rather than in it leaves the window itself clean
+                heavy = bool(c.extra.get("overlap_leaves")) and opx is not None and med_px > 0 and opx >= 1.8 * med_px
+                if inky:
+                    g = (grown - 1.8) / 0.6  # the box merged with a check that ran out of it
+                elif heavy:
+                    g = min(0.25, (grown - 1.8) / 0.6)  # a mark beside the box: counted, but reviewed
             if c.found and not c.extra.get("merged") and c.side >= 1.3 * med_side and (c.interior >= med_i + 0.08 or c.outside >= med_o + 0.08):
                 g = (c.side / med_side - 1.3) / 0.3
         r = (c.ring - max(med_r, 0.1) - 0.25) / 0.2
@@ -826,6 +901,9 @@ def score_controls(controls: list[Control], family: Family) -> None:
         if c.extra.get("edge"):
             c.score = -9.0
             c.reason = "edge"
+        if c.extra.get("on_text"):
+            c.score = -9.0
+            c.reason = "on_text"
         if c.extra.get("no_controls"):
             c.extra["unverified"] = True  # measured on windows only: the reading goes to review
         c.marked = c.score > 0.02

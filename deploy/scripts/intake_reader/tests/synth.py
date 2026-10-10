@@ -79,6 +79,7 @@ def draw_block(
     column_x: tuple[int, ...] = (60, 480),
     gap: int = 12,
     border_dashes: bool = False,
+    control_dy: int = 0,
 ) -> Block:
     fnt = font(size)
     rows_total = len(specs) + 2 + (len(booking[1]) + 2 if booking else 0)
@@ -130,7 +131,7 @@ def draw_block(
         yc = y + size // 2 + 2
         box = None
         if spec is not None and x_ctrl is not None:
-            box = draw_control(x_ctrl, yc, spec)
+            box = draw_control(x_ctrl, yc + control_dy, spec)
             rows.append((spec, box))
             if spec.mark == "circle_label":
                 x0 = min(w["x"] for w in ws) - 8

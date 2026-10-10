@@ -108,6 +108,8 @@ def decide(
             marks[code] = max(marks.get(code, 0.0), 0.5)
             texts.append(f"doctor: {label}")
             reading.reasons.append("doctor_line_writein")
+            if item.mapped is None and item.conf < 40:
+                reading.reasons.append("doctor_text_unclear")  # the strip did not read: a name, or an answer in other words
         else:
             # Word of Mouth ___ / Clinic staff ___ / De boca en boca ___: text on the line is that
             # option; when its box is not checked and the words name another source ("Sent by a
@@ -150,6 +152,7 @@ def decide(
         or block_cut
         or unverified
         or "other_unmapped" in reading.reasons
+        or "doctor_text_unclear" in reading.reasons
         or len(near) > 0
     )
     if len(marks) >= 4:

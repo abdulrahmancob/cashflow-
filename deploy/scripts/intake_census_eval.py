@@ -86,6 +86,8 @@ def compare(truth: str, reading) -> tuple[str, str]:
             return ("soft", f"extra marks {sorted(marks)}")
         if not ok and got == "other" and "other_unmapped" in reasons and base in TEXT_CODES:
             return ("soft", "handwritten answer kept for review")
+        if not ok and got == "doctor" and "doctor_text_unclear" in reasons and base in TEXT_CODES:
+            return ("soft", "unclear doctor-line text kept for review")
     if ok:
         return "ok", got
     return ("soft" if low_conf else "miss"), f"got={got} marks={sorted(marks)}"

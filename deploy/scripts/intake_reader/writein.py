@@ -46,7 +46,7 @@ _KEYWORDS: tuple[tuple[str, re.Pattern], ...] = (
     (
         "walk_in",
         re.compile(
-            r"walk|pass(?:ed|ing)?\s*by|next\s*door|\blive|\blives|\barea\b|neighborhood|neighbourhood|"
+            r"walk|pass(?:ed|ing)?\s*by|next\s*door|\blive|\blives|\barea\b|neighborhood|neighbourhood|\bviv[oe]\b|"
             r"location|nearby|\bblock\b|saw\s*(?:the|your|a)\s*(?:sign|office|clinic)|drove|across|"
             r"camin|pas[oé]\s*por|cerca|vecindario|barrio",
             re.I,
@@ -326,15 +326,36 @@ def detect(
     return WriteIn(hit.code, kind, text, conf, map_text(text), total, area)
 
 
-def stray_ink(ink: np.ndarray, words: list[dict], controls, areas: list[tuple[int, int, int, int]], hits, th: int) -> tuple[int, int] | None:
+def stray_ink(
+    ink: np.ndarray,
+    words: list[dict],
+    controls,
+    areas: list[tuple[int, int, int, int]],
+    hits,
+    th: int,
+    protect: list[tuple[int, int]] | None = None,
+) -> tuple[int, int, tuple[int, int, int, int]] | None:
     """Handwriting that sits nowhere the reader looks: not on a label, not in a control window,
-    not on a write-in line. Returns (tall components, ink pixels) when there is enough of it to
-    be an answer ("AI search" floating between the columns), else None (R14)."""
+    not on a write-in line. Returns (tall components, ink pixels, their box) when there is enough
+    of it to be an answer ("AI search" floating between the columns), else None (R14).
+
+    OCR words are painted out only when they are print: confident, or vocabulary of the form, or
+    on a protected line (the questions). Handwriting also comes back as low-confidence words and
+    must stay."""
     region = ink.copy()
     height, width = region.shape
     pad = max(2, int(th * 0.3))
+    vocabulary = _tokens(_PRINTED_HINTS) | _tokens(p for h in hits for p in h.option.phrases)
     for w in words:
-        if len(w.get("text", "").strip()) < 1:
+        text = w.get("text", "").strip()
+        if len(text) < 1:
+            continue
+        key = _fold(text)
+        cy = w["y"] + w["h"] / 2
+        print_like = float(w.get("conf", 0)) >= 60 or key in vocabulary or any(y0 <= cy <= y1 for y0, y1 in protect or ())
+        if not print_like and len(key) >= 4:
+            print_like = any(similarity(key, tk) >= 0.8 for tk in vocabulary if len(tk) >= 4)
+        if not print_like:
             continue
         x0, y0 = max(0, w["x"] - pad), max(0, w["y"] - pad)
         x1, y1 = min(width, w["x"] + w["w"] + pad), min(height, w["y"] + w["h"] + pad)
@@ -356,6 +377,7 @@ def stray_ink(ink: np.ndarray, words: list[dict], controls, areas: list[tuple[in
     labels, count, slices = components(region)
     tall = 0
     total = 0
+    box: list[int] | None = None
     for index, sl in enumerate(slices, 1):
         if sl is None:
             continue
@@ -369,8 +391,13 @@ def stray_ink(ink: np.ndarray, words: list[dict], controls, areas: list[tuple[in
         total += pixels
         if th * 0.45 <= h <= th * 3 and h >= 0.25 * w:
             tall += 1
-    if tall >= 4 and total >= th * th * 1.5:
-        return tall, total
+            if box is None:
+                box = [sl[1].start, sl[0].start, sl[1].stop, sl[0].stop]
+            else:
+                box = [min(box[0], sl[1].start), min(box[1], sl[0].start), max(box[2], sl[1].stop), max(box[3], sl[0].stop)]
+    if tall >= 2 and total >= th * th * 1.5 and box is not None:
+        grow = max(2, int(th * 0.3))
+        return tall, total, (max(0, box[0] - grow), max(0, box[1] - grow), min(width, box[2] + grow), min(height, box[3] + grow))
     return None
 
 
