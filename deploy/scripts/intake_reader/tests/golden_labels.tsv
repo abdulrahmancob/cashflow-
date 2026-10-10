@@ -153,11 +153,11 @@ D048	doctor	es-new
 D049	multi:doctor+flyer_doctor_office	board-shows-both
 D050	flyer_doctor_office	
 D051	doctor	
-D052	doctor	board-shows-one
+D052	multi:doctor+insurance	large-board-shows-both
 D053	multi:doctor+flyer_street	
 D054	doctor	
 D055	doctor	
-D056	doctor?	bullet
+D056	multi:doctor+insurance	bullets-both-checked
 D057	doctor	tiny
 D058	doctor	
 D059	doctor	es-new

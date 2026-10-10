@@ -401,6 +401,10 @@ def find_controls(
             snapped = _snap(labels, slices, x0, y0, x1, y1, side) if labels is not None else None
             if snapped is not None:
                 x0, y0, x1, y1 = snapped  # the printed control sits a little off the label's row
+            else:
+                refined = _refine_window(source, x0, y0, x1, y1, th)
+                if refined is not None:
+                    x0, y0, x1, y1 = refined  # a broken or faint rim nearby: centre on it
             control = Control(hit.code, x0, y0, x1, y1, False)
             control.reason = reason
             control.extra["place"] = reason
@@ -550,6 +554,42 @@ def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: in
     return ratio if ratio >= 1.8 else None
 
 
+def _rim_score(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> float:
+    """How much of a box's or circle's rim lies on the border bands of this window (0-4)."""
+    w = x1 - x0
+    h = y1 - y0
+    if w < 6 or h < 6 or y0 < 0 or x0 < 0 or y1 > mask.shape[0] or x1 > mask.shape[1]:
+        return 0.0
+    band = max(2, min(w, h) // 5)
+    mx0, mx1 = x0 + int(w * 0.3), x0 + int(w * 0.7) + 1
+    my0, my1 = y0 + int(h * 0.3), y0 + int(h * 0.7) + 1
+    return float(
+        mask[y0 : y0 + band, mx0:mx1].any(axis=0).mean()
+        + mask[y1 - band : y1, mx0:mx1].any(axis=0).mean()
+        + mask[my0:my1, x0 : x0 + band].any(axis=1).mean()
+        + mask[my0:my1, x1 - band : x1].any(axis=1).mean()
+    )
+
+
+def _refine_window(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int, th: int) -> tuple[int, int, int, int] | None:
+    """Slide a geometry window by up to a text height so its border sits on the printed rim
+    (faint or broken circles leave no whole component to snap onto). Returns None when no
+    position looks like a rim."""
+    base = _rim_score(mask, x0, y0, x1, y1)
+    best = (base, 0, 0)
+    reach = max(2, int(th * 1.0))
+    step = max(1, th // 8)
+    for dx in range(-reach, reach + 1, step):
+        for dy in range(-reach // 2, reach // 2 + 1, step):
+            s = _rim_score(mask, x0 + dx, y0 + dy, x1 + dx, y1 + dy)
+            if s > best[0] + 1e-6:
+                best = (s, dx, dy)
+    score, dx, dy = best
+    if score < 2.2 or score < base + 0.5:
+        return None
+    return x0 + dx, y0 + dy, x1 + dx, y1 + dy
+
+
 def _snap(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int) -> tuple[int, int, int, int] | None:
     """Move a window placed by column geometry onto the one control-sized component it overlaps,
     so a hollow box or bullet is measured on its own bounds and its rim stays out of the interior."""
@@ -627,6 +667,14 @@ def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) 
     px = max(1, int(round(w * 0.22)))
     py = max(1, int(round(h * 0.22)))
     inner = ink[c.y0 + py : max(c.y0 + py + 1, c.y1 - py), c.x0 + px : max(c.x0 + px + 1, c.x1 - px)]
+    if inner.size and inner.shape[0] >= 4 and inner.shape[1] >= 4:
+        # a binder line or a printed rule running through the window fills whole columns or
+        # rows of the interior; a pen mark does not
+        cols = inner.mean(axis=0) >= 0.85
+        rows = inner.mean(axis=1) >= 0.85
+        if cols.any() or rows.any():
+            keep = inner[:, ~cols][~rows, :] if (~cols).any() and (~rows).any() else inner[:0, :0]
+            inner = keep
     c.interior = float(inner.mean()) if inner.size else 0.0
     grow = max(2, int(round(max(w, h) * 0.4)))
     gx0 = _clip(max(left_limit + 1, c.x0 - grow), 0, width)
@@ -753,9 +801,9 @@ def score_controls(controls: list[Control], family: Family) -> None:
                 a = max(a, a2)
             g = -9.0
             grown = c.extra.get("overlap")
-            if grown is not None and (c.interior >= med_i + 0.02 or c.outside >= med_o + 0.02):
+            if grown is not None and (c.interior >= med_i + 0.05 or c.outside >= med_o + 0.05):
                 g = (grown - 1.8) / 0.6  # the box merged with a check that ran out of it
-            if c.found and not c.extra.get("merged") and c.side >= 1.3 * med_side and (c.interior >= med_i + 0.03 or c.outside >= med_o + 0.05):
+            if c.found and not c.extra.get("merged") and c.side >= 1.3 * med_side and (c.interior >= med_i + 0.08 or c.outside >= med_o + 0.08):
                 g = (c.side / med_side - 1.3) / 0.3
         r = (c.ring - max(med_r, 0.1) - 0.25) / 0.2
         if c.ring < 0.45 or c.ring < med_r + 0.25:

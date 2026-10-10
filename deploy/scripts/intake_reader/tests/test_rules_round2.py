@@ -15,7 +15,7 @@ from intake_reader.page import binarize, mask_lines
 from intake_reader.writein import _printed_boxes, map_text, writein_area
 
 from .synth import Spec, draw_block
-from .test_controls import OLD_LABELS, marked_codes, run_block
+from .test_controls import NEW_LEFT, NEW_RIGHT, OLD_LABELS, marked_codes, run_block
 from .test_labels import words_from_text
 from .test_page_and_writein import ink_detect_without_ocr
 
@@ -816,6 +816,54 @@ class RoundSixTests(unittest.TestCase):
         hit.line_cy, hit.line_h = 379, 39
         boxes = _printed_boxes(words, (151, 360, 751, 413), hit, "inline", 30)
         self.assertTrue(all(b[2] <= 145 + 11 for b in boxes), boxes)
+
+
+class RoundSevenTests(unittest.TestCase):
+    def test_binder_line_through_a_circle_is_not_a_mark(self):
+        """A vertical binder line crossing the doctor circle must not read as a filled circle."""
+        block = draw_block("How did you hear about us?", [Spec(l, "", column=0) for l in NEW_LEFT] + [Spec(l, "", column=1) for l in NEW_RIGHT], "circle")
+        gray = block.gray.copy()
+        doc_box = next(box for spec, box in block.rows if spec.label.startswith("Doctor"))
+        xc = (doc_box[0] + doc_box[2]) // 2
+        gray[:, xc - 1 : xc + 2] = 0  # a 3 px line down the whole crop through the doctor circle
+        layout = analyse(block.words, NEW_CIRCLE, block.text_h)
+        ink = mask_lines(binarize(gray, 165), layout.text_h)
+        locate = mask_lines(binarize(gray, 200), layout.text_h)
+        controls = find_controls(ink, layout.hear, layout.text_h, NEW_CIRCLE, locate, block.words)
+        score_controls(controls, NEW_CIRCLE)
+        self.assertEqual(marked_codes(controls), [])
+
+    def test_refine_window_slides_onto_a_faint_rim(self):
+        from PIL import Image, ImageDraw
+
+        from intake_reader.controls import _refine_window
+
+        image = Image.new("L", (200, 120), 255)
+        ImageDraw.Draw(image).ellipse((80, 40, 110, 70), outline=0, width=2)
+        mask = np.asarray(image) < 128
+        refined = _refine_window(mask, 62, 40, 92, 70, 20)  # window 18 px left of the circle
+        self.assertIsNotNone(refined)
+        self.assertLessEqual(abs(refined[0] - 80), 3, refined)
+        self.assertIsNone(_refine_window(np.zeros((120, 200), dtype=bool), 62, 40, 92, 70, 20))
+
+    def test_swollen_box_without_ink_is_not_marked(self):
+        from intake_reader.controls import Control
+
+        controls = []
+        for i in range(8):
+            c = Control(f"c{i}", 40, 20 + 40 * i, 64, 44 + 40 * i, True)
+            c.side = 1.0
+            c.interior = 0.01
+            c.outside = 0.02
+            controls.append(c)
+        big = controls[3]
+        big.x1, big.y1, big.side = 40 + 34, 20 + 120 + 34, 1.4  # a third bigger, hardly more ink
+        big.interior = 0.04
+        score_controls(controls, OLD_CHECKBOX)
+        self.assertFalse(big.marked)
+        big.interior = 0.15
+        score_controls(controls, OLD_CHECKBOX)
+        self.assertTrue(big.marked)
 
 
 class FuzzyKeywordTests(unittest.TestCase):
