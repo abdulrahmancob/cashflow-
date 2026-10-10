@@ -26,6 +26,20 @@ What a push does not do:
 
 Other branches are not deployed. Watch the result under the repo's Actions tab. The job log ends with `DEPLOY_RELEASE_DONE` and `api_recreated=0` or `1`.
 
+### Request limits (nginx)
+
+nginx takes the client address from the load balancer's `X-Forwarded-For` and answers 429 past these limits. The host, docker and load balancer health checks are exempt.
+
+| Zone | Requests | Per address | Per session |
+|------|----------|-------------|-------------|
+| All `/api/` | any | 60/s, burst 200 | 15/s, burst 60 |
+| Exports, upload previews | `…/export`, `…/export-job`, `…/upload/preview` | 6/min, burst 3 | 6/min, burst 3 |
+| Finance pages | `/api/cash`, `exec`, `mission`, `overdue`, `unbanked` | 60/min, burst 30 | 60/min, burst 30 |
+| Sign-in | `/api/auth/login` | 30/min, burst 30 | — |
+| Open connections | | 40 | — |
+
+Bodies are capped at 1 MB, except `…/upload` (32 MB). `/api/` gives up after 120 s; the all-months export location allows 3600 s. Slow clients are cut off after 10 s for headers and 20 s for a body. The log line's `limit` field shows `PASSED` or `REJECTED`.
+
 ### Safety checks
 
 The api, worker and scrapers bind-mount `/opt/cashflow`, so a copied file is live for every process that starts after the copy. The deploy therefore checks before it copies and undoes the copy when a later step fails.
