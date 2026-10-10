@@ -115,8 +115,7 @@ def main() -> int:
         for i, (path, old_source, new_source) in enumerate(group):
             code = f"{prefix}{i:03d}"
             spot_map[code] = path
-            truth = old_source if old_source in ("unmarked", "unreadable", "no_question") else old_source
-            label_lines.append(f"{code}\t{truth}?\told={old_source} new={new_source}")
+            label_lines.append(f"{code}\t{old_source}?\told={old_source} new={new_source}")
     (new_dir / "spot_map.json").write_text(json.dumps(spot_map, indent=1), encoding="utf-8")
     (new_dir / "spot_labels.tsv").write_text("\n".join(label_lines) + "\n", encoding="utf-8")
 
