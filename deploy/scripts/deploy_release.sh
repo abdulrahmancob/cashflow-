@@ -21,6 +21,7 @@ BEFORE="${DEPLOY_BEFORE:-}"
 ROOT="${GITHUB_WORKSPACE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 STATE_ROOT="${DEPLOY_STATE_ROOT:-/data}"
 PORTAL_DIR="${DEPLOY_PORTAL_DIR:-/data/portal}"
+SYSTEMD_DIR="${DEPLOY_SYSTEMD_DIR:-/etc/systemd/system}"
 API_IMAGE="${DEPLOY_API_IMAGE:-cashflow-api:local}"
 ROLLBACK_IMAGE="${API_IMAGE%:*}:rollback"
 BACKUP_KEEP="${DEPLOY_BACKUP_KEEP:-15}"
@@ -63,6 +64,7 @@ api=0
 rebuild=0
 migrate=0
 nginx=0
+units=0
 copied=0
 
 copy_started=0
@@ -138,6 +140,9 @@ classify() {
       ;;
     deploy/nginx/*)
       nginx=1
+      ;;
+    deploy/systemd/*.service|deploy/systemd/*.timer)
+      units=1
       ;;
   esac
 }
@@ -413,7 +418,7 @@ for rel in "${deployable[@]}"; do
   classify "${rel}"
 done
 
-echo "copied ${copied} file(s); portal=${portal} api=${api} rebuild=${rebuild} migrate=${migrate} nginx=${nginx}"
+echo "copied ${copied} file(s); portal=${portal} api=${api} rebuild=${rebuild} migrate=${migrate} nginx=${nginx} units=${units}"
 
 if [[ "${migrate}" -eq 1 ]]; then
   failed_step="migrations"
@@ -591,6 +596,21 @@ if [[ "${nginx}" -eq 1 ]]; then
     echo "export-job did not answer 401" >&2
     exit 1
   fi
+fi
+
+if [[ "${units}" -eq 1 ]]; then
+  failed_step="systemd units"
+  echo "==> install systemd units"
+  shopt -s nullglob
+  for unit in "${DEST}"/deploy/systemd/*.service "${DEST}"/deploy/systemd/*.timer; do
+    sudo install -D -m 644 "${unit}" "${SYSTEMD_DIR}/$(basename "${unit}")"
+    echo "installed $(basename "${unit}")"
+  done
+  sudo systemctl daemon-reload
+  for timer in "${DEST}"/deploy/systemd/*.timer; do
+    sudo systemctl enable --now "$(basename "${timer}")"
+  done
+  shopt -u nullglob
 fi
 
 committed=1

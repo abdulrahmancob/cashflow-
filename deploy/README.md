@@ -41,6 +41,8 @@ Migrations are not rolled back. Each run is one transaction and every file must 
 
 `deploy/scripts/drift_report.sh` (read-only, run on the server) lists every tracked file whose server copy matches no commit. Commit those copies before a push touches them.
 
+`runner-watchdog.timer` (installed from `deploy/systemd/` by the deploy) checks every 5 minutes. If a Deploy run has been queued over 10 minutes and the runner is idle, it restarts the runner service, at most once every 30 minutes. A runner busy with another job (an intake eval, say) is left alone. Log: `/data/logs/runner_watchdog.log`.
+
 ## Architecture
 
 ```text

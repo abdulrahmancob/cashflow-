@@ -65,6 +65,7 @@ printf '%s\n' "$body"
 
 PASS_THROUGH = '#!/usr/bin/env bash\nexec "$@"\n'
 NOOP = "#!/usr/bin/env bash\nexit 0\n"
+SYSTEMCTL_STUB = '#!/usr/bin/env bash\necho "systemctl $*" >> "$STUB_LOG"\n'
 
 
 def _posix(path: Path) -> str:
@@ -116,7 +117,9 @@ class World:
         (self.dest / "deploy" / "docker-compose.yml").write_text(
             "      - ./nginx/export-guard.js:/etc/nginx/export-guard.js:ro\n", encoding="utf-8"
         )
-        for name, body in {"docker": DOCKER_STUB, "curl": CURL_STUB, "sudo": PASS_THROUGH, "flock": NOOP, "sleep": NOOP}.items():
+        stubs = {"docker": DOCKER_STUB, "curl": CURL_STUB, "sudo": PASS_THROUGH, "flock": NOOP, "sleep": NOOP,
+                 "systemctl": SYSTEMCTL_STUB}
+        for name, body in stubs.items():
             stub = self.bin / name
             stub.write_text(body, encoding="utf-8", newline="\n")
             stub.chmod(0o755)
@@ -130,6 +133,7 @@ class World:
             "CASHFLOW_DEST": self.dest.as_posix(),
             "DEPLOY_STATE_ROOT": self.state.as_posix(),
             "DEPLOY_PORTAL_DIR": (self.state / "portal").as_posix(),
+            "DEPLOY_SYSTEMD_DIR": (self.state / "systemd").as_posix(),
             "TMPDIR": self.tmp.as_posix(),
             "DEPLOY_BUSY_WAIT_SECONDS": "2",
             "DEPLOY_BUSY_STEP_SECONDS": "1",
@@ -287,4 +291,19 @@ def test_bad_nginx_config_never_reaches_the_running_nginx(tmp_path):
     assert "DEPLOY_ROLLED_BACK" in done.stderr
     assert world.live("deploy/nginx/site.conf") == "server {}\n"
     assert "--force-recreate nginx" not in world.calls()
+    assert "deploy_preflight" not in world.calls()
+
+
+def test_systemd_units_are_installed_and_the_timer_enabled(tmp_path):
+    push = {
+        "deploy/systemd/runner-watchdog.service": "[Service]\nType=oneshot\n",
+        "deploy/systemd/runner-watchdog.timer": "[Timer]\nOnUnitActiveSec=5min\n",
+    }
+    world = World(tmp_path, [BASE, push])
+    done = world.run()
+    assert done.returncode == 0, done.stdout + done.stderr
+    installed = sorted(path.name for path in (world.state / "systemd").iterdir())
+    assert installed == ["runner-watchdog.service", "runner-watchdog.timer"]
+    assert "systemctl daemon-reload" in world.calls()
+    assert "systemctl enable --now runner-watchdog.timer" in world.calls()
     assert "deploy_preflight" not in world.calls()

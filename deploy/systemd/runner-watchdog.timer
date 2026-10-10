@@ -1,0 +1,10 @@
+[Unit]
+Description=Check every 5 minutes for a deploy stuck in the GitHub queue
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
