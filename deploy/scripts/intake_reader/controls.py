@@ -150,7 +150,8 @@ def _candidates(source, labels, slices, hit: LabelHit, th: int, family: Family, 
         squarish = min(w, h) >= (0.55 if bullet else 0.72) * max(w, h)
         boxlike = bullet or _boxlike(source, cx0, cy0, cx1, cy1)
         if boxlike and family.control == "box" and not merged:
-            boxlike = _straight_sides(source, cx0, cy0, cx1, cy1)
+            # a faint box may lose its corners or break its sides, never both; round letters fail both
+            boxlike = _cornered(source, cx0, cy0, cx1, cy1) or _straight_sides(source, cx0, cy0, cx1, cy1)
         if merged and family.control == "circle":
             boxlike = False  # a circle glued to its label cannot be cut free; the column places it
         real = side >= real_side and min(w, h) >= 0.6 * real_side and squarish and boxlike
@@ -609,7 +610,7 @@ def _snap(labels, slices, x0: int, y0: int, x1: int, y1: int, side: int) -> tupl
             continue
         cy0, cy1, cx0, cx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
         w, h = cx1 - cx0, cy1 - cy0
-        if not (0.75 * side <= w <= 1.5 * side and 0.75 * side <= h <= 1.5 * side):
+        if not (0.7 * side <= w <= 1.5 * side and 0.7 * side <= h <= 1.5 * side):
             continue
         ox = max(0, min(x1, cx1) - max(x0, cx0))
         oy = max(0, min(y1, cy1) - max(y0, cy0))
@@ -722,20 +723,33 @@ def _ring(ink: np.ndarray, hit: LabelHit, th: int, words: list[dict] | None = No
         wy0 = _clip(word["y"] - 1 - y0, 0, region.shape[0])
         wy1 = _clip(word["y"] + word["h"] + 1 - y0, 0, region.shape[0])
         region[wy0:wy1, wx0:wx1] = False
-    top_band = region[: max(1, hit.y0 - y0), :]
-    bottom_band = region[min(region.shape[0] - 1, hit.y1 - y0) :, :]
-    left_band = region[:, : max(1, hit.x0 - x0)]
-    right_band = region[:, min(region.shape[1] - 1, hit.x1 - x0) :]
-    # a pen ring crosses the whole width above and below the label and the whole height at its
-    # sides: measure how much of each band's span carries ink, not how dark the band is, so the
-    # value does not depend on the band size or the pen width
-    bands = [
-        float(top_band.any(axis=0).mean()) if top_band.size else 0.0,
-        float(bottom_band.any(axis=0).mean()) if bottom_band.size else 0.0,
-        float(left_band.any(axis=1).mean()) if left_band.size else 0.0,
-        float(right_band.any(axis=1).mean()) if right_band.size else 0.0,
-    ]
-    return min(bands)
+    known = np.ones(region.shape, dtype=bool)
+    for word in boxes:
+        wx0 = _clip(word["x"] - 1 - x0, 0, region.shape[1])
+        wx1 = _clip(word["x"] + word["w"] + 1 - x0, 0, region.shape[1])
+        wy0 = _clip(word["y"] - 1 - y0, 0, region.shape[0])
+        wy1 = _clip(word["y"] + word["h"] + 1 - y0, 0, region.shape[0])
+        known[wy0:wy1, wx0:wx1] = False
+    top = slice(0, max(1, hit.y0 - y0))
+    bottom = slice(min(region.shape[0] - 1, hit.y1 - y0), region.shape[0])
+    left = slice(0, max(1, hit.x0 - x0))
+    right = slice(min(region.shape[1] - 1, hit.x1 - x0), region.shape[1])
+
+    def span(rows: slice, cols: slice, axis: int) -> float | None:
+        # a pen ring crosses the whole width above and below the label and the whole height at
+        # its sides: measure how much of the band's span carries ink; positions hidden by printed
+        # words are unknown and left out, and a band that is mostly hidden is skipped
+        inked = region[rows, cols].any(axis=axis)
+        seen = known[rows, cols].any(axis=axis)
+        if inked.size == 0 or seen.sum() < 0.3 * inked.size:
+            return None
+        return float((inked & seen).sum() / max(1, seen.sum()))
+
+    bands = [span(top, slice(None), 0), span(bottom, slice(None), 0), span(slice(None), left, 1), span(slice(None), right, 1)]
+    usable = [b for b in bands if b is not None]
+    if len(usable) < 3:
+        return 0.0
+    return min(usable)
 
 
 def score_controls(controls: list[Control], family: Family) -> None:
@@ -792,7 +806,7 @@ def score_controls(controls: list[Control], family: Family) -> None:
             b = (c.outside - med_o - 0.10) / 0.12
             if c.outside < 2.0 * max(med_o, 0.03):
                 b = min(b, -0.01)
-            if tight and c.extra.get("interior2") is not None and med_i2 is not None and c.interior >= med_i + 0.015:
+            if tight and c.extra.get("interior2") is not None and med_i2 is not None and c.interior >= med_i + 0.03:
                 # a faint pen stroke leaves a trace on the dark mask and a clear mark on the light
                 # one; paper shading leaves nothing on the dark mask
                 a2 = (c.extra["interior2"] - med_i2 - margin - 0.02) / 0.12
