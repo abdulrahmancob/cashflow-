@@ -9,10 +9,16 @@ on:
       workers:
         description: "OCR worker processes"
         default: "6"
+      mode:
+        description: "start = run detached and free the runner (default for full runs); inline = run to completion in this job (default for smoke runs up to 500 files); collect = publish a finished detached run"
+        default: ""
   push:
     branches: [main]
     paths:
       - "deploy/scripts/intake_census.trigger"
+  schedule:
+    # a detached run is collected (workbook built, results published) once it has finished
+    - cron: "*/30 * * * *"
 
 concurrency:
   group: intake-census
@@ -29,6 +35,8 @@ jobs:
       V2: /data/exports/intake_census_v2
       MAX_FILES: ${{ github.event.inputs.max_files || '0' }}
       WORKERS: ${{ github.event.inputs.workers || '6' }}
+      MODE: ${{ github.event.inputs.mode || '' }}
+      NAME: intake-census-run
       COMPOSE: >-
         docker compose
         --project-directory /opt/cashflow/deploy
@@ -44,25 +52,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run settings from the trigger file (push) or inputs (manual)
+      - name: Run settings from the trigger file (push), the inputs (manual) or the schedule
         run: |
           set -euo pipefail
-          if [ -f deploy/scripts/intake_census.trigger ]; then
-            # the trigger file may set MAX_FILES=... and WORKERS=... one per line
+          mode="$MODE"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            mode=collect
+          fi
+          if [ "${{ github.event_name }}" = "push" ] && [ -f deploy/scripts/intake_census.trigger ]; then
+            # the trigger file may set MAX_FILES=..., WORKERS=... and MODE=... one per line
             while IFS='=' read -r key value; do
               case "$key" in
-                MAX_FILES|WORKERS) echo "$key=$value" >> "$GITHUB_ENV" ;;
+                MAX_FILES) echo "MAX_FILES=$value" >> "$GITHUB_ENV"; MAX_FILES="$value" ;;
+                WORKERS) echo "WORKERS=$value" >> "$GITHUB_ENV" ;;
+                MODE) mode="$value" ;;
               esac
             done < deploy/scripts/intake_census.trigger
           fi
+          if [ -z "$mode" ]; then
+            # a smoke run finishes in minutes and runs here; a full run must not hold the shared
+            # runner for hours, so it runs detached and is collected later
+            if [ "${MAX_FILES:-0}" -gt 0 ] && [ "${MAX_FILES:-0}" -le 500 ]; then mode=inline; else mode=start; fi
+          fi
+          echo "MODE=$mode" >> "$GITHUB_ENV"
+          echo "mode=$mode max_files=${MAX_FILES:-0}"
 
       - name: Prepare data folders
+        if: env.MODE != 'collect'
         run: |
           set -euo pipefail
           sudo mkdir -p "$V2" /data/ocr/tessdata
           sudo chown -R 10001:10001 "$V2" /data/ocr/tessdata
 
       - name: Self-check (synthetic rule tests + the four sample intakes)
+        if: env.MODE != 'collect'
         run: |
           set -euo pipefail
           # The scraper image bakes deploy/ at build time; mount the checked-out reader over it.
@@ -71,7 +94,28 @@ jobs:
           $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
             python -u /app/deploy/scripts/intake_census.py --check-pdfs /app/intake_test
 
-      - name: Classify intake forms
+      - name: Start the census detached (the runner is free again in a minute)
+        if: env.MODE == 'start'
+        run: |
+          set -euo pipefail
+          if docker ps --format '{{.Names}}' | grep -qx "$NAME"; then
+            echo "a census container is already running; leaving it alone"
+            exit 0
+          fi
+          docker rm -f "$NAME" >/dev/null 2>&1 || true
+          $COMPOSE run -d --no-deps -T --name "$NAME" $MOUNTS \
+            -e INTAKE_CENSUS_DIR="$V2" \
+            -e INTAKE_CENSUS_WORKERS="$WORKERS" \
+            -e INTAKE_CENSUS_MAX_FILES="$MAX_FILES" \
+            -e INTAKE_CENSUS_NICE=10 \
+            -e OMP_THREAD_LIMIT=1 \
+            scraper sh -c "python -u /app/deploy/scripts/intake_census.py > $V2/census_log.txt 2>&1"
+          sleep 20
+          docker ps --filter "name=$NAME" --format '{{.Names}} {{.Status}}'
+          sudo tail -n 5 "$V2/census_log.txt" || true
+
+      - name: Classify intake forms (inline)
+        if: env.MODE == 'inline'
         run: |
           set -euo pipefail
           $COMPOSE run --rm --no-deps -T $MOUNTS \
@@ -79,23 +123,46 @@ jobs:
             -e INTAKE_CENSUS_WORKERS="$WORKERS" \
             -e INTAKE_CENSUS_MAX_FILES="$MAX_FILES" \
             -e INTAKE_CENSUS_NICE=10 \
+            -e OMP_THREAD_LIMIT=1 \
             scraper python -u /app/deploy/scripts/intake_census.py | tee "$RUNNER_TEMP/census_log.txt"
+          sudo cp "$RUNNER_TEMP/census_log.txt" "$V2/census_log.txt"
+          echo "FINISHED=yes" >> "$GITHUB_ENV"
+
+      - name: Collect a finished detached run
+        if: env.MODE == 'collect'
+        run: |
+          set -euo pipefail
+          if ! docker ps -a --format '{{.Names}}' | grep -qx "$NAME"; then
+            echo "no census container: nothing to collect"
+            exit 0
+          fi
+          if docker ps --format '{{.Names}}' | grep -qx "$NAME"; then
+            echo "the census is still running:"
+            sudo tail -n 3 "$V2/census_log.txt" || true
+            exit 0
+          fi
+          code=$(docker inspect --format '{{.State.ExitCode}}' "$NAME")
+          echo "the census container exited with code $code"
+          sudo tail -n 25 "$V2/census_log.txt" || true
+          docker rm -f "$NAME" >/dev/null
+          echo "FINISHED=yes" >> "$GITHUB_ENV"
+          [ "$code" = "0" ]
 
       - name: Build the workbook (patient names come from the database)
+        if: env.FINISHED == 'yes'
         run: |
           set -euo pipefail
           $COMPOSE run --rm --no-deps -T $MOUNTS scraper \
             python -u /app/deploy/scripts/intake_census_workbook.py --dir "$V2"
 
       - name: Publish results to the intake-census-results branch
-        if: always()
+        if: always() && env.FINISHED == 'yes'
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/results/census"
-          for f in summary.json patients.csv intake_census_stats.xlsx; do
+          for f in summary.json patients.csv intake_census_stats.xlsx census_log.txt; do
             sudo cp "$V2/$f" "$RUNNER_TEMP/results/census/" 2>/dev/null || true
           done
-          cp "$RUNNER_TEMP/census_log.txt" "$RUNNER_TEMP/results/census/" 2>/dev/null || true
           sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/results"
           echo "${{ github.sha }}" > "$RUNNER_TEMP/results/census/SOURCE_SHA"
           git config user.name "intake-census-bot"
