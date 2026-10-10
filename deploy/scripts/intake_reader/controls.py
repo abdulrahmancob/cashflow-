@@ -192,6 +192,41 @@ def _column_vote(cands_list: list[list[_Cand]], th: int) -> list[tuple[int, int,
     return out
 
 
+def _weak_column_vote(cands_list: list[list[_Cand]], th: int, family: Family) -> list[tuple[int, int, int]]:
+    """When no whole control was recognised anywhere (a binder line runs through the whole
+    column and leaves every box or circle as two pieces), the control-high pieces that start at
+    the same x on at least three rows still mark the column; the median piece height is the
+    control's size."""
+    _lo, hi = family.size
+    pieces: list[tuple[int, int, int]] = []
+    for i, cands in enumerate(cands_list):
+        for c in cands:
+            h = c.y1 - c.y0
+            w = c.x1 - c.x0
+            if c.real or h < 0.8 * th or h > max(hi, 1.6) * th or w > 0.95 * h:
+                continue
+            pieces.append((c.x0, i, h))
+    if len(pieces) < 3:
+        return []
+    pieces.sort()
+    groups: list[list[tuple[int, int, int]]] = []
+    for piece in pieces:
+        if groups and piece[0] - groups[-1][0][0] <= th * 0.5:
+            groups[-1].append(piece)
+        else:
+            groups.append([piece])
+    out = []
+    for group in groups:
+        members = {i for _x, i, _h in group}
+        if len(members) < 3:
+            continue
+        xs = sorted(x for x, _i, _h in group)
+        hs = sorted(h for _x, _i, h in group)
+        out.append((xs[len(xs) // 2], hs[len(hs) // 2], len(members)))
+    out.sort(key=lambda c: (-c[2], c[0]))
+    return out
+
+
 def _offset_vote(hits: list[LabelHit], cands_list: list[list[_Cand]], th: int) -> tuple[int, int, int] | None:
     """(offset, side, members): the distance from a label's text to its own box shared by at
     least two labels. Used on the tiny form, where boxes sit in a row rather than a column."""
@@ -290,6 +325,12 @@ def find_controls(
     # are voted by their distance to the label instead
     tiny = family.id == "tiny"
     clusters = _column_vote(cands_list, th) if not tiny else []
+    if not tiny:
+        # a column no whole control was recognised on (a binder line cuts every box) is still
+        # voted from the pieces; columns already known from whole controls win
+        for weak in _weak_column_vote(cands_list, th, family):
+            if all(abs(weak[0] - c[0]) > th * 1.0 for c in clusters):
+                clusters.append(weak)
     offsets = {c: _cluster_offset(hits, cands_list, c, th) for c in clusters}
     row_vote = _offset_vote(hits, cands_list, th) if tiny else None
     main = clusters[0] if clusters else None
@@ -317,11 +358,12 @@ def find_controls(
         return total > 0.3 * area
 
     def on_text_at(wx: float, side: int, y_c: float) -> bool:
-        # a window placed by geometry must not sit on printed words
+        # a window placed by geometry must not sit on printed words; OCR glyphs read off a
+        # control or a mark ("X|", "(Y") and doubtful words do not count
         if not words:
             return False
         for w in words:
-            if len(w.get("text", "").strip()) < 2:
+            if len(w.get("text", "").strip()) < 3 or float(w.get("conf", 0)) < 40:
                 continue
             ox = max(0, min(wx + side, w["x"] + w["w"]) - max(wx, w["x"]))
             oy = max(0, min(y_c + side * 0.5, w["y"] + w["h"]) - max(y_c - side * 0.5, w["y"]))
@@ -426,9 +468,11 @@ def find_controls(
                 x0, y0, x1, y1 = snapped  # the printed control sits a little off the label's row
             else:
                 refined = _refine_window(source, x0, y0, x1, y1, th)
-                if refined is not None:
-                    x0, y0, x1, y1 = refined  # a broken or faint rim nearby: centre on it
             control = Control(hit.code, x0, y0, x1, y1, False)
+            if snapped is None and refined is not None:
+                control.extra["refined"] = (refined[0] - x0, refined[1] - y0)
+                x0, y0, x1, y1 = refined  # a broken or faint rim nearby: centre on it
+                control.x0, control.y0, control.x1, control.y1 = x0, y0, x1, y1
             control.reason = reason
             control.extra["place"] = reason
             if labels is not None:
@@ -469,6 +513,7 @@ def find_controls(
         control.extra["cands"] = [(c.x0, c.y0, c.x1, c.y1, int(c.real), int(c.merged)) for c in cands[:6]]
         controls[index] = control
     for control, hit in zip(controls, hits):
+        control.extra["th"] = th
         x_ref = hit.anchor_x
         if hit.prefix_px > 0 and not control.found:
             x_ref = control.x1 + 1
@@ -598,21 +643,27 @@ def _overlap_growth(labels, slices, x0: int, y0: int, x1: int, y1: int, side: in
     return ratio, leaves, pixels
 
 
-def _rim_score(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> float:
-    """How much of a box's or circle's rim lies on the border bands of this window (0-4)."""
+def _rim_bands(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> tuple[float, float, float, float]:
+    """How much of a box's or circle's rim lies on each border band of this window (top,
+    bottom, left, right; 0-1 each)."""
     w = x1 - x0
     h = y1 - y0
     if w < 6 or h < 6 or y0 < 0 or x0 < 0 or y1 > mask.shape[0] or x1 > mask.shape[1]:
-        return 0.0
+        return (0.0, 0.0, 0.0, 0.0)
     band = max(2, min(w, h) // 5)
     mx0, mx1 = x0 + int(w * 0.3), x0 + int(w * 0.7) + 1
     my0, my1 = y0 + int(h * 0.3), y0 + int(h * 0.7) + 1
-    return float(
-        mask[y0 : y0 + band, mx0:mx1].any(axis=0).mean()
-        + mask[y1 - band : y1, mx0:mx1].any(axis=0).mean()
-        + mask[my0:my1, x0 : x0 + band].any(axis=1).mean()
-        + mask[my0:my1, x1 - band : x1].any(axis=1).mean()
+    return (
+        float(mask[y0 : y0 + band, mx0:mx1].any(axis=0).mean()),
+        float(mask[y1 - band : y1, mx0:mx1].any(axis=0).mean()),
+        float(mask[my0:my1, x0 : x0 + band].any(axis=1).mean()),
+        float(mask[my0:my1, x1 - band : x1].any(axis=1).mean()),
     )
+
+
+def _rim_score(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int) -> float:
+    """How much of a box's or circle's rim lies on the border bands of this window (0-4)."""
+    return float(sum(_rim_bands(mask, x0, y0, x1, y1)))
 
 
 def _refine_window(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int, th: int) -> tuple[int, int, int, int] | None:
@@ -631,6 +682,8 @@ def _refine_window(mask: np.ndarray, x0: int, y0: int, x1: int, y1: int, th: int
     score, dx, dy = best
     if score < 2.2 or score < base + 0.5:
         return None
+    if min(_rim_bands(mask, x0 + dx, y0 + dy, x1 + dx, y1 + dy)) < 0.35:
+        return None  # a binder line or a rule fills one band completely; a rim touches all four
     return x0 + dx, y0 + dy, x1 + dx, y1 + dy
 
 
@@ -716,9 +769,13 @@ def _measure(ink: np.ndarray, c: Control, x_ref: int, left_limit: int, th: int) 
         # rows of the interior; a pen mark does not
         cols = inner.mean(axis=0) >= 0.85
         rows = inner.mean(axis=1) >= 0.85
+        # a line fills a few whole columns or rows; a filled-in mark fills most of them and stays
+        if cols.sum() > 0.4 * cols.size:
+            cols[:] = False
+        if rows.sum() > 0.4 * rows.size:
+            rows[:] = False
         if cols.any() or rows.any():
-            keep = inner[:, ~cols][~rows, :] if (~cols).any() and (~rows).any() else inner[:0, :0]
-            inner = keep
+            inner = inner[:, ~cols][~rows, :]
     c.interior = float(inner.mean()) if inner.size else 0.0
     grow = max(2, int(round(max(w, h) * 0.4)))
     gx0 = _clip(max(left_limit + 1, c.x0 - grow), 0, width)
@@ -883,11 +940,15 @@ def score_controls(controls: list[Control], family: Family) -> None:
             g = -9.0
             grown = c.extra.get("overlap")
             if grown is not None:
-                inky = c.interior >= med_i + 0.05 or c.outside >= med_o + 0.05
+                inky = c.interior >= med_i + 0.02 or c.outside >= med_o + 0.02
                 opx = c.extra.get("overlap_px")
                 # a stroke that leaves the row carries far more ink than a printed box: a check
                 # drawn beside the box rather than in it leaves the window itself clean
-                heavy = bool(c.extra.get("overlap_leaves")) and opx is not None and med_px > 0 and opx >= 1.8 * med_px
+                th_px = float(c.extra.get("th") or 0)
+                heavy = opx is not None and med_px > 0 and (
+                    (bool(c.extra.get("overlap_leaves")) and opx >= 1.8 * med_px)
+                    or opx - med_px >= 1.2 * th_px  # a stroke at least a text height long beyond the box's own rim
+                )
                 if inky:
                     g = (grown - 1.8) / 0.6  # the box merged with a check that ran out of it
                 elif heavy:

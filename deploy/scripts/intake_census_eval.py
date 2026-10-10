@@ -80,6 +80,8 @@ def compare(truth: str, reading) -> tuple[str, str]:
             return ("soft", f"partial multi {sorted(marks)} vs {sorted(expected)}")
         if not ok and got in expected and len(expected) == 2:
             return ("soft", f"one of two marks: {got}")
+        if not ok and got == "other" and "other_unmapped" in reasons and expected & TEXT_CODES:
+            return ("soft", "handwritten answer kept for review")
     else:
         ok = got == base
         if not ok and got == "multiple" and base in marks:

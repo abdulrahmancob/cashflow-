@@ -152,3 +152,63 @@ class RoundEightTests(unittest.TestCase):
         self.assertEqual(map_text("yo vivo aqui"), "walk_in")
         self.assertEqual(map_text("vive al lado"), "walk_in")
         self.assertEqual(map_text("vivo con mi hija"), "friend_family")
+
+
+class RoundNineTests(unittest.TestCase):
+    def test_filled_mark_interior_is_kept_but_a_line_is_dropped(self):
+        from intake_reader.controls import _measure
+
+        def measure(ink):
+            c = Control("c", 30, 30, 60, 60, True)
+            _measure(ink, c, 90, 0, 20)
+            return c.interior
+
+        blank = np.zeros((100, 100), dtype=bool)
+        filled = blank.copy()
+        filled[30:61, 30:61] = True  # a box scribbled full
+        line = blank.copy()
+        line[:, 44:47] = True  # a binder line down the whole crop through the box
+        self.assertEqual(measure(blank), 0.0)
+        self.assertGreater(measure(filled), 0.95)
+        self.assertEqual(measure(line), 0.0)
+
+    def test_pieces_left_by_a_binder_line_still_place_the_column(self):
+        """A binder line through every box leaves two pieces per box and no whole control; the
+        pieces still vote the column, and the one box with a cross in it is read."""
+        block = draw_block("How did you hear about us?", [Spec(l, "x" if l == "Google" else "") for l in OLD_LABELS], "box")
+        gray = block.gray.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Google")
+        xc = (x0 + x1) // 2
+        gray[:, xc - 1 : xc + 2] = 0
+        block.gray = gray
+        layout, controls = run_block(block, OLD_CHECKBOX)
+        self.assertEqual(marked_codes(controls), ["google"])
+        ctrl = next(c for c in controls if c.code == "google")
+        self.assertEqual(ctrl.extra.get("place"), "column")
+        self.assertLessEqual(abs(ctrl.x0 - x0), 4, (ctrl.x0, x0))
+
+    def test_refine_window_needs_all_four_sides(self):
+        from intake_reader.controls import _refine_window
+
+        image = Image.new("L", (200, 120), 255)
+        draw = ImageDraw.Draw(image)
+        draw.line((80, 40, 80, 68), fill=0, width=2)  # left
+        draw.line((80, 68, 108, 68), fill=0, width=2)  # bottom
+        draw.line((108, 40, 108, 68), fill=0, width=2)  # right: a bracket, no top
+        mask = np.asarray(image) < 128
+        self.assertIsNone(_refine_window(mask, 62, 40, 92, 70, 20))
+        draw.line((80, 40, 108, 40), fill=0, width=2)  # now a box
+        mask = np.asarray(image) < 128
+        self.assertIsNotNone(_refine_window(mask, 62, 40, 92, 70, 20))
+
+    def test_check_leaving_the_box_sideways_counts(self):
+        """A check drawn from the box's corner out into the gutter without rising above the
+        row (B00): the merged component is far bigger than a box and carries ink around it."""
+        block = draw_block("How did you hear about us?", [Spec(l, "", column=0) for l in NEW_LEFT] + [Spec(l, "", column=1) for l in NEW_RIGHT], "box")
+        image = block.image.copy()
+        _spec, (x0, y0, x1, y1) = next(r for r in block.rows if r[0].label == "Social Media")
+        th = block.text_h
+        ImageDraw.Draw(image).line((x0 + 2, y0 + 2, x0 - th * 1.5, y0 - th * 0.6), fill=0, width=3)
+        block.gray = np.asarray(image)
+        layout, controls = run_block(block, NEW_CIRCLE)
+        self.assertEqual(marked_codes(controls), ["social_media"])

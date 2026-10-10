@@ -299,7 +299,7 @@ def read_block(doc, scan: PageScan, lang: str, want_debug: bool = False) -> Read
             for c in hear_controls + booking_controls
         ],
         "writeins": [(w.code, w.kind, w.text, round(w.conf, 1), w.mapped, w.ink, w.area) for w in writeins],
-        "places": [(c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels")) for c in hear_controls + booking_controls],
+        "places": [(c.code, c.extra.get("place", ""), c.extra.get("overlap"), c.extra.get("pixels"), c.extra.get("refined")) for c in hear_controls + booking_controls],
         "writein_tries": tries,
         "notes": layout.notes[:20],
         "stray": stray,
