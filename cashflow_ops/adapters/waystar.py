@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import os
-from datetime import date
 from pathlib import Path
 
 from cashflow_ops.adapters.subprocess_runner import CmdResult, run_python_script
 from cashflow_ops.config import WAYSTAR_DIR, WAYSTAR_OUTPUT
-
-DEFAULT_TRANS_FROM = "2026-01-01"
 
 
 def scrape_rejected(
@@ -79,23 +76,13 @@ def download_recent_claims(*, dry_run: bool = False, skip: bool = False) -> CmdR
         )
     out_dir = WAYSTAR_OUTPUT / "claims_recent"
     args = ["--recent", "--out-dir", str(out_dir)]
-    # Old claims keep their Transaction Date when a remit posts, so only a pull from
-    # the start of the year refreshes payments on old visits. Empty → months-back.
-    since = os.getenv("WAYSTAR_TRANS_FROM", DEFAULT_TRANS_FROM).strip()
-    if since:
-        try:
-            date.fromisoformat(since)
-        except ValueError:
-            since = DEFAULT_TRANS_FROM
-        args.extend(["--since", since])
-    else:
-        raw_months = (os.getenv("WAYSTAR_RECENT_MONTHS") or "2").strip()
-        try:
-            months_back = int(raw_months)
-        except ValueError:
-            months_back = 2
-        if months_back >= 0:
-            args.extend(["--months-back", str(months_back)])
+    raw_months = (os.getenv("WAYSTAR_RECENT_MONTHS") or "2").strip()
+    try:
+        months_back = int(raw_months)
+    except ValueError:
+        months_back = 2
+    if months_back >= 0:
+        args.extend(["--months-back", str(months_back)])
     if (os.getenv("CASHFLOW_WAYSTAR_FRESH_LOGIN") or "").strip().lower() in {
         "1",
         "true",

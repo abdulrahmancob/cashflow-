@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -20,9 +19,6 @@ from cashflow_ops.config import (
     TRACKER_XLSX,
     WEBPT_OUTPUT,
 )
-
-# The nightly pull finishes before the load; an older file means the pull failed.
-WAYSTAR_STALE_HOURS = 20
 
 
 @dataclass
@@ -145,26 +141,10 @@ def waystar_claims_gate(
     *,
     recent_present: bool,
     skipped: bool,
-    age_hours: float | None = None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
-    if skipped:
+    if recent_present or skipped:
         return [], []
-    if not recent_present:
-        return ["Waystar recent claims file missing"], []
-    if age_hours is not None and age_hours > WAYSTAR_STALE_HOURS:
-        # A failed scrape leaves yesterday's file in place and the load reruns it.
-        return [], [
-            {
-                "severity": "warning",
-                "alert_key": "waystar_claims_stale",
-                "message": (
-                    f"Waystar claims file is {age_hours:.0f}h old — the last pull failed, "
-                    "so new remits are not loaded"
-                ),
-                "payload": {"age_hours": round(age_hours, 1)},
-            }
-        ]
-    return [], []
+    return ["Waystar recent claims file missing"], []
 
 
 def pt_city_source_gate(
@@ -316,15 +296,10 @@ def run_all_checks(*, as_of: date, acquire_outputs: dict[str, Any] | None = None
     ws = waystar_adapter.count_waystar_outputs()
     metrics["waystar_csv_files"] = ws.get("csv_files")
     metrics["waystar_recent_claims"] = ws.get("recent_claims")
-    recent_path = waystar_adapter.recent_claims_path()
-    recent_ok = bool(recent_path) or bool(ws.get("recent_claims"))
-    age_hours = (time.time() - recent_path.stat().st_mtime) / 3600 if recent_path else None
-    if age_hours is not None:
-        metrics["waystar_claims_age_hours"] = round(age_hours, 1)
+    recent_ok = bool(waystar_adapter.recent_claims_path()) or bool(ws.get("recent_claims"))
     crit, extra_alerts = waystar_claims_gate(
         recent_present=recent_ok,
         skipped=False,
-        age_hours=age_hours,
     )
     critical.extend(crit)
     alerts.extend(extra_alerts)

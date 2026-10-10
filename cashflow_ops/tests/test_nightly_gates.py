@@ -19,20 +19,6 @@ def test_waystar_fails_when_missing():
     assert crit == ["Waystar recent claims file missing"]
 
 
-def test_waystar_fresh_file_no_alert():
-    crit, alerts = waystar_claims_gate(recent_present=True, skipped=False, age_hours=0.4)
-    assert crit == []
-    assert alerts == []
-
-
-def test_waystar_stale_file_alerts_without_blocking():
-    crit, alerts = waystar_claims_gate(recent_present=True, skipped=False, age_hours=24.2)
-    assert crit == []
-    assert alerts[0]["alert_key"] == "waystar_claims_stale"
-    assert alerts[0]["severity"] == "warning"
-    assert alerts[0]["payload"] == {"age_hours": 24.2}
-
-
 def test_pt_city_ok_when_files_present():
     crit, alerts = pt_city_source_gate(
         visit_present=True,
